@@ -1,0 +1,5 @@
+{
+  "name": "TruckingLoadManager",
+  "description": "A comprehensive Transport Management System to track loads, automate driver and dispatcher fee calculations, and analyze fleet performance using AI.",
+  "requestFramePermissions": []
+}
