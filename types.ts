@@ -27,7 +27,7 @@ export interface Load {
   driverId?: string; // The specific driver
   origin: string;
   destination: string;
-  status: 'Completed' | 'Pending' | 'Invoiced';
+  status: 'Factored' | 'Not yet Factored';
 }
 
 export interface CalculatedLoad extends Load {
@@ -60,4 +60,8 @@ export interface UserProfile {
   email: string;
   name: string;
   role: UserRole;
+  feePercentage?: number; // Fee percentage for dispatchers (e.g., 12 for 12%)
+  subscriptionPlan?: 'essential' | 'professional' | 'enterprise' | null;
+  subscriptionStatus?: 'active' | 'trialing' | 'past_due' | 'canceled' | 'incomplete' | null;
+  stripeCustomerId?: string;
 }

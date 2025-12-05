@@ -115,5 +115,55 @@ export const getCurrentUser = async (): Promise<UserProfile | null> => {
     email: session.user.email!,
     name: profile?.name || session.user.user_metadata.name || 'User',
     role: profile?.role || session.user.user_metadata.role || 'owner',
+    feePercentage: profile?.fee_percentage || session.user.user_metadata.feePercentage,
   };
+};
+
+// Create dispatcher account (only for owners)
+// Note: In production, this should be done via a backend API or Supabase Edge Function
+// to properly handle user creation without requiring email confirmation
+export const createDispatcher = async (email: string, password: string, name: string, feePercentage: number = 12): Promise<{ user: UserProfile | null, error: string | null }> => {
+  if (!isSupabaseConfigured || !supabase) {
+    // Demo Mode Logic
+    await new Promise(resolve => setTimeout(resolve, 800));
+    const existingUser = MOCK_USERS.find(u => u.email === email);
+    if (existingUser) {
+      return { user: null, error: 'A user with this email already exists' };
+    }
+    const newDispatcher = { id: Math.random().toString(), email, name, role: 'dispatcher' as UserRole, feePercentage };
+    MOCK_USERS.push(newDispatcher);
+    return { user: newDispatcher, error: null };
+  }
+
+  // Real Supabase Logic
+  // Use signUp - in production, you'd want a backend function to auto-confirm
+  // For now, the dispatcher will need to confirm their email
+  const { data, error } = await supabase.auth.signUp({
+    email,
+    password,
+    options: {
+      data: { name, role: 'dispatcher', feePercentage }
+    }
+  });
+
+  if (error) return { user: null, error: error.message };
+
+  if (data.user) {
+    // Create profile entry with fee percentage
+    const { error: profileError } = await supabase
+      .from('profiles')
+      .insert([{ id: data.user.id, name, role: 'dispatcher', email, fee_percentage: feePercentage }]);
+
+    if (profileError) {
+      console.error("Error creating profile:", profileError);
+      return { user: null, error: 'Account created but profile setup failed' };
+    }
+
+    return {
+      user: { id: data.user.id, email: data.user.email!, name, role: 'dispatcher', feePercentage },
+      error: null
+    };
+  }
+
+  return { user: null, error: 'Account created. Dispatcher will need to confirm their email to sign in.' };
 };

@@ -14,9 +14,9 @@ const MOCK_DRIVERS: Driver[] = [
 ];
 
 const MOCK_DISPATCHERS: UserProfile[] = [
-  { id: 'u1', name: 'John', email: 'john@demo.com', role: 'dispatcher' },
-  { id: 'u2', name: 'Nick', email: 'nick@demo.com', role: 'dispatcher' },
-  { id: 'u3', name: 'Logan', email: 'logan@demo.com', role: 'dispatcher' }
+  { id: 'u1', name: 'John', email: 'john@demo.com', role: 'dispatcher', feePercentage: 12 },
+  { id: 'u2', name: 'Nick', email: 'nick@demo.com', role: 'dispatcher', feePercentage: 12 },
+  { id: 'u3', name: 'Logan', email: 'logan@demo.com', role: 'dispatcher', feePercentage: 12 }
 ];
 
 const MOCK_LOADS: Load[] = [
@@ -33,7 +33,7 @@ const MOCK_LOADS: Load[] = [
     driverId: 'd1',
     origin: 'Miffinburg, PA',
     destination: 'Nashville, TN',
-    status: 'Completed'
+    status: 'Factored'
   },
   {
     id: '2',
@@ -48,7 +48,7 @@ const MOCK_LOADS: Load[] = [
     driverId: 'd2',
     origin: 'Arden, NC',
     destination: 'Delta, OH',
-    status: 'Completed'
+    status: 'Factored'
   },
   {
     id: '3',
@@ -63,7 +63,7 @@ const MOCK_LOADS: Load[] = [
     driverId: 'd3',
     origin: 'Topeka, IN',
     destination: 'Jamesport, MO',
-    status: 'Completed'
+    status: 'Factored'
   },
   {
     id: '4',
@@ -78,7 +78,7 @@ const MOCK_LOADS: Load[] = [
     driverId: 'd3',
     origin: 'Montgomery, AL',
     destination: 'Tucson, AZ',
-    status: 'Pending'
+    status: 'Not yet Factored'
   }
 ];
 
@@ -176,6 +176,60 @@ export const createLoad = async (load: Omit<Load, 'id'>): Promise<Load> => {
   };
 };
 
+export const updateLoad = async (id: string, load: Omit<Load, 'id'>): Promise<Load> => {
+  if (!isSupabaseConfigured || !supabase) {
+    await new Promise(resolve => setTimeout(resolve, 500));
+    const index = MOCK_LOADS.findIndex(l => l.id === id);
+    if (index === -1) {
+      throw new Error('Load not found');
+    }
+    const updatedLoad = { ...load, id };
+    MOCK_LOADS[index] = updatedLoad;
+    return updatedLoad;
+  }
+
+  const { data, error } = await supabase
+    .from('loads')
+    .update({
+      company: load.company,
+      gross: load.gross,
+      miles: load.miles,
+      gas_amount: load.gasAmount,
+      gas_notes: load.gasNotes,
+      drop_date: load.dropDate,
+      dispatcher: load.dispatcher,
+      transporter_id: load.transporterId || null,
+      driver_id: load.driverId || null,
+      origin: load.origin,
+      destination: load.destination,
+      status: load.status
+    })
+    .eq('id', id)
+    .select()
+    .single();
+
+  if (error) {
+    console.error("Error updating load:", error);
+    throw error;
+  }
+
+  return {
+    id: data.id,
+    company: data.company,
+    gross: data.gross,
+    miles: data.miles,
+    gasAmount: data.gas_amount,
+    gasNotes: data.gas_notes,
+    dropDate: data.drop_date,
+    dispatcher: data.dispatcher,
+    transporterId: data.transporter_id,
+    driverId: data.driver_id,
+    origin: data.origin,
+    destination: data.destination,
+    status: data.status
+  };
+};
+
 // --- FLEET OPERATIONS ---
 
 export const getDispatchers = async (): Promise<UserProfile[]> => {
@@ -189,7 +243,14 @@ export const getDispatchers = async (): Promise<UserProfile[]> => {
     .eq('role', 'dispatcher');
     
   if (error) throw error;
-  return data || [];
+  
+  return (data || []).map((profile: any) => ({
+    id: profile.id,
+    email: profile.email,
+    name: profile.name,
+    role: profile.role,
+    feePercentage: profile.fee_percentage || 12 // Default to 12% if not set
+  }));
 };
 
 export const getTransporters = async (): Promise<Transporter[]> => {

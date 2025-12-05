@@ -11,7 +11,7 @@ interface DriverDashboardProps {
 export const DriverDashboard: React.FC<DriverDashboardProps> = ({ user, loads, onSignOut }) => {
   // Filter logic: In a real app, this would be server-side. 
   // Here we simulate "My Loads" by just showing all or random ones if we don't have driver assignment data structure.
-  // We'll show all pending/completed loads for now as the data model doesn't explicitly link 'Driver User ID' to 'Load'.
+  // We'll show all loads for now as the data model doesn't explicitly link 'Driver User ID' to 'Load'.
   const myLoads = loads; 
 
   return (
@@ -37,12 +37,12 @@ export const DriverDashboard: React.FC<DriverDashboardProps> = ({ user, loads, o
         <div className="grid grid-cols-2 gap-4">
            <div className="bg-white/10 backdrop-blur-md rounded-xl p-4">
               <p className="text-slate-400 text-xs mb-1">Active Loads</p>
-              <p className="text-2xl font-bold">{myLoads.filter(l => l.status === 'Pending').length}</p>
+              <p className="text-2xl font-bold">{myLoads.filter(l => l.status === 'Not yet Factored').length}</p>
            </div>
            <div className="bg-emerald-500/20 backdrop-blur-md rounded-xl p-4 border border-emerald-500/30">
               <p className="text-emerald-100 text-xs mb-1">Next Payout</p>
               <p className="text-2xl font-bold text-emerald-300">
-                ${myLoads.filter(l => l.status === 'Completed').slice(0, 3).reduce((sum, l) => sum + l.driverPay, 0).toLocaleString()}
+                ${myLoads.filter(l => l.status === 'Factored').slice(0, 3).reduce((sum, l) => sum + l.driverPay, 0).toLocaleString()}
               </p>
            </div>
         </div>
@@ -55,7 +55,7 @@ export const DriverDashboard: React.FC<DriverDashboardProps> = ({ user, loads, o
         {myLoads.map((load) => (
           <div key={load.id} className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden active:scale-[0.98] transition-transform">
              {/* Status Bar */}
-             <div className={`h-1.5 w-full ${load.status === 'Completed' ? 'bg-emerald-500' : 'bg-amber-500'}`} />
+             <div className={`h-1.5 w-full ${load.status === 'Factored' ? 'bg-emerald-500' : 'bg-amber-500'}`} />
              
              <div className="p-5">
                 <div className="flex justify-between items-start mb-4">
@@ -63,7 +63,7 @@ export const DriverDashboard: React.FC<DriverDashboardProps> = ({ user, loads, o
                      <span className="text-xs font-semibold text-slate-400">#{load.id.slice(0, 6)} • {load.company}</span>
                      <div className="flex items-center gap-2 mt-1">
                         <span className={`px-2 py-0.5 rounded text-xs font-medium ${
-                           load.status === 'Completed' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'
+                           load.status === 'Factored' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'
                         }`}>
                            {load.status}
                         </span>

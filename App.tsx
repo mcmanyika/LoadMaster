@@ -10,17 +10,26 @@ import {
   User, 
   FileText,
   LogOut,
-  Users
+  Users,
+  Filter,
+  X,
+  ArrowUpDown,
+  ArrowUp,
+  ArrowDown,
+  ChevronLeft,
+  ChevronRight,
+  CreditCard
 } from 'lucide-react';
-import { Load, DispatcherName, CalculatedLoad, UserProfile } from './types';
+import { Load, DispatcherName, CalculatedLoad, UserProfile, Driver } from './types';
 import { StatsCard } from './components/StatsCard';
 import { LoadForm } from './components/LoadForm';
 import { Auth } from './components/Auth';
 import { DriverDashboard } from './components/DriverDashboard';
 import { ConnectionModal } from './components/ConnectionModal';
 import { FleetManagement } from './components/FleetManagement';
+import { Pricing } from './components/Pricing';
 import { analyzeFleetPerformance } from './services/geminiService';
-import { getLoads, createLoad } from './services/loadService';
+import { getLoads, createLoad, updateLoad, getDrivers, getDispatchers } from './services/loadService';
 import { getCurrentUser, signOut } from './services/authService';
 import {
   BarChart,
@@ -37,13 +46,21 @@ function App() {
   const [user, setUser] = useState<UserProfile | null>(null);
   const [authLoading, setAuthLoading] = useState(true);
   const [loads, setLoads] = useState<Load[]>([]);
+  const [drivers, setDrivers] = useState<Driver[]>([]);
+  const [dispatchers, setDispatchers] = useState<UserProfile[]>([]);
   const [dataLoading, setDataLoading] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [loadToEdit, setLoadToEdit] = useState<Load | null>(null);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [selectedDriverId, setSelectedDriverId] = useState<string>('');
+  const [sortBy, setSortBy] = useState<keyof CalculatedLoad>('dropDate');
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
   const [aiAnalysis, setAiAnalysis] = useState<string | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
-  const [view, setView] = useState<'dashboard' | 'loads' | 'fleet'>('dashboard');
+  const [view, setView] = useState<'dashboard' | 'loads' | 'fleet' | 'pricing'>('dashboard');
 
   // Check Auth on Mount
   useEffect(() => {
@@ -66,8 +83,14 @@ function App() {
   const fetchData = async () => {
     setDataLoading(true);
     try {
-      const data = await getLoads();
-      setLoads(data);
+      const [loadsData, driversData, dispatchersData] = await Promise.all([
+        getLoads(),
+        getDrivers(),
+        getDispatchers()
+      ]);
+      setLoads(loadsData);
+      setDrivers(driversData);
+      setDispatchers(dispatchersData);
     } catch (error) {
       console.error("Failed to load data", error);
     } finally {
@@ -81,20 +104,41 @@ function App() {
     setLoads([]);
   };
 
+  // Create driver mapping for quick lookup
+  const driverMap = useMemo(() => {
+    const map = new Map<string, string>();
+    drivers.forEach(driver => {
+      map.set(driver.id, driver.name);
+    });
+    return map;
+  }, [drivers]);
+
+  // Create dispatcher fee percentage mapping
+  const dispatcherFeeMap = useMemo(() => {
+    const map = new Map<string, number>();
+    dispatchers.forEach(dispatcher => {
+      map.set(dispatcher.name, dispatcher.feePercentage || 12); // Default to 12% if not set
+    });
+    return map;
+  }, [dispatchers]);
+
   // Logic to process loads with calculated fields
   const processedLoads: CalculatedLoad[] = useMemo(() => {
     return loads.map(load => {
-      const dispatchFee = load.gross * 0.12;
+      const feePercentage = dispatcherFeeMap.get(load.dispatcher) || 12; // Default to 12% if dispatcher not found
+      const dispatchFee = load.gross * (feePercentage / 100);
       const driverPay = (load.gross - dispatchFee - load.gasAmount) * 0.5;
       const netProfit = load.gross - driverPay - load.gasAmount;
+      const driverName = load.driverId ? driverMap.get(load.driverId) : undefined;
       return {
         ...load,
         dispatchFee,
         driverPay,
-        netProfit
+        netProfit,
+        driverName
       };
     }).sort((a, b) => new Date(b.dropDate).getTime() - new Date(a.dropDate).getTime());
-  }, [loads]);
+  }, [loads, driverMap, dispatcherFeeMap]);
 
   // Statistics Calculation
   const stats = useMemo(() => {
@@ -134,6 +178,27 @@ function App() {
     }
   };
 
+  const handleUpdateLoad = async (loadData: Omit<Load, 'id'>) => {
+    if (!loadToEdit) return;
+    try {
+      const updatedLoad = await updateLoad(loadToEdit.id, loadData);
+      setLoads(prev => prev.map(l => l.id === loadToEdit.id ? updatedLoad : l));
+      setLoadToEdit(null);
+    } catch (error) {
+      console.error("Failed to update load", error);
+      alert("Failed to update load. Please check your connection.");
+    }
+  };
+
+  const handleEditLoad = (load: Load) => {
+    setLoadToEdit(load);
+  };
+
+  const handleCloseModal = () => {
+    setIsModalOpen(false);
+    setLoadToEdit(null);
+  };
+
   const handleGenerateAIReport = async () => {
     setIsAnalyzing(true);
     const result = await analyzeFleetPerformance(loads);
@@ -141,11 +206,81 @@ function App() {
     setIsAnalyzing(false);
   };
 
-  const filteredLoads = processedLoads.filter(l => 
-    l.company.toLowerCase().includes(searchQuery.toLowerCase()) || 
-    l.origin.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    l.destination.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const filteredLoads = processedLoads.filter(l => {
+    // Search filter
+    const matchesSearch = searchQuery === '' || 
+      l.company.toLowerCase().includes(searchQuery.toLowerCase()) || 
+      l.origin.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      l.destination.toLowerCase().includes(searchQuery.toLowerCase());
+    
+    // Driver filter
+    const matchesDriver = selectedDriverId === '' || l.driverId === selectedDriverId;
+    
+    return matchesSearch && matchesDriver;
+  });
+
+  // Sorting logic
+  const sortedLoads = useMemo(() => {
+    const sorted = [...filteredLoads].sort((a, b) => {
+      let aValue: any = a[sortBy];
+      let bValue: any = b[sortBy];
+      
+      // Handle different data types
+      if (sortBy === 'dropDate') {
+        aValue = new Date(aValue).getTime();
+        bValue = new Date(bValue).getTime();
+      } else if (typeof aValue === 'string') {
+        aValue = aValue.toLowerCase();
+        bValue = bValue.toLowerCase();
+      } else if (typeof aValue === 'number') {
+        // Numbers can be sorted directly
+      } else {
+        // Handle undefined/null values
+        aValue = aValue ?? '';
+        bValue = bValue ?? '';
+      }
+      
+      if (aValue < bValue) return sortDirection === 'asc' ? -1 : 1;
+      if (aValue > bValue) return sortDirection === 'asc' ? 1 : -1;
+      return 0;
+    });
+    
+    return sorted;
+  }, [filteredLoads, sortBy, sortDirection]);
+
+  // Pagination logic
+  const totalPages = Math.ceil(sortedLoads.length / itemsPerPage);
+  const paginatedLoads = useMemo(() => {
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    const endIndex = startIndex + itemsPerPage;
+    return sortedLoads.slice(startIndex, endIndex);
+  }, [sortedLoads, currentPage, itemsPerPage]);
+
+  // Reset to page 1 when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, selectedDriverId, sortBy, sortDirection]);
+
+  const handleSort = (column: keyof CalculatedLoad) => {
+    if (sortBy === column) {
+      // Toggle direction if same column
+      setSortDirection(prev => prev === 'asc' ? 'desc' : 'asc');
+    } else {
+      // New column, default to descending for dates/numbers, ascending for text
+      const defaultDirection = ['dropDate', 'gross', 'dispatchFee', 'driverPay', 'miles'].includes(column as string) ? 'desc' : 'asc';
+      setSortBy(column);
+      setSortDirection(defaultDirection);
+    }
+  };
+
+  const getSortIcon = (column: keyof CalculatedLoad) => {
+    if (sortBy !== column) {
+      return <ArrowUpDown className="w-3 h-3 ml-1 text-slate-400 opacity-50" />;
+    }
+    return sortDirection === 'asc' 
+      ? <ArrowUp className="w-3 h-3 ml-1 text-blue-600" />
+      : <ArrowDown className="w-3 h-3 ml-1 text-blue-600" />;
+  };
 
   // --- RENDER STATES ---
 
@@ -171,10 +306,10 @@ function App() {
 
   // --- ADMIN / DISPATCHER VIEW ---
   return (
-    <div className="min-h-screen bg-slate-50 flex font-sans">
+    <div className="h-screen bg-slate-50 flex font-sans overflow-hidden">
       
       {/* Sidebar Navigation */}
-      <aside className="w-64 bg-slate-900 text-slate-300 flex-shrink-0 hidden md:flex flex-col">
+      <aside className="w-64 bg-slate-900 text-slate-300 flex-shrink-0 hidden md:flex flex-col h-full overflow-y-auto">
         <div className="p-6">
           <div className="flex items-center gap-3 text-white mb-8">
             <div className="bg-blue-600 p-2 rounded-lg">
@@ -205,6 +340,13 @@ function App() {
               <Users size={20} />
               Fleet & Drivers
             </button>
+            <button 
+              onClick={() => setView('pricing')}
+              className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${view === 'pricing' ? 'bg-blue-600/10 text-blue-400 font-medium' : 'hover:bg-slate-800'}`}
+            >
+              <CreditCard size={20} />
+              Pricing
+            </button>
           </nav>
         </div>
         
@@ -233,15 +375,15 @@ function App() {
       </aside>
 
       {/* Main Content */}
-      <main className="flex-1 overflow-auto">
-        <header className="bg-white border-b border-slate-200 sticky top-0 z-30">
+      <main className="flex-1 flex flex-col overflow-hidden">
+        <header className="bg-white border-b border-slate-200 flex-shrink-0 z-30">
           <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
             <h1 className="text-2xl font-bold text-slate-800">
-              {view === 'dashboard' ? 'Fleet Overview' : view === 'fleet' ? 'Fleet Management' : 'Load Management'}
+              {view === 'dashboard' ? 'Fleet Overview' : view === 'fleet' ? 'Fleet Management' : view === 'pricing' ? 'Pricing Plans' : 'Load Management'}
             </h1>
             <div className="flex items-center gap-4">
               {dataLoading && <span className="text-sm text-slate-400 animate-pulse">Syncing...</span>}
-               {view !== 'fleet' && (
+               {view !== 'fleet' && view !== 'pricing' && (
                  <button 
                   onClick={() => setIsModalOpen(true)}
                   className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2.5 rounded-lg text-sm font-medium shadow-sm transition-all hover:shadow-md"
@@ -254,11 +396,15 @@ function App() {
           </div>
         </header>
 
-        <div className="max-w-7xl mx-auto px-6 py-8 space-y-8">
+        <div className="flex-1 overflow-y-auto">
+          {view === 'pricing' ? (
+            <Pricing />
+          ) : (
+          <div className="max-w-7xl mx-auto px-6 py-8 space-y-8">
           
           {/* Fleet Management View */}
           {view === 'fleet' ? (
-             <FleetManagement />
+             <FleetManagement user={user} />
           ) : (
             <>
               {/* Key Metrics */}
@@ -380,37 +526,119 @@ function App() {
               )}
 
               {/* Recent Loads / All Loads Table */}
-              <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+              <div className="bg-white rounded-2xl border border-slate-200 shadow-sm flex flex-col">
                 <div className="p-6 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                   <h3 className="text-lg font-bold text-slate-800">Recent Loads</h3>
-                  <div className="relative">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-4 h-4" />
-                    <input 
-                      type="text" 
-                      placeholder="Search company, city..." 
-                      value={searchQuery}
-                      onChange={(e) => setSearchQuery(e.target.value)}
-                      className="pl-9 pr-4 py-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none w-full sm:w-64"
-                    />
+                  <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
+                    <div className="relative flex-1 sm:flex-initial">
+                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-4 h-4" />
+                      <input 
+                        type="text" 
+                        placeholder="Search company, city..." 
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        className="pl-9 pr-4 py-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none w-full sm:w-64"
+                      />
+                    </div>
+                    <div className="relative flex-1 sm:flex-initial">
+                      <Filter className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-4 h-4 pointer-events-none" />
+                      <select
+                        value={selectedDriverId}
+                        onChange={(e) => setSelectedDriverId(e.target.value)}
+                        className="pl-9 pr-8 py-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none w-full sm:w-48 bg-white appearance-none cursor-pointer"
+                      >
+                        <option value="">All Drivers</option>
+                        {drivers.map(driver => (
+                          <option key={driver.id} value={driver.id}>
+                            {driver.name}
+                          </option>
+                        ))}
+                      </select>
+                      {selectedDriverId && (
+                        <button
+                          onClick={() => setSelectedDriverId('')}
+                          className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-1"
+                          title="Clear filter"
+                        >
+                          <X size={16} />
+                        </button>
+                      )}
+                    </div>
                   </div>
                 </div>
                 
-                <div className="overflow-x-auto">
+                <div className="relative overflow-auto max-h-[600px]">
                   <table className="w-full text-left border-collapse">
-                    <thead>
+                    <thead className="sticky top-0 z-20 shadow-md">
                       <tr className="bg-slate-50 text-slate-500 text-xs uppercase tracking-wider">
-                        <th className="p-4 font-semibold border-b border-slate-200">Company</th>
-                        <th className="p-4 font-semibold border-b border-slate-200">Route</th>
-                        <th className="p-4 font-semibold border-b border-slate-200">Date</th>
-                        <th className="p-4 font-semibold border-b border-slate-200">Dispatcher</th>
-                        <th className="p-4 font-semibold border-b border-slate-200 text-right">Gross</th>
-                        <th className="p-4 font-semibold border-b border-slate-200 text-right">Disp (12%)</th>
-                        <th className="p-4 font-semibold border-b border-slate-200 text-right">Driver Pay</th>
-                        <th className="p-4 font-semibold border-b border-slate-200">Status</th>
+                        <th 
+                          className="bg-slate-50 p-4 font-semibold border-b border-slate-200 cursor-pointer hover:bg-slate-100 transition-colors select-none"
+                          onClick={() => handleSort('company')}
+                        >
+                          <div className="flex items-center">
+                            Company
+                            {getSortIcon('company')}
+                          </div>
+                        </th>
+                        <th className="bg-slate-50 p-4 font-semibold border-b border-slate-200">Route</th>
+                        <th 
+                          className="bg-slate-50 p-4 font-semibold border-b border-slate-200 cursor-pointer hover:bg-slate-100 transition-colors select-none"
+                          onClick={() => handleSort('dropDate')}
+                        >
+                          <div className="flex items-center">
+                            Date
+                            {getSortIcon('dropDate')}
+                          </div>
+                        </th>
+                        <th 
+                          className="bg-slate-50 p-4 font-semibold border-b border-slate-200 cursor-pointer hover:bg-slate-100 transition-colors select-none"
+                          onClick={() => handleSort('dispatcher')}
+                        >
+                          <div className="flex items-center">
+                            Dispatcher
+                            {getSortIcon('dispatcher')}
+                          </div>
+                        </th>
+                        <th 
+                          className="bg-slate-50 p-4 font-semibold border-b border-slate-200 text-right cursor-pointer hover:bg-slate-100 transition-colors select-none"
+                          onClick={() => handleSort('gross')}
+                        >
+                          <div className="flex items-center justify-end">
+                            Gross
+                            {getSortIcon('gross')}
+                          </div>
+                        </th>
+                        <th 
+                          className="bg-slate-50 p-4 font-semibold border-b border-slate-200 text-right cursor-pointer hover:bg-slate-100 transition-colors select-none"
+                          onClick={() => handleSort('dispatchFee')}
+                        >
+                          <div className="flex items-center justify-end">
+                            Dispatch Fee
+                            {getSortIcon('dispatchFee')}
+                          </div>
+                        </th>
+                        <th 
+                          className="bg-slate-50 p-4 font-semibold border-b border-slate-200 text-right cursor-pointer hover:bg-slate-100 transition-colors select-none"
+                          onClick={() => handleSort('driverPay')}
+                        >
+                          <div className="flex items-center justify-end">
+                            Driver Pay
+                            {getSortIcon('driverPay')}
+                          </div>
+                        </th>
+                        <th 
+                          className="bg-slate-50 p-4 font-semibold border-b border-slate-200 cursor-pointer hover:bg-slate-100 transition-colors select-none"
+                          onClick={() => handleSort('status')}
+                        >
+                          <div className="flex items-center">
+                            Status
+                            {getSortIcon('status')}
+                          </div>
+                        </th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100">
-                      {dataLoading && filteredLoads.length === 0 ? (
+                      {dataLoading && sortedLoads.length === 0 ? (
                          <tr>
                             <td colSpan={8} className="p-12 text-center text-slate-400">
                                <div className="flex justify-center items-center gap-2">
@@ -419,15 +647,19 @@ function App() {
                                </div>
                             </td>
                          </tr>
-                      ) : filteredLoads.length === 0 ? (
+                      ) : sortedLoads.length === 0 ? (
                          <tr>
                             <td colSpan={8} className="p-8 text-center text-slate-400">
                                No loads found. Add a new load to get started.
                             </td>
                          </tr>
                       ) : (
-                        filteredLoads.map((load) => (
-                          <tr key={load.id} className="hover:bg-slate-50/50 transition-colors group">
+                        paginatedLoads.map((load) => (
+                          <tr 
+                            key={load.id} 
+                            onClick={() => handleEditLoad(load)}
+                            className="hover:bg-slate-50/50 transition-colors group cursor-pointer"
+                          >
                             <td className="p-4">
                               <div className="font-medium text-slate-900">{load.company}</div>
                               <div className="text-xs text-slate-400">ID: #{load.id.toString().slice(0, 8)}</div>
@@ -456,7 +688,7 @@ function App() {
                             </td>
                             <td className="p-4">
                               <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                                load.status === 'Completed' ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'
+                                load.status === 'Factored' ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'
                               }`}>
                                 {load.status}
                               </span>
@@ -467,14 +699,83 @@ function App() {
                     </tbody>
                   </table>
                 </div>
+                
+                {/* Pagination Controls */}
+                {sortedLoads.length > 0 && totalPages > 1 && (
+                  <div className="px-6 py-4 border-t border-slate-200 flex items-center justify-between">
+                    <div className="text-sm text-slate-600">
+                      Showing <span className="font-medium">{(currentPage - 1) * itemsPerPage + 1}</span> to{' '}
+                      <span className="font-medium">
+                        {Math.min(currentPage * itemsPerPage, sortedLoads.length)}
+                      </span>{' '}
+                      of <span className="font-medium">{sortedLoads.length}</span> loads
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                        disabled={currentPage === 1}
+                        className="p-2 border border-slate-200 rounded-lg hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                        title="Previous page"
+                      >
+                        <ChevronLeft size={16} className="text-slate-600" />
+                      </button>
+                      
+                      <div className="flex items-center gap-1">
+                        {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                          let pageNum: number;
+                          if (totalPages <= 5) {
+                            pageNum = i + 1;
+                          } else if (currentPage <= 3) {
+                            pageNum = i + 1;
+                          } else if (currentPage >= totalPages - 2) {
+                            pageNum = totalPages - 4 + i;
+                          } else {
+                            pageNum = currentPage - 2 + i;
+                          }
+                          
+                          return (
+                            <button
+                              key={pageNum}
+                              onClick={() => setCurrentPage(pageNum)}
+                              className={`px-3 py-1.5 text-sm font-medium rounded-lg transition-colors ${
+                                currentPage === pageNum
+                                  ? 'bg-blue-600 text-white'
+                                  : 'text-slate-600 hover:bg-slate-100'
+                              }`}
+                            >
+                              {pageNum}
+                            </button>
+                          );
+                        })}
+                      </div>
+                      
+                      <button
+                        onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                        disabled={currentPage === totalPages}
+                        className="p-2 border border-slate-200 rounded-lg hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                        title="Next page"
+                      >
+                        <ChevronRight size={16} className="text-slate-600" />
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
             </>
           )}
-
+          </div>
+          )}
         </div>
       </main>
 
-      {isModalOpen && <LoadForm onClose={() => setIsModalOpen(false)} onSave={handleAddLoad} currentUser={user} />}
+      {(isModalOpen || loadToEdit) && (
+        <LoadForm 
+          onClose={handleCloseModal} 
+          onSave={loadToEdit ? handleUpdateLoad : handleAddLoad} 
+          currentUser={user}
+          loadToEdit={loadToEdit || undefined}
+        />
+      )}
       {isSettingsOpen && <ConnectionModal onClose={() => setIsSettingsOpen(false)} />}
     </div>
   );
