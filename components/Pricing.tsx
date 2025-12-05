@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
-import { Check, X, Zap, Users, Building2, Sparkles, ArrowRight, DollarSign, BarChart3, Brain, Shield, Mail, Phone, Headphones, Loader2, AlertCircle } from 'lucide-react';
+import { Check, X, Zap, Users, Building2, Sparkles, ArrowRight, DollarSign, BarChart3, Brain, Shield, Mail, Phone, Headphones, Loader2, AlertCircle, CheckCircle2 } from 'lucide-react';
 import { getCurrentUser } from '../services/authService';
-import { redirectToPaymentLink, arePaymentLinksConfigured } from '../services/paymentLinksService';
+import { createSubscriptionIntent } from '../services/paymentIntentService';
+import { getActiveSubscription, Subscription } from '../services/subscriptionService';
 
 interface PricingProps {
   onClose?: () => void;
@@ -12,6 +13,31 @@ export const Pricing: React.FC<PricingProps> = ({ onClose }) => {
   const [hoveredPlan, setHoveredPlan] = useState<string | null>(null);
   const [loadingPlan, setLoadingPlan] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [user, setUser] = useState<any>(null);
+  const [activeSubscription, setActiveSubscription] = useState<Subscription | null>(null);
+  const [loadingSubscription, setLoadingSubscription] = useState(true);
+
+  // Get current user and active subscription on mount
+  React.useEffect(() => {
+    const loadUserAndSubscription = async () => {
+      try {
+        const currentUser = await getCurrentUser();
+        setUser(currentUser);
+        
+        if (currentUser?.id) {
+          setLoadingSubscription(true);
+          const { subscription } = await getActiveSubscription(currentUser.id);
+          setActiveSubscription(subscription);
+        }
+      } catch (err) {
+        console.error('Error loading user or subscription:', err);
+      } finally {
+        setLoadingSubscription(false);
+      }
+    };
+    
+    loadUserAndSubscription();
+  }, []);
 
   const plans = [
     {
@@ -99,6 +125,12 @@ export const Pricing: React.FC<PricingProps> = ({ onClose }) => {
   ];
 
   const handleSubscribe = async (planId: 'essential' | 'professional' | 'enterprise') => {
+    // Don't allow subscription to the same plan if user already has it active
+    if (activeSubscription && activeSubscription.plan === planId) {
+      setError(`You already have an active ${planId} subscription. Please manage it from "My Subscriptions" page.`);
+      return;
+    }
+
     if (planId === 'enterprise') {
       // For enterprise, open email client
       window.location.href = `mailto:sales@loadmaster.com?subject=Enterprise Plan Inquiry&body=Hi, I'm interested in the Enterprise plan. Please contact me.`;
@@ -110,14 +142,37 @@ export const Pricing: React.FC<PricingProps> = ({ onClose }) => {
 
     try {
       const interval = billingCycle === 'monthly' ? 'month' : 'year';
-      const { error: redirectError } = redirectToPaymentLink(planId, interval);
+      
+      // Store plan info in localStorage before redirect (backup)
+      localStorage.setItem('pending_payment', JSON.stringify({
+        planId,
+        interval,
+        timestamp: Date.now(),
+      }));
 
-      if (redirectError) {
-        setError(redirectError);
+      // Create payment intent via backend
+      const { data, error: intentError } = await createSubscriptionIntent({
+        planId,
+        interval,
+        userId: user?.id,
+      });
+
+      if (intentError || !data) {
+        setError(intentError || 'Failed to create payment intent');
+        setLoadingPlan(null);
+        return;
+      }
+
+      // Redirect to Stripe Checkout Session URL
+      if (data.url) {
+        window.location.href = data.url;
+      } else {
+        setError('No checkout URL received from server');
         setLoadingPlan(null);
       }
-      // If successful, user will be redirected to Stripe Payment Link
+      // User will be redirected to Stripe Checkout, then back with payment status
     } catch (err: any) {
+      console.error('Payment intent error:', err);
       setError(err.message || 'Failed to initiate payment');
       setLoadingPlan(null);
     }
@@ -162,12 +217,20 @@ export const Pricing: React.FC<PricingProps> = ({ onClose }) => {
             Choose the plan that fits your fleet. All plans include a 14-day free trial. No credit card required.
           </p>
           
-          {!arePaymentLinksConfigured() && (
-            <div className="mb-8 p-4 bg-amber-50 border border-amber-200 rounded-lg flex items-center gap-3 text-amber-800 max-w-2xl mx-auto">
-              <AlertCircle size={20} className="flex-shrink-0" />
-              <p className="text-sm">
-                Payment links not configured. Please set up Stripe Payment Links in services/paymentLinksService.ts. See PAYMENT_LINKS_SETUP.md for instructions.
-              </p>
+          {/* Active Subscription Notice */}
+          {!loadingSubscription && activeSubscription && (
+            <div className="mb-8 p-4 bg-emerald-50 border border-emerald-200 rounded-lg flex items-center gap-3 text-emerald-800 max-w-2xl mx-auto">
+              <CheckCircle2 size={20} className="flex-shrink-0" />
+              <div className="flex-1">
+                <p className="text-sm font-semibold">You have an active subscription</p>
+                <p className="text-xs mt-1">
+                  Current plan: <span className="font-medium capitalize">{activeSubscription.plan}</span> 
+                  {' • '}
+                  {activeSubscription.interval === 'month' ? 'Monthly' : 'Annual'} billing
+                  {' • '}
+                  <span className="text-emerald-600">Upgrade to a higher plan anytime</span>
+                </p>
+              </div>
             </div>
           )}
 
@@ -255,24 +318,45 @@ export const Pricing: React.FC<PricingProps> = ({ onClose }) => {
                 </div>
 
                 {/* CTA Button */}
-                <button
-                  onClick={() => handleSubscribe(plan.id as 'essential' | 'professional' | 'enterprise')}
-                  disabled={(!arePaymentLinksConfigured() || loadingPlan !== null) && plan.id !== 'enterprise'}
-                  className={`w-full py-3 rounded-xl font-semibold transition-all mb-8 flex items-center justify-center gap-2 ${
-                    plan.popular
-                      ? `${getColorClasses(plan.color).split(' ')[0]} text-white hover:opacity-90 shadow-lg`
-                      : 'bg-slate-900 text-white hover:bg-slate-800'
-                  } disabled:opacity-50 disabled:cursor-not-allowed`}
-                >
-                  {loadingPlan === plan.id ? (
-                    <>
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                      Redirecting...
-                    </>
-                  ) : (
-                    plan.cta
-                  )}
-                </button>
+                {(() => {
+                  const isCurrentPlan = activeSubscription && activeSubscription.plan === plan.id;
+                  const planHierarchy: Record<string, number> = { essential: 1, professional: 2, enterprise: 3 };
+                  const currentPlanLevel = activeSubscription ? planHierarchy[activeSubscription.plan] : 0;
+                  const thisPlanLevel = planHierarchy[plan.id];
+                  const isUpgrade = activeSubscription && thisPlanLevel > currentPlanLevel;
+                  
+                  return (
+                    <button
+                      onClick={() => handleSubscribe(plan.id as 'essential' | 'professional' | 'enterprise')}
+                      disabled={
+                        (loadingPlan !== null && plan.id !== 'enterprise') ||
+                        isCurrentPlan
+                      }
+                      className={`w-full py-3 rounded-xl font-semibold transition-all mb-8 flex items-center justify-center gap-2 ${
+                        isCurrentPlan
+                          ? 'bg-slate-300 text-slate-500 cursor-not-allowed'
+                          : isUpgrade
+                          ? `${getColorClasses(plan.color).split(' ')[0]} text-white hover:opacity-90 shadow-lg`
+                          : plan.popular
+                          ? `${getColorClasses(plan.color).split(' ')[0]} text-white hover:opacity-90 shadow-lg`
+                          : 'bg-slate-900 text-white hover:bg-slate-800'
+                      } disabled:opacity-50 disabled:cursor-not-allowed`}
+                    >
+                      {loadingPlan === plan.id ? (
+                        <>
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                          Redirecting...
+                        </>
+                      ) : isCurrentPlan ? (
+                        'Current Plan'
+                      ) : isUpgrade ? (
+                        'Upgrade'
+                      ) : (
+                        plan.cta
+                      )}
+                    </button>
+                  );
+                })()}
 
                 {/* Features */}
                 <ul className="space-y-3">

@@ -74,6 +74,8 @@ function App() {
     const urlParams = new URLSearchParams(window.location.search);
     const paymentParam = urlParams.get('payment');
     const sessionId = urlParams.get('session_id') || urlParams.get('checkout_session_id');
+    const paymentIntentId = urlParams.get('payment_intent');
+    const paymentIntentClientSecret = urlParams.get('payment_intent_client_secret');
     let plan = urlParams.get('plan');
     let interval = urlParams.get('interval') as 'month' | 'year' | null;
     
@@ -101,11 +103,70 @@ function App() {
       plan,
       interval,
       sessionId,
+      paymentIntentId,
+      paymentIntentClientSecret,
       allParams: Object.fromEntries(urlParams.entries()),
       fullURL: window.location.href,
     });
     
-    if (paymentParam === 'success' && user && plan && interval) {
+    // Handle Checkout Session success (Edge Function approach)
+    if (paymentParam === 'success' && sessionId && user && plan && interval) {
+      setPaymentStatus('success');
+      setPaymentSessionId(sessionId); // Use Checkout Session ID
+      setPaymentPlan(plan);
+      setPaymentInterval(interval);
+      
+      // Auto-save subscription to Supabase
+      const saveSubscriptionData = async () => {
+        const PLAN_PRICES: Record<string, Record<'month' | 'year', number>> = {
+          essential: { month: 99, year: 85 },
+          professional: { month: 199, year: 170 },
+          enterprise: { month: 499, year: 425 },
+        };
+        
+        const amount = PLAN_PRICES[plan]?.[interval] || 0;
+        
+        console.log('🔄 Attempting to save subscription from Checkout Session:', { 
+          userId: user.id, 
+          plan, 
+          interval, 
+          amount,
+          sessionId 
+        });
+        
+        const result = await saveSubscription(user.id, {
+          plan: plan as 'essential' | 'professional' | 'enterprise',
+          interval,
+          amount,
+          stripeSessionId: sessionId, // Store Checkout Session ID
+          status: 'active',
+        });
+        
+        if (result.error) {
+          console.error('❌ Failed to save subscription:', result.error);
+          // Store in localStorage as backup so we can retry later
+          localStorage.setItem('pending_subscription', JSON.stringify({
+            userId: user.id,
+            plan,
+            interval,
+            amount,
+            stripeSessionId: sessionId,
+            timestamp: Date.now(),
+          }));
+        } else {
+          console.log('✅ Subscription saved successfully!', result.subscription);
+          // Clear any pending subscription and payment data
+          localStorage.removeItem('pending_subscription');
+          localStorage.removeItem('pending_payment');
+        }
+      };
+      
+      saveSubscriptionData();
+      
+      // Clear URL parameters
+      window.history.replaceState({}, document.title, window.location.pathname);
+    } else if (paymentParam === 'success' && user && plan && interval) {
+      // Handle Payment Link success (backwards compatibility)
       setPaymentStatus('success');
       setPaymentSessionId(sessionId);
       setPaymentPlan(plan);
@@ -186,6 +247,8 @@ function App() {
             console.error('❌ Failed to save subscription:', result.error);
           } else {
             console.log('✅ Subscription saved successfully!', result.subscription);
+            localStorage.removeItem('pending_subscription');
+            localStorage.removeItem('pending_payment');
           }
         };
         
@@ -193,6 +256,55 @@ function App() {
       }
       
       window.history.replaceState({}, document.title, window.location.pathname);
+    } else if (!paymentParam && user && plan && interval) {
+      // Handle case where Stripe redirected but no payment parameter (from localStorage backup)
+      // Check if we have pending payment data and try to save
+      const pendingPayment = localStorage.getItem('pending_payment');
+      if (pendingPayment) {
+        try {
+          const paymentData = JSON.parse(pendingPayment);
+          // Only try to save if stored recently (within last hour)
+          if (Date.now() - paymentData.timestamp < 3600000) {
+            console.log('💾 Attempting to save subscription from localStorage backup (no URL params):', {
+              userId: user.id,
+              plan,
+              interval,
+            });
+            
+            // Create async function to handle the save
+            const saveFromLocalStorage = async () => {
+              const PLAN_PRICES: Record<string, Record<'month' | 'year', number>> = {
+                essential: { month: 99, year: 85 },
+                professional: { month: 199, year: 170 },
+                enterprise: { month: 499, year: 425 },
+              };
+              
+              const amount = PLAN_PRICES[plan]?.[interval] || 0;
+              
+              const result = await saveSubscription(user.id, {
+                plan: plan as 'essential' | 'professional' | 'enterprise',
+                interval,
+                amount,
+                stripeSessionId: sessionId || undefined,
+                status: 'active',
+              });
+              
+              if (result.error) {
+                console.error('❌ Failed to save subscription from localStorage:', result.error);
+                // Keep in localStorage for retry
+              } else {
+                console.log('✅ Subscription saved successfully from localStorage!', result.subscription);
+                localStorage.removeItem('pending_subscription');
+                localStorage.removeItem('pending_payment');
+              }
+            };
+            
+            saveFromLocalStorage();
+          }
+        } catch (e) {
+          console.error('Error saving from localStorage backup:', e);
+        }
+      }
     } else if (paymentParam === 'cancelled') {
       setPaymentStatus('cancel');
       // Clear URL parameters

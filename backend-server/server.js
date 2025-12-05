@@ -203,6 +203,118 @@ app.post('/api/create-subscription', async (req, res) => {
   }
 });
 
+// Plan pricing in cents
+const PLAN_PRICES = {
+  essential: {
+    month: 9900, // $99/month
+    year: 102000, // $85/month × 12 = $1,020/year
+  },
+  professional: {
+    month: 19900, // $199/month
+    year: 204000, // $170/month × 12 = $2,040/year
+  },
+  enterprise: {
+    month: 49900, // $499/month
+    year: 510000, // $425/month × 12 = $5,100/year
+  },
+};
+
+// Create Subscription Payment Intent endpoint
+// Uses Checkout Session (better for subscriptions with redirects) but stores metadata like Payment Intent
+app.post('/api/create-subscription-intent', async (req, res) => {
+  try {
+    const { planId, interval, userId } = req.body;
+
+    console.log('Received subscription intent request:', { planId, interval, userId });
+
+    // Validate input
+    if (!planId || !interval) {
+      return res.status(400).json({
+        error: 'Missing required fields: planId and interval',
+        received: { planId, interval }
+      });
+    }
+
+    // Get amount from pricing
+    const amount = PLAN_PRICES[planId]?.[interval];
+    if (!amount) {
+      return res.status(400).json({
+        error: `Invalid plan or interval: ${planId}/${interval}`,
+      });
+    }
+
+    // Validate Stripe is configured
+    if (!process.env.STRIPE_SECRET_KEY) {
+      return res.status(500).json({
+        error: 'Stripe secret key is not configured. Set STRIPE_SECRET_KEY in .env file.',
+      });
+    }
+
+    // Build metadata - all values must be strings for Stripe
+    const metadata = {
+      planId: String(planId),
+      interval: String(interval),
+      type: 'subscription',
+      userId: userId || 'anonymous',
+    };
+
+    // Get base URL for redirects
+    const baseUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+    const successUrl = `${baseUrl}/?payment=success&plan=${planId}&interval=${interval}&session_id={CHECKOUT_SESSION_ID}`;
+    const cancelUrl = `${baseUrl}/?payment=cancelled`;
+
+    // Create Checkout Session (better for subscriptions with redirects)
+    // This replicates your Payment Intent approach but uses Checkout Session for redirect support
+    const session = await stripe.checkout.sessions.create({
+      payment_method_types: ['card'],
+      line_items: [
+        {
+          price_data: {
+            currency: 'usd',
+            product_data: {
+              name: `LoadMaster ${planId} subscription`,
+              description: `${interval === 'month' ? 'Monthly' : 'Annual'} billing`,
+            },
+            unit_amount: amount, // Amount in cents
+            recurring: interval === 'month' ? {
+              interval: 'month',
+            } : {
+              interval: 'year',
+            },
+          },
+          quantity: 1,
+        },
+      ],
+      mode: interval === 'month' ? 'subscription' : 'subscription',
+      metadata: metadata, // Store metadata like Payment Intent
+      success_url: successUrl,
+      cancel_url: cancelUrl,
+      client_reference_id: userId || undefined,
+    });
+
+    console.log('Subscription checkout session created:', session.id);
+
+    return res.status(200).json({
+      sessionId: session.id,
+      url: session.url, // Stripe Checkout URL
+      amount: amount / 100, // Return in dollars for display
+      planId,
+      interval,
+    });
+  } catch (error) {
+    console.error('Subscription checkout session creation error:', {
+      message: error.message,
+      type: error.type,
+      code: error.code,
+    });
+
+    return res.status(500).json({
+      error: 'Error creating checkout session',
+      message: error.message || 'An unexpected error occurred',
+    });
+  }
+});
+
 // Create Customer Portal Session
 app.post('/api/create-portal-session', async (req, res) => {
   try {
@@ -214,7 +326,7 @@ app.post('/api/create-portal-session', async (req, res) => {
 
     const session = await stripe.billingPortal.sessions.create({
       customer: customerId,
-      return_url: `${process.env.FRONTEND_URL || 'http://localhost:5173'}/dashboard`,
+      return_url: `${process.env.FRONTEND_URL || 'http://localhost:3000'}/dashboard`,
     });
 
     res.json({ url: session.url });
@@ -230,6 +342,7 @@ app.listen(PORT, () => {
   console.log(`📍 Server URL: http://localhost:${PORT}`);
   console.log(`🔗 Health check: http://localhost:${PORT}/health`);
   console.log(`💳 Payment Intent: http://localhost:${PORT}/api/create-payment-intent`);
+  console.log(`💳 Subscription Intent: http://localhost:${PORT}/api/create-subscription-intent`);
   
   if (!process.env.STRIPE_SECRET_KEY) {
     console.warn('\n⚠️  WARNING: STRIPE_SECRET_KEY not set in .env file');
