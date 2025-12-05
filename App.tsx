@@ -28,6 +28,9 @@ import { DriverDashboard } from './components/DriverDashboard';
 import { ConnectionModal } from './components/ConnectionModal';
 import { FleetManagement } from './components/FleetManagement';
 import { Pricing } from './components/Pricing';
+import { PaymentConfirmation } from './components/PaymentConfirmation';
+import { Subscriptions } from './components/Subscriptions';
+import { saveSubscription } from './services/subscriptionService';
 import { analyzeFleetPerformance } from './services/geminiService';
 import { getLoads, createLoad, updateLoad, getDrivers, getDispatchers } from './services/loadService';
 import { getCurrentUser, signOut } from './services/authService';
@@ -60,7 +63,142 @@ function App() {
   const itemsPerPage = 10;
   const [aiAnalysis, setAiAnalysis] = useState<string | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
-  const [view, setView] = useState<'dashboard' | 'loads' | 'fleet' | 'pricing'>('dashboard');
+  const [view, setView] = useState<'dashboard' | 'loads' | 'fleet' | 'pricing' | 'subscriptions'>('dashboard');
+  const [paymentStatus, setPaymentStatus] = useState<'success' | 'cancel' | null>(null);
+  const [paymentPlan, setPaymentPlan] = useState<string | null>(null);
+  const [paymentSessionId, setPaymentSessionId] = useState<string | null>(null);
+  const [paymentInterval, setPaymentInterval] = useState<'month' | 'year' | null>(null);
+
+  // Check URL parameters for payment status on mount and auto-save subscription
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const paymentParam = urlParams.get('payment');
+    const sessionId = urlParams.get('session_id') || urlParams.get('checkout_session_id');
+    let plan = urlParams.get('plan');
+    let interval = urlParams.get('interval') as 'month' | 'year' | null;
+    
+    // If plan/interval not in URL, try to get from localStorage (stored before redirect)
+    if (!plan || !interval) {
+      const pendingPayment = localStorage.getItem('pending_payment');
+      if (pendingPayment) {
+        try {
+          const paymentData = JSON.parse(pendingPayment);
+          // Only use if stored recently (within last hour)
+          if (Date.now() - paymentData.timestamp < 3600000) {
+            plan = plan || paymentData.planId;
+            interval = interval || paymentData.interval;
+            console.log('📦 Retrieved plan/interval from localStorage:', { plan, interval });
+          }
+        } catch (e) {
+          console.error('Error parsing pending payment data:', e);
+        }
+      }
+    }
+    
+    // Debug: Log all URL parameters to see what Stripe is actually sending
+    console.log('🔍 Payment redirect detected. URL params:', {
+      payment: paymentParam,
+      plan,
+      interval,
+      sessionId,
+      allParams: Object.fromEntries(urlParams.entries()),
+      fullURL: window.location.href,
+    });
+    
+    if (paymentParam === 'success' && user && plan && interval) {
+      setPaymentStatus('success');
+      setPaymentSessionId(sessionId);
+      setPaymentPlan(plan);
+      setPaymentInterval(interval);
+      
+      // Auto-save subscription to Supabase
+      const saveSubscriptionData = async () => {
+        const PLAN_PRICES: Record<string, Record<'month' | 'year', number>> = {
+          essential: { month: 99, year: 85 },
+          professional: { month: 199, year: 170 },
+          enterprise: { month: 499, year: 425 },
+        };
+        
+        const amount = PLAN_PRICES[plan]?.[interval] || 0;
+        
+        console.log('🔄 Attempting to save subscription:', { userId: user.id, plan, interval, amount });
+        
+        const result = await saveSubscription(user.id, {
+          plan: plan as 'essential' | 'professional' | 'enterprise',
+          interval,
+          amount,
+          stripeSessionId: sessionId || undefined,
+          status: 'active',
+        });
+        
+        if (result.error) {
+          console.error('❌ Failed to save subscription:', result.error);
+          // Store in localStorage as backup so we can retry later
+          localStorage.setItem('pending_subscription', JSON.stringify({
+            userId: user.id,
+            plan,
+            interval,
+            amount,
+            stripeSessionId: sessionId,
+            timestamp: Date.now(),
+          }));
+        } else {
+          console.log('✅ Subscription saved successfully!', result.subscription);
+          // Clear any pending subscription and payment data
+          localStorage.removeItem('pending_subscription');
+          localStorage.removeItem('pending_payment');
+        }
+      };
+      
+      saveSubscriptionData();
+      
+      // Clear URL parameters
+      window.history.replaceState({}, document.title, window.location.pathname);
+    } else if (paymentParam === 'success') {
+      console.log('⚠️ Payment success detected but missing plan/interval:', { plan, interval, user: !!user });
+      setPaymentStatus('success');
+      setPaymentSessionId(sessionId);
+      setPaymentPlan(plan);
+      setPaymentInterval(interval);
+      
+      // If user loads after payment, still try to save
+      if (user && plan && interval) {
+        const saveSubscriptionData = async () => {
+          const PLAN_PRICES: Record<string, Record<'month' | 'year', number>> = {
+            essential: { month: 99, year: 85 },
+            professional: { month: 199, year: 170 },
+            enterprise: { month: 499, year: 425 },
+          };
+          
+          const amount = PLAN_PRICES[plan]?.[interval] || 0;
+          
+          console.log('🔄 Attempting to save subscription (delayed):', { userId: user.id, plan, interval, amount });
+          
+          const result = await saveSubscription(user.id, {
+            plan: plan as 'essential' | 'professional' | 'enterprise',
+            interval,
+            amount,
+            stripeSessionId: sessionId || undefined,
+            status: 'active',
+          });
+          
+          if (result.error) {
+            console.error('❌ Failed to save subscription:', result.error);
+          } else {
+            console.log('✅ Subscription saved successfully!', result.subscription);
+          }
+        };
+        
+        saveSubscriptionData();
+      }
+      
+      window.history.replaceState({}, document.title, window.location.pathname);
+    } else if (paymentParam === 'cancelled') {
+      setPaymentStatus('cancel');
+      // Clear URL parameters
+      window.history.replaceState({}, document.title, window.location.pathname);
+    }
+  }, [user]);
 
   // Check Auth on Mount
   useEffect(() => {
@@ -296,7 +434,47 @@ function App() {
   }
 
   if (!user) {
+    // Show payment confirmation even if not logged in (for public checkout)
+    if (paymentStatus) {
+      const planNames: Record<string, string> = {
+        essential: 'Essential',
+        professional: 'Professional',
+      };
+      return (
+        <PaymentConfirmation
+          status={paymentStatus}
+          sessionId={paymentSessionId || undefined}
+          planName={paymentPlan ? planNames[paymentPlan] || paymentPlan : undefined}
+          onClose={() => {
+            setPaymentStatus(null);
+            setPaymentPlan(null);
+            setPaymentSessionId(null);
+          }}
+        />
+      );
+    }
     return <Auth onLogin={setUser} />;
+  }
+
+  // Show payment confirmation if payment status is set
+  if (paymentStatus) {
+    const planNames: Record<string, string> = {
+      essential: 'Essential',
+      professional: 'Professional',
+    };
+    return (
+      <PaymentConfirmation
+        status={paymentStatus}
+        sessionId={paymentSessionId || undefined}
+        planName={paymentPlan ? planNames[paymentPlan] || paymentPlan : undefined}
+        onClose={() => {
+          setPaymentStatus(null);
+          setPaymentPlan(null);
+          setPaymentSessionId(null);
+          setView('dashboard');
+        }}
+      />
+    );
   }
 
   // --- DRIVER VIEW ---
@@ -347,6 +525,13 @@ function App() {
               <CreditCard size={20} />
               Pricing
             </button>
+            <button 
+              onClick={() => setView('subscriptions')}
+              className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${view === 'subscriptions' ? 'bg-blue-600/10 text-blue-400 font-medium' : 'hover:bg-slate-800'}`}
+            >
+              <FileText size={20} />
+              My Subscriptions
+            </button>
           </nav>
         </div>
         
@@ -379,11 +564,11 @@ function App() {
         <header className="bg-white border-b border-slate-200 flex-shrink-0 z-30">
           <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
             <h1 className="text-2xl font-bold text-slate-800">
-              {view === 'dashboard' ? 'Fleet Overview' : view === 'fleet' ? 'Fleet Management' : view === 'pricing' ? 'Pricing Plans' : 'Load Management'}
+              {view === 'dashboard' ? 'Fleet Overview' : view === 'fleet' ? 'Fleet Management' : view === 'pricing' ? 'Pricing Plans' : view === 'subscriptions' ? 'My Subscriptions' : 'Load Management'}
             </h1>
             <div className="flex items-center gap-4">
               {dataLoading && <span className="text-sm text-slate-400 animate-pulse">Syncing...</span>}
-               {view !== 'fleet' && view !== 'pricing' && (
+               {view !== 'fleet' && view !== 'pricing' && view !== 'subscriptions' && (
                  <button 
                   onClick={() => setIsModalOpen(true)}
                   className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2.5 rounded-lg text-sm font-medium shadow-sm transition-all hover:shadow-md"
@@ -399,6 +584,8 @@ function App() {
         <div className="flex-1 overflow-y-auto">
           {view === 'pricing' ? (
             <Pricing />
+          ) : view === 'subscriptions' ? (
+            <Subscriptions userId={user.id} />
           ) : (
           <div className="max-w-7xl mx-auto px-6 py-8 space-y-8">
           

@@ -1,8 +1,7 @@
 import React, { useState } from 'react';
 import { Check, X, Zap, Users, Building2, Sparkles, ArrowRight, DollarSign, BarChart3, Brain, Shield, Mail, Phone, Headphones, Loader2, AlertCircle } from 'lucide-react';
-import { subscribeToPlan } from '../services/paymentService';
 import { getCurrentUser } from '../services/authService';
-import { isStripeConfigured } from '../services/stripeClient';
+import { redirectToPaymentLink, arePaymentLinksConfigured } from '../services/paymentLinksService';
 
 interface PricingProps {
   onClose?: () => void;
@@ -13,33 +12,6 @@ export const Pricing: React.FC<PricingProps> = ({ onClose }) => {
   const [hoveredPlan, setHoveredPlan] = useState<string | null>(null);
   const [loadingPlan, setLoadingPlan] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-
-  const handleSubscribe = async (planId: 'essential' | 'professional' | 'enterprise') => {
-    if (planId === 'enterprise') {
-      // For enterprise, open email client
-      window.location.href = `mailto:sales@loadmaster.com?subject=Enterprise Plan Inquiry&body=Hi, I'm interested in the Enterprise plan. Please contact me.`;
-      return;
-    }
-
-    setError(null);
-    setLoadingPlan(planId);
-
-    try {
-      const interval = billingCycle === 'monthly' ? 'month' : 'year';
-      const user = await getCurrentUser();
-      
-      const { error: subscribeError } = await subscribeToPlan(planId, interval, user?.email);
-
-      if (subscribeError) {
-        setError(subscribeError);
-        setLoadingPlan(null);
-      }
-      // If successful, user will be redirected to Stripe Checkout
-    } catch (err: any) {
-      setError(err.message || 'Failed to initiate checkout');
-      setLoadingPlan(null);
-    }
-  };
 
   const plans = [
     {
@@ -126,6 +98,31 @@ export const Pricing: React.FC<PricingProps> = ({ onClose }) => {
     { name: 'White-Label Option', price: '+$149/month', icon: <Shield className="w-5 h-5" /> },
   ];
 
+  const handleSubscribe = async (planId: 'essential' | 'professional' | 'enterprise') => {
+    if (planId === 'enterprise') {
+      // For enterprise, open email client
+      window.location.href = `mailto:sales@loadmaster.com?subject=Enterprise Plan Inquiry&body=Hi, I'm interested in the Enterprise plan. Please contact me.`;
+      return;
+    }
+
+    setError(null);
+    setLoadingPlan(planId);
+
+    try {
+      const interval = billingCycle === 'monthly' ? 'month' : 'year';
+      const { error: redirectError } = redirectToPaymentLink(planId, interval);
+
+      if (redirectError) {
+        setError(redirectError);
+        setLoadingPlan(null);
+      }
+      // If successful, user will be redirected to Stripe Payment Link
+    } catch (err: any) {
+      setError(err.message || 'Failed to initiate payment');
+      setLoadingPlan(null);
+    }
+  };
+
   const getColorClasses = (color: string) => {
     const colors: Record<string, string> = {
       blue: 'bg-blue-600 border-blue-600 text-blue-600',
@@ -165,11 +162,11 @@ export const Pricing: React.FC<PricingProps> = ({ onClose }) => {
             Choose the plan that fits your fleet. All plans include a 14-day free trial. No credit card required.
           </p>
           
-          {!isStripeConfigured && (
+          {!arePaymentLinksConfigured() && (
             <div className="mb-8 p-4 bg-amber-50 border border-amber-200 rounded-lg flex items-center gap-3 text-amber-800 max-w-2xl mx-auto">
               <AlertCircle size={20} className="flex-shrink-0" />
               <p className="text-sm">
-                Stripe is not configured. Please set your Stripe publishable key in environment variables or settings.
+                Payment links not configured. Please set up Stripe Payment Links in services/paymentLinksService.ts. See PAYMENT_LINKS_SETUP.md for instructions.
               </p>
             </div>
           )}
@@ -260,7 +257,7 @@ export const Pricing: React.FC<PricingProps> = ({ onClose }) => {
                 {/* CTA Button */}
                 <button
                   onClick={() => handleSubscribe(plan.id as 'essential' | 'professional' | 'enterprise')}
-                  disabled={loadingPlan !== null || !isStripeConfigured}
+                  disabled={(!arePaymentLinksConfigured() || loadingPlan !== null) && plan.id !== 'enterprise'}
                   className={`w-full py-3 rounded-xl font-semibold transition-all mb-8 flex items-center justify-center gap-2 ${
                     plan.popular
                       ? `${getColorClasses(plan.color).split(' ')[0]} text-white hover:opacity-90 shadow-lg`
@@ -270,7 +267,7 @@ export const Pricing: React.FC<PricingProps> = ({ onClose }) => {
                   {loadingPlan === plan.id ? (
                     <>
                       <Loader2 className="w-4 h-4 animate-spin" />
-                      Processing...
+                      Redirecting...
                     </>
                   ) : (
                     plan.cta

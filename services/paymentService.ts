@@ -19,47 +19,54 @@ const getBackendApiUrl = (): string => {
 };
 
 /**
- * Creates a Stripe Checkout Session for subscription
- * This calls your backend API to securely create checkout sessions
+ * Creates a Stripe Payment Intent for subscription
+ * This calls your backend API to securely create payment intents
  */
-export const createCheckoutSession = async (
+export const createPaymentIntent = async (
   planId: 'essential' | 'professional',
   interval: 'month' | 'year',
+  amount: number,
   customerEmail?: string
-): Promise<{ sessionId: string | null; error: string | null }> => {
+): Promise<{ clientSecret: string | null; paymentIntentId: string | null; error: string | null }> => {
   try {
     const user = await getCurrentUser();
     const email = customerEmail || user?.email;
 
     if (!email) {
-      return { sessionId: null, error: 'User email is required for checkout' };
+      return { clientSecret: null, paymentIntentId: null, error: 'User email is required for checkout' };
     }
 
     const apiUrl = getBackendApiUrl();
 
     if (!apiUrl) {
       return {
-        sessionId: null,
+        clientSecret: null,
+        paymentIntentId: null,
         error: 'Backend API URL not configured. Please set VITE_BACKEND_API_URL environment variable or configure it in settings. See STRIPE_SETUP.md for details.'
       };
     }
 
-    const response = await fetch(`${apiUrl}/api/create-checkout-session`, {
+    const response = await fetch(`${apiUrl}/api/create-payment-intent`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ planId, interval, customerEmail: email }),
+      body: JSON.stringify({
+        planId,
+        interval,
+        amount: Math.round(amount * 100), // Convert to cents
+        customerEmail: email,
+      }),
     });
 
     if (!response.ok) {
-      const errorData = await response.json().catch(() => ({ error: 'Failed to create checkout session' }));
-      return { sessionId: null, error: errorData.error || 'Failed to create checkout session' };
+      const errorData = await response.json().catch(() => ({ error: 'Failed to create payment intent' }));
+      return { clientSecret: null, paymentIntentId: null, error: errorData.error || 'Failed to create payment intent' };
     }
 
-    const { sessionId, error } = await response.json();
-    return { sessionId, error: error || null };
+    const { clientSecret, paymentIntentId, error } = await response.json();
+    return { clientSecret: clientSecret || null, paymentIntentId: paymentIntentId || null, error: error || null };
   } catch (error: any) {
-    console.error('Error creating checkout session:', error);
-    return { sessionId: null, error: error.message || 'Failed to create checkout session' };
+    console.error('Error creating payment intent:', error);
+    return { clientSecret: null, paymentIntentId: null, error: error.message || 'Failed to create payment intent' };
   }
 };
 
