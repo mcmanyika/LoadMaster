@@ -251,32 +251,136 @@ export const createMarketingPost = async (post: Omit<MarketingPost, 'id' | 'crea
     return newPost;
   }
 
-  const { data, error } = await supabase
-    .from('marketing_posts')
-    .insert([{
-      ad_id: post.adId,
-      posted_at: post.postedAt,
-      posted_by: post.postedBy || null,
-      platform: post.platform,
-      notes: post.notes || null
-    }])
-    .select()
-    .single();
+  try {
+    // If adId is empty, allow it (for general posts)
+    // Otherwise validate it's a valid UUID format
+    if (post.adId && post.adId.trim() !== '') {
+      const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+      if (!uuidRegex.test(post.adId)) {
+        // If adId is not a UUID, it's likely from mock data
+        // Use mock storage for non-UUID IDs
+        console.warn('Ad ID is not a valid UUID. Using mock storage.');
+        const newPost: MarketingPost = {
+          ...post,
+          id: Math.random().toString(36).substr(2, 9),
+          createdAt: new Date().toISOString()
+        };
+        MOCK_POSTS.unshift(newPost);
+        return newPost;
+      }
+    }
 
-  if (error) {
-    console.error('Error creating marketing post:', error);
+    const { data, error } = await supabase
+      .from('marketing_posts')
+      .insert([{
+        ad_id: post.adId && post.adId.trim() !== '' ? post.adId : null, // Allow null for general posts
+        posted_at: post.postedAt,
+        posted_by: post.postedBy || null,
+        platform: post.platform,
+        notes: post.notes || null
+      }])
+      .select()
+      .single();
+
+    if (error) {
+      console.error('Error creating marketing post:', error);
+      console.error('Error details:', {
+        code: error.code,
+        message: error.message,
+        details: error.details,
+        hint: error.hint
+      });
+      
+      // If table doesn't exist, use mock data
+      if (error.code === '42P01' || error.message.includes('does not exist')) {
+        console.warn('Marketing posts table not found. Using mock data. Please run the migration.');
+        const newPost: MarketingPost = {
+          ...post,
+          id: Math.random().toString(36).substr(2, 9),
+          createdAt: new Date().toISOString()
+        };
+        MOCK_POSTS.unshift(newPost);
+        return newPost;
+      }
+      
+      // If UUID format error, fall back to mock data
+      if (error.message.includes('invalid input syntax for type uuid')) {
+        console.warn('Invalid UUID format. Using mock data storage.');
+        const newPost: MarketingPost = {
+          ...post,
+          id: Math.random().toString(36).substr(2, 9),
+          createdAt: new Date().toISOString()
+        };
+        MOCK_POSTS.unshift(newPost);
+        return newPost;
+      }
+      
+      throw error;
+    }
+
+    return {
+      id: data.id,
+      adId: data.ad_id,
+      postedAt: data.posted_at,
+      postedBy: data.posted_by,
+      platform: data.platform,
+      notes: data.notes,
+      createdAt: data.created_at
+    };
+  } catch (error) {
+    console.error('Error in createMarketingPost:', error);
     throw error;
   }
+};
 
-  return {
-    id: data.id,
-    adId: data.ad_id,
-    postedAt: data.posted_at,
-    postedBy: data.posted_by,
-    platform: data.platform,
-    notes: data.notes,
-    createdAt: data.created_at
-  };
+export const updateMarketingPost = async (id: string, updates: Partial<Omit<MarketingPost, 'id' | 'createdAt'>>): Promise<MarketingPost> => {
+  if (!isSupabaseConfigured || !supabase) {
+    const postIndex = MOCK_POSTS.findIndex(p => p.id === id);
+    if (postIndex === -1) throw new Error('Post not found');
+    const updatedPost: MarketingPost = {
+      ...MOCK_POSTS[postIndex],
+      ...updates,
+      id
+    };
+    MOCK_POSTS[postIndex] = updatedPost;
+    return updatedPost;
+  }
+
+  try {
+    const updateData: any = {};
+    if (updates.adId !== undefined) {
+      updateData.ad_id = updates.adId && updates.adId.trim() !== '' ? updates.adId : null;
+    }
+    if (updates.postedAt !== undefined) updateData.posted_at = updates.postedAt;
+    if (updates.postedBy !== undefined) updateData.posted_by = updates.postedBy || null;
+    if (updates.platform !== undefined) updateData.platform = updates.platform;
+    if (updates.notes !== undefined) updateData.notes = updates.notes || null;
+
+    const { data, error } = await supabase
+      .from('marketing_posts')
+      .update(updateData)
+      .eq('id', id)
+      .select()
+      .single();
+
+    if (error) {
+      console.error('Error updating marketing post:', error);
+      throw error;
+    }
+
+    return {
+      id: data.id,
+      adId: data.ad_id,
+      postedAt: data.posted_at,
+      postedBy: data.posted_by,
+      platform: data.platform,
+      notes: data.notes,
+      createdAt: data.created_at
+    };
+  } catch (error) {
+    console.error('Error in updateMarketingPost:', error);
+    throw error;
+  }
 };
 
 // --- MARKETING METRICS OPERATIONS ---
@@ -334,7 +438,7 @@ export const createMarketingMetric = async (
   const { data, error } = await supabase
     .from('marketing_metrics')
     .insert([{
-      post_id: metric.postId,
+      post_id: metric.postId && metric.postId.trim() !== '' ? metric.postId : null,
       metric_type: metric.metricType,
       contact_name: metric.contactName || null,
       contact_phone: metric.contactPhone || null,
@@ -347,6 +451,57 @@ export const createMarketingMetric = async (
 
   if (error) {
     console.error('Error creating marketing metric:', error);
+    throw error;
+  }
+
+  return {
+    id: data.id,
+    postId: data.post_id,
+    metricType: data.metric_type,
+    contactName: data.contact_name,
+    contactPhone: data.contact_phone,
+    contactEmail: data.contact_email,
+    notes: data.notes,
+    createdAt: data.created_at,
+    createdBy: data.created_by
+  };
+};
+
+export const updateMarketingMetric = async (
+  id: string,
+  updates: Partial<Omit<MarketingMetric, 'id' | 'createdAt' | 'createdBy'>>
+): Promise<MarketingMetric> => {
+  if (!isSupabaseConfigured || !supabase) {
+    const metricIndex = MOCK_METRICS.findIndex(m => m.id === id);
+    if (metricIndex === -1) throw new Error('Metric not found');
+    const updatedMetric: MarketingMetric = {
+      ...MOCK_METRICS[metricIndex],
+      ...updates,
+      id
+    };
+    MOCK_METRICS[metricIndex] = updatedMetric;
+    return updatedMetric;
+  }
+
+  const updateData: any = {};
+  if (updates.postId !== undefined) {
+    updateData.post_id = updates.postId && updates.postId.trim() !== '' ? updates.postId : null;
+  }
+  if (updates.metricType !== undefined) updateData.metric_type = updates.metricType;
+  if (updates.contactName !== undefined) updateData.contact_name = updates.contactName || null;
+  if (updates.contactPhone !== undefined) updateData.contact_phone = updates.contactPhone || null;
+  if (updates.contactEmail !== undefined) updateData.contact_email = updates.contactEmail || null;
+  if (updates.notes !== undefined) updateData.notes = updates.notes || null;
+
+  const { data, error } = await supabase
+    .from('marketing_metrics')
+    .update(updateData)
+    .eq('id', id)
+    .select()
+    .single();
+
+  if (error) {
+    console.error('Error updating marketing metric:', error);
     throw error;
   }
 

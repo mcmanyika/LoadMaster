@@ -11,13 +11,17 @@ CREATE TABLE IF NOT EXISTS marketing_ads (
 -- Create marketing_posts table to track posting history
 CREATE TABLE IF NOT EXISTS marketing_posts (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  ad_id UUID REFERENCES marketing_ads(id) ON DELETE CASCADE,
+  ad_id UUID REFERENCES marketing_ads(id) ON DELETE SET NULL,
   posted_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   posted_by UUID REFERENCES auth.users(id) ON DELETE SET NULL,
   platform TEXT DEFAULT 'whatsapp',
   notes TEXT,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
+
+-- Make ad_id nullable (allow posts without specific ad)
+ALTER TABLE marketing_posts 
+ALTER COLUMN ad_id DROP NOT NULL;
 
 -- Create marketing_metrics table to track performance
 CREATE TABLE IF NOT EXISTS marketing_metrics (
@@ -62,25 +66,19 @@ DROP POLICY IF EXISTS "Owners can create marketing metrics" ON marketing_metrics
 DROP POLICY IF EXISTS "Specific user can update marketing metrics" ON marketing_metrics;
 DROP POLICY IF EXISTS "Owners can update marketing metrics" ON marketing_metrics;
 
-CREATE POLICY "Specific user can view marketing ads"
+CREATE POLICY "Any authenticated user can view marketing ads"
   ON marketing_ads FOR SELECT
   TO authenticated
-  USING (
-    EXISTS (
-      SELECT 1 FROM auth.users
-      WHERE auth.users.id = auth.uid()
-      AND auth.users.email = 'partsonmanyika@gmail.com'
-    )
-  );
+  USING (true);
 
 CREATE POLICY "Specific user can insert marketing ads"
   ON marketing_ads FOR INSERT
   TO authenticated
   WITH CHECK (
     EXISTS (
-      SELECT 1 FROM auth.users
-      WHERE auth.users.id = auth.uid()
-      AND auth.users.email = 'partsonmanyika@gmail.com'
+      SELECT 1 FROM profiles
+      WHERE profiles.id = auth.uid()
+      AND profiles.email = 'partsonmanyika@gmail.com'
     )
   );
 
@@ -89,66 +87,36 @@ CREATE POLICY "Specific user can update marketing ads"
   TO authenticated
   USING (
     EXISTS (
-      SELECT 1 FROM auth.users
-      WHERE auth.users.id = auth.uid()
-      AND auth.users.email = 'partsonmanyika@gmail.com'
+      SELECT 1 FROM profiles
+      WHERE profiles.id = auth.uid()
+      AND profiles.email = 'partsonmanyika@gmail.com'
     )
   );
 
-CREATE POLICY "Specific user can view marketing posts"
+CREATE POLICY "Any authenticated user can view marketing posts"
   ON marketing_posts FOR SELECT
   TO authenticated
-  USING (
-    EXISTS (
-      SELECT 1 FROM auth.users
-      WHERE auth.users.id = auth.uid()
-      AND auth.users.email = 'partsonmanyika@gmail.com'
-    )
-  );
+  USING (true);
 
-CREATE POLICY "Specific user can create marketing posts"
+CREATE POLICY "Any authenticated user can create marketing posts"
   ON marketing_posts FOR INSERT
   TO authenticated
-  WITH CHECK (
-    EXISTS (
-      SELECT 1 FROM auth.users
-      WHERE auth.users.id = auth.uid()
-      AND auth.users.email = 'partsonmanyika@gmail.com'
-    )
-  );
+  WITH CHECK (true);
 
-CREATE POLICY "Specific user can view marketing metrics"
+CREATE POLICY "Any authenticated user can view marketing metrics"
   ON marketing_metrics FOR SELECT
   TO authenticated
-  USING (
-    EXISTS (
-      SELECT 1 FROM auth.users
-      WHERE auth.users.id = auth.uid()
-      AND auth.users.email = 'partsonmanyika@gmail.com'
-    )
-  );
+  USING (true);
 
-CREATE POLICY "Specific user can create marketing metrics"
+CREATE POLICY "Any authenticated user can create marketing metrics"
   ON marketing_metrics FOR INSERT
   TO authenticated
-  WITH CHECK (
-    EXISTS (
-      SELECT 1 FROM auth.users
-      WHERE auth.users.id = auth.uid()
-      AND auth.users.email = 'partsonmanyika@gmail.com'
-    )
-  );
+  WITH CHECK (true);
 
-CREATE POLICY "Specific user can update marketing metrics"
+CREATE POLICY "Any authenticated user can update marketing metrics"
   ON marketing_metrics FOR UPDATE
   TO authenticated
-  USING (
-    EXISTS (
-      SELECT 1 FROM auth.users
-      WHERE auth.users.id = auth.uid()
-      AND auth.users.email = 'partsonmanyika@gmail.com'
-    )
-  );
+  USING (true);
 
 -- Insert the 12 weekly ad variations
 INSERT INTO marketing_ads (week_number, title, content) VALUES

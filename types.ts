@@ -29,6 +29,7 @@ export interface Load {
   destination: string;
   status: 'Factored' | 'Not yet Factored';
   rateConfirmationPdfUrl?: string; // URL to the Rate Confirmation PDF
+  driverPayoutStatus?: 'pending' | 'paid' | 'partial'; // Status of driver payout
 }
 
 export interface CalculatedLoad extends Load {

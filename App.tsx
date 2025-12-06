@@ -19,7 +19,8 @@ import {
   ChevronLeft,
   ChevronRight,
   CreditCard,
-  Megaphone
+  Megaphone,
+  Calendar
 } from 'lucide-react';
 import { Load, DispatcherName, CalculatedLoad, UserProfile, Driver } from './types';
 import { StatsCard } from './components/StatsCard';
@@ -59,6 +60,7 @@ function App() {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedDriverId, setSelectedDriverId] = useState<string>('');
+  const [dateFilter, setDateFilter] = useState({ startDate: '', endDate: '' });
   const [sortBy, setSortBy] = useState<keyof CalculatedLoad>('dropDate');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
   const [currentPage, setCurrentPage] = useState(1);
@@ -392,11 +394,44 @@ function App() {
     }).sort((a, b) => new Date(b.dropDate).getTime() - new Date(a.dropDate).getTime());
   }, [loads, driverMap, dispatcherFeeMap]);
 
-  // Statistics Calculation
+  // Filter loads based on search, driver, and date filters
+  const filteredLoads = useMemo(() => {
+    return processedLoads.filter(l => {
+      // Search filter
+      const matchesSearch = searchQuery === '' || 
+      l.company.toLowerCase().includes(searchQuery.toLowerCase()) || 
+      l.origin.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        l.destination.toLowerCase().includes(searchQuery.toLowerCase());
+      
+      // Driver filter
+      const matchesDriver = selectedDriverId === '' || l.driverId === selectedDriverId;
+      
+      // Date filter
+      const matchesDate = (() => {
+        if (!dateFilter.startDate && !dateFilter.endDate) return true;
+        const loadDate = new Date(l.dropDate);
+        if (dateFilter.startDate) {
+          const startDate = new Date(dateFilter.startDate);
+          startDate.setHours(0, 0, 0, 0);
+          if (loadDate < startDate) return false;
+        }
+        if (dateFilter.endDate) {
+          const endDate = new Date(dateFilter.endDate);
+          endDate.setHours(23, 59, 59, 999);
+          if (loadDate > endDate) return false;
+        }
+        return true;
+      })();
+      
+      return matchesSearch && matchesDriver && matchesDate;
+    });
+  }, [processedLoads, searchQuery, selectedDriverId, dateFilter.startDate, dateFilter.endDate]);
+
+  // Statistics Calculation - now based on filtered loads
   const stats = useMemo(() => {
-    const totalGross = processedLoads.reduce((sum, l) => sum + l.gross, 0);
-    const totalMiles = processedLoads.reduce((sum, l) => sum + l.miles, 0);
-    const totalDriverPay = processedLoads.reduce((sum, l) => sum + l.driverPay, 0);
+    const totalGross = filteredLoads.reduce((sum, l) => sum + l.gross, 0);
+    const totalMiles = filteredLoads.reduce((sum, l) => sum + l.miles, 0);
+    const totalDriverPay = filteredLoads.reduce((sum, l) => sum + l.driverPay, 0);
     const avgRate = totalMiles > 0 ? totalGross / totalMiles : 0;
     
     return {
@@ -405,7 +440,7 @@ function App() {
       driverPay: totalDriverPay,
       rpm: avgRate
     };
-  }, [processedLoads]);
+  }, [filteredLoads]);
 
   // Chart Data Preparation
   const chartData = useMemo(() => {
@@ -458,18 +493,6 @@ function App() {
     setIsAnalyzing(false);
   };
 
-  const filteredLoads = processedLoads.filter(l => {
-    // Search filter
-    const matchesSearch = searchQuery === '' || 
-    l.company.toLowerCase().includes(searchQuery.toLowerCase()) || 
-    l.origin.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      l.destination.toLowerCase().includes(searchQuery.toLowerCase());
-    
-    // Driver filter
-    const matchesDriver = selectedDriverId === '' || l.driverId === selectedDriverId;
-    
-    return matchesSearch && matchesDriver;
-  });
 
   // Sorting logic
   const sortedLoads = useMemo(() => {
@@ -511,7 +534,7 @@ function App() {
   // Reset to page 1 when filters change
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchQuery, selectedDriverId, sortBy, sortDirection]);
+  }, [searchQuery, selectedDriverId, dateFilter.startDate, dateFilter.endDate, sortBy, sortDirection]);
 
   const handleSort = (column: keyof CalculatedLoad) => {
     if (sortBy === column) {
@@ -653,16 +676,14 @@ function App() {
                 <span className="opacity-0 group-hover:opacity-100 transition-opacity duration-300 whitespace-nowrap overflow-hidden">My Subscriptions</span>
               </button>
             )}
-            {user.email === 'partsonmanyika@gmail.com' && (
-              <button 
-                onClick={() => setView('marketing')}
-                className={`w-full flex items-center justify-center group-hover:justify-start gap-3 px-4 py-3 rounded-xl transition-colors ${view === 'marketing' ? 'bg-blue-600/10 text-blue-400 font-medium' : 'hover:bg-slate-800'}`}
-                title="Marketing"
-              >
-                <Megaphone size={20} className="flex-shrink-0" />
-                <span className="opacity-0 group-hover:opacity-100 transition-opacity duration-300 whitespace-nowrap overflow-hidden">Marketing</span>
-              </button>
-            )}
+            <button 
+              onClick={() => setView('marketing')}
+              className={`w-full flex items-center justify-center group-hover:justify-start gap-3 px-4 py-3 rounded-xl transition-colors ${view === 'marketing' ? 'bg-blue-600/10 text-blue-400 font-medium' : 'hover:bg-slate-800'}`}
+              title="Marketing"
+            >
+              <Megaphone size={20} className="flex-shrink-0" />
+              <span className="opacity-0 group-hover:opacity-100 transition-opacity duration-300 whitespace-nowrap overflow-hidden">Marketing</span>
+            </button>
           </nav>
         </div>
         
@@ -717,15 +738,9 @@ function App() {
             <Pricing />
           ) : view === 'subscriptions' ? (
             <Subscriptions userId={user.id} />
-          ) : view === 'marketing' && user.email === 'partsonmanyika@gmail.com' ? (
-            <div className="max-w-7xl mx-auto px-6 py-8">
-              <Marketing user={user} />
-            </div>
           ) : view === 'marketing' ? (
             <div className="max-w-7xl mx-auto px-6 py-8">
-              <div className="text-center py-12">
-                <p className="text-slate-500">You don't have access to this section.</p>
-              </div>
+              <Marketing user={user} />
             </div>
           ) : (
         <div className="max-w-7xl mx-auto px-6 py-8 space-y-8">
@@ -740,7 +755,13 @@ function App() {
                 <StatsCard 
                   title="Total Gross Revenue" 
                   value={`$${stats.gross.toLocaleString()}`} 
-                  subValue="All time"
+                  subValue={dateFilter.startDate || dateFilter.endDate 
+                    ? (() => {
+                        const start = dateFilter.startDate ? new Date(dateFilter.startDate).toLocaleDateString() : 'Start';
+                        const end = dateFilter.endDate ? new Date(dateFilter.endDate).toLocaleDateString() : 'End';
+                        return `${start} to ${end}`;
+                      })()
+                    : "All time"}
                   trend="up"
                   icon={<DollarSign className="w-6 h-6 text-slate-900" />}
                   colorClass="bg-slate-100"
@@ -892,6 +913,35 @@ function App() {
                         </button>
                       )}
                     </div>
+                    <div className="flex items-center gap-2 flex-1 sm:flex-initial">
+                      <Calendar className="text-slate-400 w-4 h-4" />
+                      <input
+                        type="date"
+                        value={dateFilter.startDate}
+                        onChange={(e) => setDateFilter({ ...dateFilter, startDate: e.target.value })}
+                        placeholder="From"
+                        className="px-3 py-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none w-full sm:w-40"
+                        title="Filter from date"
+                      />
+                      <span className="text-slate-400 text-sm">to</span>
+                      <input
+                        type="date"
+                        value={dateFilter.endDate}
+                        onChange={(e) => setDateFilter({ ...dateFilter, endDate: e.target.value })}
+                        placeholder="To"
+                        className="px-3 py-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none w-full sm:w-40"
+                        title="Filter to date"
+                      />
+                      {(dateFilter.startDate || dateFilter.endDate) && (
+                        <button
+                          onClick={() => setDateFilter({ startDate: '', endDate: '' })}
+                          className="p-2 text-slate-400 hover:text-slate-600 transition-colors"
+                          title="Clear date filter"
+                        >
+                          <X size={16} />
+                        </button>
+                      )}
+                    </div>
                   </div>
                 </div>
                 
@@ -963,12 +1013,23 @@ function App() {
                             {getSortIcon('status')}
                           </div>
                         </th>
+                        {user.role === 'owner' && (
+                          <th 
+                            className="bg-slate-50 p-4 font-semibold border-b border-slate-200 cursor-pointer hover:bg-slate-100 transition-colors select-none"
+                            onClick={() => handleSort('driverPayoutStatus')}
+                          >
+                            <div className="flex items-center">
+                              Payout Status
+                              {getSortIcon('driverPayoutStatus')}
+                            </div>
+                          </th>
+                        )}
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100">
                       {dataLoading && sortedLoads.length === 0 ? (
                          <tr>
-                            <td colSpan={8} className="p-12 text-center text-slate-400">
+                            <td colSpan={user.role === 'owner' ? 9 : 8} className="p-12 text-center text-slate-400">
                                <div className="flex justify-center items-center gap-2">
                                  <div className="w-4 h-4 border-2 border-slate-400 border-t-transparent rounded-full animate-spin"></div>
                                  <span>Loading fleet data...</span>
@@ -977,7 +1038,7 @@ function App() {
                          </tr>
                       ) : sortedLoads.length === 0 ? (
                          <tr>
-                            <td colSpan={8} className="p-8 text-center text-slate-400">
+                            <td colSpan={user.role === 'owner' ? 9 : 8} className="p-8 text-center text-slate-400">
                                No loads found. Add a new load to get started.
                             </td>
                          </tr>
@@ -1021,6 +1082,19 @@ function App() {
                                 {load.status}
                               </span>
                             </td>
+                            {user.role === 'owner' && (
+                              <td className="p-4">
+                                <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                                  load.driverPayoutStatus === 'paid' ? 'bg-green-100 text-green-800' :
+                                  load.driverPayoutStatus === 'partial' ? 'bg-yellow-100 text-yellow-800' :
+                                  'bg-slate-100 text-slate-800'
+                                }`}>
+                                  {load.driverPayoutStatus === 'paid' ? 'Paid' :
+                                   load.driverPayoutStatus === 'partial' ? 'Partial' :
+                                   'Pending'}
+                                </span>
+                              </td>
+                            )}
                           </tr>
                         ))
                       )}

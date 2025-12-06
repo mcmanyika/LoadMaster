@@ -124,7 +124,8 @@ export const getLoads = async (): Promise<Load[]> => {
     origin: item.origin,
     destination: item.destination,
     status: item.status,
-    rateConfirmationPdfUrl: item.rate_confirmation_pdf_url || undefined
+    rateConfirmationPdfUrl: item.rate_confirmation_pdf_url || undefined,
+    driverPayoutStatus: item.driver_payout_status || 'pending'
   }));
 };
 
@@ -151,7 +152,8 @@ export const createLoad = async (load: Omit<Load, 'id'>): Promise<Load> => {
       origin: load.origin,
       destination: load.destination,
       status: load.status,
-      rate_confirmation_pdf_url: load.rateConfirmationPdfUrl || null
+      rate_confirmation_pdf_url: load.rateConfirmationPdfUrl || null,
+      driver_payout_status: load.driverPayoutStatus || 'pending'
     }])
     .select()
     .single();
@@ -190,23 +192,30 @@ export const updateLoad = async (id: string, load: Omit<Load, 'id'>): Promise<Lo
     return updatedLoad;
   }
 
+  const updateData: any = {
+    company: load.company,
+    gross: load.gross,
+    miles: load.miles,
+    gas_amount: load.gasAmount,
+    gas_notes: load.gasNotes,
+    drop_date: load.dropDate,
+    dispatcher: load.dispatcher,
+    transporter_id: load.transporterId || null,
+    driver_id: load.driverId || null,
+    origin: load.origin,
+    destination: load.destination,
+    status: load.status,
+    rate_confirmation_pdf_url: load.rateConfirmationPdfUrl || null
+  };
+
+  // Only update driver_payout_status if explicitly provided (owners only)
+  if (load.driverPayoutStatus !== undefined) {
+    updateData.driver_payout_status = load.driverPayoutStatus;
+  }
+
   const { data, error } = await supabase
     .from('loads')
-    .update({
-      company: load.company,
-      gross: load.gross,
-      miles: load.miles,
-      gas_amount: load.gasAmount,
-      gas_notes: load.gasNotes,
-      drop_date: load.dropDate,
-      dispatcher: load.dispatcher,
-      transporter_id: load.transporterId || null,
-      driver_id: load.driverId || null,
-      origin: load.origin,
-      destination: load.destination,
-      status: load.status,
-      rate_confirmation_pdf_url: load.rateConfirmationPdfUrl || null
-    })
+    .update(updateData)
     .eq('id', id)
     .select()
     .single();
@@ -230,7 +239,8 @@ export const updateLoad = async (id: string, load: Omit<Load, 'id'>): Promise<Lo
     origin: data.origin,
     destination: data.destination,
     status: data.status,
-    rateConfirmationPdfUrl: data.rate_confirmation_pdf_url || undefined
+    rateConfirmationPdfUrl: data.rate_confirmation_pdf_url || undefined,
+    driverPayoutStatus: data.driver_payout_status || 'pending'
   };
 };
 
