@@ -18,7 +18,8 @@ import {
   ArrowDown,
   ChevronLeft,
   ChevronRight,
-  CreditCard
+  CreditCard,
+  Megaphone
 } from 'lucide-react';
 import { Load, DispatcherName, CalculatedLoad, UserProfile, Driver } from './types';
 import { StatsCard } from './components/StatsCard';
@@ -30,6 +31,7 @@ import { FleetManagement } from './components/FleetManagement';
 import { Pricing } from './components/Pricing';
 import { PaymentConfirmation } from './components/PaymentConfirmation';
 import { Subscriptions } from './components/Subscriptions';
+import { Marketing } from './components/Marketing';
 import { saveSubscription } from './services/subscriptionService';
 import { analyzeFleetPerformance } from './services/geminiService';
 import { getLoads, createLoad, updateLoad, getDrivers, getDispatchers } from './services/loadService';
@@ -63,7 +65,7 @@ function App() {
   const itemsPerPage = 10;
   const [aiAnalysis, setAiAnalysis] = useState<string | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
-  const [view, setView] = useState<'dashboard' | 'loads' | 'fleet' | 'pricing' | 'subscriptions'>('dashboard');
+  const [view, setView] = useState<'dashboard' | 'loads' | 'fleet' | 'pricing' | 'subscriptions' | 'marketing'>('dashboard');
   const [paymentStatus, setPaymentStatus] = useState<'success' | 'cancel' | null>(null);
   const [paymentPlan, setPaymentPlan] = useState<string | null>(null);
   const [paymentSessionId, setPaymentSessionId] = useState<string | null>(null);
@@ -459,8 +461,8 @@ function App() {
   const filteredLoads = processedLoads.filter(l => {
     // Search filter
     const matchesSearch = searchQuery === '' || 
-      l.company.toLowerCase().includes(searchQuery.toLowerCase()) || 
-      l.origin.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    l.company.toLowerCase().includes(searchQuery.toLowerCase()) || 
+    l.origin.toLowerCase().includes(searchQuery.toLowerCase()) ||
       l.destination.toLowerCase().includes(searchQuery.toLowerCase());
     
     // Driver filter
@@ -599,70 +601,87 @@ function App() {
     <div className="h-screen bg-slate-50 flex font-sans overflow-hidden">
       
       {/* Sidebar Navigation */}
-      <aside className="w-64 bg-slate-900 text-slate-300 flex-shrink-0 hidden md:flex flex-col h-full overflow-y-auto">
-        <div className="p-6">
-          <div className="flex items-center gap-3 text-white mb-8">
-            <div className="bg-blue-600 p-2 rounded-lg">
+      <aside className="group w-20 hover:w-64 bg-slate-900 text-slate-300 flex-shrink-0 hidden md:flex flex-col h-full overflow-y-auto transition-all duration-300 ease-in-out">
+        <div className="p-4 group-hover:p-6 transition-all duration-300">
+          <div className="flex items-center gap-3 text-white mb-8 justify-center group-hover:justify-start">
+            <div className="bg-blue-600 p-2 rounded-lg flex-shrink-0">
               <Truck size={24} />
             </div>
-            <span className="text-xl font-bold tracking-tight">LoadMaster</span>
+            <span className="text-xl font-bold tracking-tight opacity-0 group-hover:opacity-100 transition-opacity duration-300 whitespace-nowrap overflow-hidden">LoadMaster</span>
           </div>
           
           <nav className="space-y-2">
             <button 
               onClick={() => setView('dashboard')}
-              className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${view === 'dashboard' ? 'bg-blue-600/10 text-blue-400 font-medium' : 'hover:bg-slate-800'}`}
+              className={`w-full flex items-center justify-center group-hover:justify-start gap-3 px-4 py-3 rounded-xl transition-colors ${view === 'dashboard' ? 'bg-blue-600/10 text-blue-400 font-medium' : 'hover:bg-slate-800'}`}
+              title="Dashboard"
             >
-              <LayoutDashboard size={20} />
-              Dashboard
+              <LayoutDashboard size={20} className="flex-shrink-0" />
+              <span className="opacity-0 group-hover:opacity-100 transition-opacity duration-300 whitespace-nowrap overflow-hidden">Dashboard</span>
             </button>
             <button 
               onClick={() => setView('loads')}
-              className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${view === 'loads' ? 'bg-blue-600/10 text-blue-400 font-medium' : 'hover:bg-slate-800'}`}
+              className={`w-full flex items-center justify-center group-hover:justify-start gap-3 px-4 py-3 rounded-xl transition-colors ${view === 'loads' ? 'bg-blue-600/10 text-blue-400 font-medium' : 'hover:bg-slate-800'}`}
+              title="All Loads"
             >
-              <FileText size={20} />
-              All Loads
+              <FileText size={20} className="flex-shrink-0" />
+              <span className="opacity-0 group-hover:opacity-100 transition-opacity duration-300 whitespace-nowrap overflow-hidden">All Loads</span>
             </button>
             <button 
               onClick={() => setView('fleet')}
-              className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${view === 'fleet' ? 'bg-blue-600/10 text-blue-400 font-medium' : 'hover:bg-slate-800'}`}
+              className={`w-full flex items-center justify-center group-hover:justify-start gap-3 px-4 py-3 rounded-xl transition-colors ${view === 'fleet' ? 'bg-blue-600/10 text-blue-400 font-medium' : 'hover:bg-slate-800'}`}
+              title="Fleet & Drivers"
             >
-              <Users size={20} />
-              Fleet & Drivers
+              <Users size={20} className="flex-shrink-0" />
+              <span className="opacity-0 group-hover:opacity-100 transition-opacity duration-300 whitespace-nowrap overflow-hidden">Fleet & Drivers</span>
             </button>
             <button 
               onClick={() => setView('pricing')}
-              className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${view === 'pricing' ? 'bg-blue-600/10 text-blue-400 font-medium' : 'hover:bg-slate-800'}`}
+              className={`w-full flex items-center justify-center group-hover:justify-start gap-3 px-4 py-3 rounded-xl transition-colors ${view === 'pricing' ? 'bg-blue-600/10 text-blue-400 font-medium' : 'hover:bg-slate-800'}`}
+              title="Pricing"
             >
-              <CreditCard size={20} />
-              Pricing
+              <CreditCard size={20} className="flex-shrink-0" />
+              <span className="opacity-0 group-hover:opacity-100 transition-opacity duration-300 whitespace-nowrap overflow-hidden">Pricing</span>
             </button>
-            <button 
-              onClick={() => setView('subscriptions')}
-              className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${view === 'subscriptions' ? 'bg-blue-600/10 text-blue-400 font-medium' : 'hover:bg-slate-800'}`}
-            >
-              <FileText size={20} />
-              My Subscriptions
-            </button>
+            {user.role === 'owner' && (
+              <button 
+                onClick={() => setView('subscriptions')}
+                className={`w-full flex items-center justify-center group-hover:justify-start gap-3 px-4 py-3 rounded-xl transition-colors ${view === 'subscriptions' ? 'bg-blue-600/10 text-blue-400 font-medium' : 'hover:bg-slate-800'}`}
+                title="My Subscriptions"
+              >
+                <FileText size={20} className="flex-shrink-0" />
+                <span className="opacity-0 group-hover:opacity-100 transition-opacity duration-300 whitespace-nowrap overflow-hidden">My Subscriptions</span>
+              </button>
+            )}
+            {user.email === 'partsonmanyika@gmail.com' && (
+              <button 
+                onClick={() => setView('marketing')}
+                className={`w-full flex items-center justify-center group-hover:justify-start gap-3 px-4 py-3 rounded-xl transition-colors ${view === 'marketing' ? 'bg-blue-600/10 text-blue-400 font-medium' : 'hover:bg-slate-800'}`}
+                title="Marketing"
+              >
+                <Megaphone size={20} className="flex-shrink-0" />
+                <span className="opacity-0 group-hover:opacity-100 transition-opacity duration-300 whitespace-nowrap overflow-hidden">Marketing</span>
+              </button>
+            )}
           </nav>
         </div>
         
-        <div className="mt-auto p-6 border-t border-slate-800">
+        <div className="mt-auto p-4 group-hover:p-6 border-t border-slate-800 transition-all duration-300 flex flex-col items-center group-hover:items-stretch">
            {/* User Profile Mini */}
-           <div className="flex items-center gap-3 mb-6">
-              <div className="w-8 h-8 rounded-full bg-blue-500 flex items-center justify-center text-white font-bold text-xs">
+           <div className="flex items-center gap-0 group-hover:gap-3 mb-6 w-full group-hover:justify-start">
+              <div className="w-8 h-8 rounded-full bg-blue-500 flex items-center justify-center text-white font-bold text-xs flex-shrink-0 group-hover:mx-0">
                 {user.name.charAt(0)}
               </div>
-              <div className="flex-1 min-w-0">
+              <div className="flex-1 min-w-0 hidden group-hover:block transition-opacity duration-300 overflow-hidden">
                 <p className="text-sm font-medium text-white truncate">{user.name}</p>
                 <p className="text-xs text-slate-500 capitalize">{user.role}</p>
               </div>
-              <button onClick={handleSignOut} className="text-slate-500 hover:text-white transition-colors" title="Sign Out">
+              <button onClick={handleSignOut} className="text-slate-500 hover:text-white transition-colors flex-shrink-0 hidden group-hover:block" title="Sign Out">
                 <LogOut size={16} />
               </button>
            </div>
 
-          <div className="bg-slate-800/50 rounded-xl p-4">
+          <div className="bg-slate-800/50 rounded-xl p-4 hidden group-hover:block transition-opacity duration-300">
             <h4 className="text-xs font-semibold uppercase tracking-wider text-slate-500 mb-2">Pro Tip</h4>
             <p className="text-xs text-slate-400 leading-relaxed">
               Use the AI Analysis to identify your most profitable routes and dispatchers every week.
@@ -676,11 +695,11 @@ function App() {
         <header className="bg-white border-b border-slate-200 flex-shrink-0 z-30">
           <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
             <h1 className="text-2xl font-bold text-slate-800">
-              {view === 'dashboard' ? 'Fleet Overview' : view === 'fleet' ? 'Fleet Management' : view === 'pricing' ? 'Pricing Plans' : view === 'subscriptions' ? 'My Subscriptions' : 'Load Management'}
+              {view === 'dashboard' ? 'Fleet Overview' : view === 'fleet' ? 'Fleet Management' : view === 'pricing' ? 'Pricing Plans' : view === 'subscriptions' ? 'My Subscriptions' : view === 'marketing' ? 'Marketing Management' : 'Load Management'}
             </h1>
             <div className="flex items-center gap-4">
               {dataLoading && <span className="text-sm text-slate-400 animate-pulse">Syncing...</span>}
-               {view !== 'fleet' && view !== 'pricing' && view !== 'subscriptions' && (
+               {view !== 'fleet' && view !== 'pricing' && view !== 'subscriptions' && view !== 'marketing' && (
                  <button 
                   onClick={() => setIsModalOpen(true)}
                   className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2.5 rounded-lg text-sm font-medium shadow-sm transition-all hover:shadow-md"
@@ -698,8 +717,18 @@ function App() {
             <Pricing />
           ) : view === 'subscriptions' ? (
             <Subscriptions userId={user.id} />
+          ) : view === 'marketing' && user.email === 'partsonmanyika@gmail.com' ? (
+            <div className="max-w-7xl mx-auto px-6 py-8">
+              <Marketing user={user} />
+            </div>
+          ) : view === 'marketing' ? (
+            <div className="max-w-7xl mx-auto px-6 py-8">
+              <div className="text-center py-12">
+                <p className="text-slate-500">You don't have access to this section.</p>
+              </div>
+            </div>
           ) : (
-          <div className="max-w-7xl mx-auto px-6 py-8 space-y-8">
+        <div className="max-w-7xl mx-auto px-6 py-8 space-y-8">
           
           {/* Fleet Management View */}
           {view === 'fleet' ? (
@@ -713,28 +742,28 @@ function App() {
                   value={`$${stats.gross.toLocaleString()}`} 
                   subValue="All time"
                   trend="up"
-                  icon={<DollarSign className="w-6 h-6 text-emerald-600" />}
-                  colorClass="bg-emerald-100"
+                  icon={<DollarSign className="w-6 h-6 text-slate-900" />}
+                  colorClass="bg-slate-100"
                 />
                  <StatsCard 
                   title="Avg Rate Per Mile" 
                   value={`$${stats.rpm.toFixed(2)}`} 
                   subValue="Target: $2.00+"
                   trend={stats.rpm > 2 ? "up" : "neutral"}
-                  icon={<MapPin className="w-6 h-6 text-blue-600" />}
-                  colorClass="bg-blue-100"
+                  icon={<MapPin className="w-6 h-6 text-slate-900" />}
+                  colorClass="bg-slate-100"
                 />
                  <StatsCard 
                   title="Total Miles" 
                   value={stats.miles.toLocaleString()} 
-                  icon={<Truck className="w-6 h-6 text-indigo-600" />}
-                  colorClass="bg-indigo-100"
+                  icon={<Truck className="w-6 h-6 text-slate-900" />}
+                  colorClass="bg-slate-100"
                 />
                 <StatsCard 
                   title="Driver Pay Output" 
                   value={`$${stats.driverPay.toLocaleString()}`} 
-                  icon={<User className="w-6 h-6 text-amber-600" />}
-                  colorClass="bg-amber-100"
+                  icon={<User className="w-6 h-6 text-slate-900" />}
+                  colorClass="bg-slate-100"
                 />
               </div>
 
@@ -830,14 +859,14 @@ function App() {
                   <h3 className="text-lg font-bold text-slate-800">Recent Loads</h3>
                   <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
                     <div className="relative flex-1 sm:flex-initial">
-                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-4 h-4" />
-                      <input 
-                        type="text" 
-                        placeholder="Search company, city..." 
-                        value={searchQuery}
-                        onChange={(e) => setSearchQuery(e.target.value)}
-                        className="pl-9 pr-4 py-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none w-full sm:w-64"
-                      />
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-4 h-4" />
+                    <input 
+                      type="text" 
+                      placeholder="Search company, city..." 
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      className="pl-9 pr-4 py-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none w-full sm:w-64"
+                    />
                     </div>
                     <div className="relative flex-1 sm:flex-initial">
                       <Filter className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-4 h-4 pointer-events-none" />

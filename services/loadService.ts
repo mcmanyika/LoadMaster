@@ -123,7 +123,8 @@ export const getLoads = async (): Promise<Load[]> => {
     // driverName: item.drivers?.name,
     origin: item.origin,
     destination: item.destination,
-    status: item.status
+    status: item.status,
+    rateConfirmationPdfUrl: item.rate_confirmation_pdf_url || undefined
   }));
 };
 
@@ -149,7 +150,8 @@ export const createLoad = async (load: Omit<Load, 'id'>): Promise<Load> => {
       driver_id: load.driverId || null,
       origin: load.origin,
       destination: load.destination,
-      status: load.status
+      status: load.status,
+      rate_confirmation_pdf_url: load.rateConfirmationPdfUrl || null
     }])
     .select()
     .single();
@@ -202,7 +204,8 @@ export const updateLoad = async (id: string, load: Omit<Load, 'id'>): Promise<Lo
       driver_id: load.driverId || null,
       origin: load.origin,
       destination: load.destination,
-      status: load.status
+      status: load.status,
+      rate_confirmation_pdf_url: load.rateConfirmationPdfUrl || null
     })
     .eq('id', id)
     .select()
@@ -226,7 +229,8 @@ export const updateLoad = async (id: string, load: Omit<Load, 'id'>): Promise<Lo
     driverId: data.driver_id,
     origin: data.origin,
     destination: data.destination,
-    status: data.status
+    status: data.status,
+    rateConfirmationPdfUrl: data.rate_confirmation_pdf_url || undefined
   };
 };
 

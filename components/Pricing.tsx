@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Check, X, Zap, Users, Building2, Sparkles, ArrowRight, DollarSign, BarChart3, Brain, Shield, Mail, Phone, Headphones, Loader2, AlertCircle, CheckCircle2 } from 'lucide-react';
+import { Check, X, Zap, Users, Building2, Sparkles, ArrowRight, BarChart3, Brain, Shield, Mail, Phone, Headphones, Loader2, AlertCircle, CheckCircle2 } from 'lucide-react';
 import { getCurrentUser } from '../services/authService';
 import { createSubscriptionIntent } from '../services/paymentIntentService';
 import { getActiveSubscription, Subscription } from '../services/subscriptionService';
@@ -47,7 +47,6 @@ export const Pricing: React.FC<PricingProps> = ({ onClose }) => {
       icon: <Zap className="w-6 h-6" />,
       monthlyPrice: 99,
       annualPrice: 85, // 15% off
-      color: 'blue',
       features: [
         { text: 'Up to 5 users', included: true },
         { text: 'Up to 50 loads/month', included: true },
@@ -72,7 +71,6 @@ export const Pricing: React.FC<PricingProps> = ({ onClose }) => {
       icon: <Users className="w-6 h-6" />,
       monthlyPrice: 199,
       annualPrice: 170, // 15% off
-      color: 'indigo',
       features: [
         { text: 'Up to 15 users', included: true },
         { text: 'Up to 500 loads/month', included: true },
@@ -97,7 +95,6 @@ export const Pricing: React.FC<PricingProps> = ({ onClose }) => {
       icon: <Building2 className="w-6 h-6" />,
       monthlyPrice: null,
       annualPrice: null,
-      color: 'purple',
       features: [
         { text: 'Unlimited users', included: true },
         { text: 'Unlimited loads', included: true },
@@ -178,29 +175,10 @@ export const Pricing: React.FC<PricingProps> = ({ onClose }) => {
     }
   };
 
-  const getColorClasses = (color: string) => {
-    const colors: Record<string, string> = {
-      blue: 'bg-blue-600 border-blue-600 text-blue-600',
-      indigo: 'bg-indigo-600 border-indigo-600 text-indigo-600',
-      purple: 'bg-purple-600 border-purple-600 text-purple-600',
-    };
-    return colors[color] || colors.blue;
-  };
-
-  const getBgColorClasses = (color: string) => {
-    const colors: Record<string, string> = {
-      blue: 'bg-blue-50 border-blue-200',
-      indigo: 'bg-indigo-50 border-indigo-200',
-      purple: 'bg-purple-50 border-purple-200',
-    };
-    return colors[color] || colors.blue;
-  };
-
   return (
-    <div className="w-full bg-gradient-to-br from-slate-50 via-blue-50/30 to-slate-50 py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-7xl mx-auto">
-        {/* Header */}
-        <div className="text-center mb-16">
+    <div className="max-w-7xl mx-auto px-6 py-8">
+      {/* Header */}
+      <div className="text-center mb-16">
           {onClose && (
             <button
               onClick={onClose}
@@ -278,19 +256,19 @@ export const Pricing: React.FC<PricingProps> = ({ onClose }) => {
               onMouseLeave={() => setHoveredPlan(null)}
               className={`relative bg-white rounded-2xl border-2 transition-all duration-300 ${
                 plan.popular
-                  ? `${getColorClasses(plan.color).split(' ')[1]} shadow-2xl scale-105`
+                  ? 'border-slate-900 shadow-2xl scale-105'
                   : 'border-slate-200 hover:border-slate-300 shadow-lg hover:shadow-xl'
               } ${hoveredPlan === plan.id && !plan.popular ? 'scale-[1.02]' : ''}`}
             >
               {plan.popular && (
-                <div className={`absolute -top-4 left-1/2 -translate-x-1/2 ${getColorClasses(plan.color).split(' ')[0]} text-white px-4 py-1 rounded-full text-sm font-semibold`}>
+                <div className="absolute -top-4 left-1/2 -translate-x-1/2 bg-slate-900 text-white px-4 py-1 rounded-full text-sm font-semibold">
                   Most Popular
                 </div>
               )}
 
               <div className="p-8">
                 {/* Plan Header */}
-                <div className={`inline-flex items-center gap-2 ${getColorClasses(plan.color).split(' ')[2]} mb-4`}>
+                <div className="inline-flex items-center gap-2 text-slate-900 mb-4">
                   {plan.icon}
                   <span className="font-semibold">{plan.name}</span>
                 </div>
@@ -335,10 +313,6 @@ export const Pricing: React.FC<PricingProps> = ({ onClose }) => {
                       className={`w-full py-3 rounded-xl font-semibold transition-all mb-8 flex items-center justify-center gap-2 ${
                         isCurrentPlan
                           ? 'bg-slate-300 text-slate-500 cursor-not-allowed'
-                          : isUpgrade
-                          ? `${getColorClasses(plan.color).split(' ')[0]} text-white hover:opacity-90 shadow-lg`
-                          : plan.popular
-                          ? `${getColorClasses(plan.color).split(' ')[0]} text-white hover:opacity-90 shadow-lg`
                           : 'bg-slate-900 text-white hover:bg-slate-800'
                       } disabled:opacity-50 disabled:cursor-not-allowed`}
                     >
@@ -363,7 +337,7 @@ export const Pricing: React.FC<PricingProps> = ({ onClose }) => {
                   {plan.features.map((feature, idx) => (
                     <li key={idx} className="flex items-start gap-3">
                       {feature.included ? (
-                        <Check className={`w-5 h-5 flex-shrink-0 ${getColorClasses(plan.color).split(' ')[2]} mt-0.5`} />
+                        <Check className="w-5 h-5 flex-shrink-0 text-slate-900 mt-0.5" />
                       ) : (
                         <X className="w-5 h-5 flex-shrink-0 text-slate-300 mt-0.5" />
                       )}
@@ -387,9 +361,9 @@ export const Pricing: React.FC<PricingProps> = ({ onClose }) => {
             {addOns.map((addon, idx) => (
               <div
                 key={idx}
-                className="flex items-start gap-4 p-4 rounded-xl border border-slate-200 hover:border-blue-300 hover:shadow-md transition-all"
+                className="flex items-start gap-4 p-4 rounded-xl border border-slate-200 hover:border-slate-300 hover:shadow-md transition-all"
               >
-                <div className="p-2 bg-blue-100 rounded-lg text-blue-600 flex-shrink-0">
+                <div className="p-2 bg-slate-100 rounded-lg text-slate-900 flex-shrink-0">
                   {addon.icon}
                 </div>
                 <div className="flex-1">
@@ -406,57 +380,14 @@ export const Pricing: React.FC<PricingProps> = ({ onClose }) => {
                 </div>
               </div>
             ))}
-            <div className="flex items-start gap-4 p-4 rounded-xl border border-slate-200 hover:border-blue-300 hover:shadow-md transition-all">
-              <div className="p-2 bg-blue-100 rounded-lg text-blue-600 flex-shrink-0">
+            <div className="flex items-start gap-4 p-4 rounded-xl border border-slate-200 hover:border-slate-300 hover:shadow-md transition-all">
+              <div className="p-2 bg-slate-100 rounded-lg text-slate-900 flex-shrink-0">
                 <Headphones className="w-5 h-5" />
               </div>
               <div className="flex-1">
                 <h3 className="font-semibold text-slate-900 mb-1">Onboarding & Training</h3>
                 <p className="text-sm text-slate-600 font-medium">$250 one-time</p>
               </div>
-            </div>
-          </div>
-        </div>
-
-        {/* FAQ / Additional Info */}
-        <div className="bg-gradient-to-r from-blue-600 to-indigo-600 rounded-2xl p-8 text-white mb-16">
-          <h2 className="text-2xl font-bold mb-6">Everything You Need to Know</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div>
-              <h3 className="font-semibold mb-2 flex items-center gap-2">
-                <DollarSign className="w-5 h-5" />
-                Payment Options
-              </h3>
-              <p className="text-blue-100 text-sm">
-                Monthly or annual billing available. Annual plans save you 15%. Custom billing available for Enterprise.
-              </p>
-            </div>
-            <div>
-              <h3 className="font-semibold mb-2 flex items-center gap-2">
-                <Shield className="w-5 h-5" />
-                Free Trial
-              </h3>
-              <p className="text-blue-100 text-sm">
-                Start with a 14-day free trial. No credit card required. Cancel anytime during the trial.
-              </p>
-            </div>
-            <div>
-              <h3 className="font-semibold mb-2 flex items-center gap-2">
-                <Mail className="w-5 h-5" />
-                Support Levels
-              </h3>
-              <p className="text-blue-100 text-sm">
-                Email support for Essential, Priority email for Professional, Phone & email with dedicated manager for Enterprise.
-              </p>
-            </div>
-            <div>
-              <h3 className="font-semibold mb-2 flex items-center gap-2">
-                <Phone className="w-5 h-5" />
-                Upgrade Anytime
-              </h3>
-              <p className="text-blue-100 text-sm">
-                Upgrade or downgrade your plan at any time. Prorated billing ensures you only pay for what you use.
-              </p>
             </div>
           </div>
         </div>
@@ -476,7 +407,6 @@ export const Pricing: React.FC<PricingProps> = ({ onClose }) => {
             </button>
           </div>
         </div>
-      </div>
     </div>
   );
 };

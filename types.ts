@@ -28,6 +28,7 @@ export interface Load {
   origin: string;
   destination: string;
   status: 'Factored' | 'Not yet Factored';
+  rateConfirmationPdfUrl?: string; // URL to the Rate Confirmation PDF
 }
 
 export interface CalculatedLoad extends Load {
@@ -64,4 +65,37 @@ export interface UserProfile {
   subscriptionPlan?: 'essential' | 'professional' | 'enterprise' | null;
   subscriptionStatus?: 'active' | 'trialing' | 'past_due' | 'canceled' | 'incomplete' | null;
   stripeCustomerId?: string;
+}
+
+export interface MarketingAd {
+  id: string;
+  weekNumber: number;
+  title: string;
+  content: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface MarketingPost {
+  id: string;
+  adId: string;
+  postedAt: string;
+  postedBy?: string;
+  platform: string;
+  notes?: string;
+  createdAt: string;
+}
+
+export type MetricType = 'response' | 'call_scheduled' | 'demo_scheduled' | 'conversion' | 'not_interested';
+
+export interface MarketingMetric {
+  id: string;
+  postId: string;
+  metricType: MetricType;
+  contactName?: string;
+  contactPhone?: string;
+  contactEmail?: string;
+  notes?: string;
+  createdAt: string;
+  createdBy?: string;
 }

@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Load, Transporter, Driver, UserProfile } from '../types';
-import { X, Calculator } from 'lucide-react';
+import { X, Calculator, Upload, FileText } from 'lucide-react';
 import { getDispatchers, getTransporters, getDrivers } from '../services/loadService';
+import { uploadRateConfirmationPdf } from '../services/storageService';
 
 interface LoadFormProps {
   onClose: () => void;
@@ -17,6 +18,9 @@ export const LoadForm: React.FC<LoadFormProps> = ({ onClose, onSave, currentUser
   const [transporters, setTransporters] = useState<Transporter[]>([]);
   const [drivers, setDrivers] = useState<Driver[]>([]);
   const [loadingOptions, setLoadingOptions] = useState(true);
+  const [pdfFile, setPdfFile] = useState<File | null>(null);
+  const [pdfPreview, setPdfPreview] = useState<string | null>(loadToEdit?.rateConfirmationPdfUrl || null);
+  const [uploadingPdf, setUploadingPdf] = useState(false);
 
   const [formData, setFormData] = useState({
     company: loadToEdit?.company || '',
@@ -73,8 +77,67 @@ export const LoadForm: React.FC<LoadFormProps> = ({ onClose, onSave, currentUser
   const dispatchFee = gross * (feePercentage / 100);
   const driverPay = (gross - dispatchFee - gas) * 0.5;
 
-  const handleSubmit = (e: React.FormEvent) => {
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+    setFormData({ ...formData, [e.target.name]: e.target.value });
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (file.type !== 'application/pdf') {
+        alert('Please upload a PDF file');
+        return;
+      }
+      if (file.size > 10 * 1024 * 1024) { // 10MB limit
+        alert('File size must be less than 10MB');
+        return;
+      }
+      setPdfFile(file);
+      // Create preview URL
+      setPdfPreview(URL.createObjectURL(file));
+    }
+  };
+
+  const handleRemovePdf = () => {
+    setPdfFile(null);
+    if (pdfPreview && pdfPreview.startsWith('blob:')) {
+      URL.revokeObjectURL(pdfPreview);
+    }
+    setPdfPreview(loadToEdit?.rateConfirmationPdfUrl || null);
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    let pdfUrl = loadToEdit?.rateConfirmationPdfUrl || null;
+
+    // Upload PDF if a new file was selected
+    if (pdfFile) {
+      setUploadingPdf(true);
+      try {
+        // For new loads, we'll need to create the load first to get an ID
+        // For existing loads, use the existing ID
+        const tempId = loadToEdit?.id || `temp-${Date.now()}`;
+        const uploadResult = await uploadRateConfirmationPdf(pdfFile, tempId);
+        
+        if (uploadResult.error) {
+          alert('Failed to upload PDF. Please try again.');
+          setUploadingPdf(false);
+          return;
+        }
+        
+        pdfUrl = uploadResult.url;
+      } catch (error) {
+        console.error('Error uploading PDF:', error);
+        alert('Failed to upload PDF. Please try again.');
+        setUploadingPdf(false);
+        return;
+      } finally {
+        setUploadingPdf(false);
+      }
+    }
+
     onSave({
       company: formData.company,
       gross: gross,
@@ -87,13 +150,10 @@ export const LoadForm: React.FC<LoadFormProps> = ({ onClose, onSave, currentUser
       driverId: formData.driverId,
       origin: formData.origin,
       destination: formData.destination,
-      status: formData.status
+      status: formData.status,
+      rateConfirmationPdfUrl: pdfUrl || undefined
     });
     onClose();
-  };
-
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
   return (
@@ -274,6 +334,59 @@ export const LoadForm: React.FC<LoadFormProps> = ({ onClose, onSave, currentUser
                   placeholder="City, ST"
                 />
               </div>
+            </div>
+
+            {/* Rate Confirmation PDF */}
+            <div className="col-span-2 space-y-2">
+              <label className="block text-sm font-medium text-slate-700 mb-1">
+                Rate Confirmation PDF
+              </label>
+              {pdfPreview ? (
+                <div className="flex items-center gap-3 p-3 bg-slate-50 rounded-lg border border-slate-200">
+                  <FileText className="w-5 h-5 text-blue-600" />
+                  <div className="flex-1">
+                    <p className="text-sm font-medium text-slate-700">
+                      {pdfFile?.name || 'Rate Confirmation PDF'}
+                    </p>
+                    <a
+                      href={pdfPreview}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-xs text-blue-600 hover:underline"
+                    >
+                      View PDF
+                    </a>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleRemovePdf}
+                    className="p-1 hover:bg-slate-200 rounded-full transition-colors"
+                  >
+                    <X className="w-4 h-4 text-slate-500" />
+                  </button>
+                </div>
+              ) : (
+                <div className="flex items-center justify-center w-full">
+                  <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-slate-300 border-dashed rounded-lg cursor-pointer bg-slate-50 hover:bg-slate-100 transition-colors">
+                    <div className="flex flex-col items-center justify-center pt-5 pb-6">
+                      <Upload className="w-8 h-8 mb-2 text-slate-400" />
+                      <p className="mb-2 text-sm text-slate-500">
+                        <span className="font-semibold">Click to upload</span> or drag and drop
+                      </p>
+                      <p className="text-xs text-slate-500">PDF (MAX. 10MB)</p>
+                    </div>
+                    <input
+                      type="file"
+                      className="hidden"
+                      accept="application/pdf"
+                      onChange={handleFileChange}
+                    />
+                  </label>
+                </div>
+              )}
+              {uploadingPdf && (
+                <p className="text-xs text-blue-600 animate-pulse">Uploading PDF...</p>
+              )}
             </div>
 
             {/* Status */}
