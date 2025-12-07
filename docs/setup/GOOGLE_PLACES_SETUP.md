@@ -21,7 +21,7 @@ The Load Form uses Google Places Autocomplete to provide city suggestions as use
 
 ### 2. Enable Required APIs
 
-**IMPORTANT:** You need to enable **TWO** APIs:
+**IMPORTANT:** You need to enable **THREE** APIs:
 
 1. **Maps JavaScript API** (Required)
    - In the Google Cloud Console, navigate to **APIs & Services** > **Library**
@@ -33,7 +33,12 @@ The Load Form uses Google Places Autocomplete to provide city suggestions as use
    - Search for "Places API"
    - Click on **Places API** and click **Enable**
 
-**Note:** Both APIs must be enabled. The Maps JavaScript API loads the client-side library, and the Places API provides the autocomplete functionality.
+3. **Distance Matrix API** (Required for automatic miles calculation)
+   - Still in **APIs & Services** > **Library**
+   - Search for "Distance Matrix API"
+   - Click on **Distance Matrix API** and click **Enable**
+
+**Note:** All three APIs must be enabled. The Maps JavaScript API loads the client-side library, the Places API provides the autocomplete functionality, and the Distance Matrix API calculates distances between cities to auto-populate the miles field.
 
 ### 3. Create an API Key
 
@@ -45,9 +50,10 @@ The Load Form uses Google Places Autocomplete to provide city suggestions as use
 
 1. Click on your newly created API key to edit it
 2. Under **API restrictions**, select **Restrict key**
-3. Under **Select APIs**, choose **BOTH**:
+3. Under **Select APIs**, choose **ALL THREE**:
    - **Maps JavaScript API**
    - **Places API**
+   - **Distance Matrix API**
 4. Under **Application restrictions**, you can optionally restrict by:
    - **HTTP referrers** (for web apps): Add your domain(s)
    - **IP addresses**: Add your server IPs
@@ -74,12 +80,26 @@ Replace `your_api_key_here` with your actual API key.
 4. Start typing a city name (e.g., "Dallas")
 5. You should see autocomplete suggestions appear
 
+### 7. Automatic Miles Calculation
+
+When you select both Origin and Destination cities from the autocomplete suggestions, the Miles field will automatically calculate and populate with the driving distance between the two cities.
+
+**How it works:**
+- Select a city from autocomplete for Origin
+- Select a city from autocomplete for Destination
+- The Miles field will automatically calculate the distance (rounded to nearest mile)
+- A loading spinner will appear in the Miles field while calculating
+- The calculation uses Google's Distance Matrix API for accurate driving distances
+
+**Note:** Miles are only auto-calculated when cities are selected from autocomplete. If you type cities manually, you'll need to enter miles manually as well.
+
 ## Features
 
 - **City-only suggestions**: The autocomplete is restricted to cities, not full addresses
 - **US cities**: By default, restricted to US cities (can be modified in `PlacesAutocomplete.tsx`)
 - **Formatted output**: Results are formatted as "City, ST" (e.g., "Dallas, TX")
 - **Clear button**: Users can easily clear the input field
+- **Automatic miles calculation**: When both Origin and Destination are selected from autocomplete, the Miles field automatically calculates the driving distance
 
 ## Troubleshooting
 

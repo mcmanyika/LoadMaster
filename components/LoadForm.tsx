@@ -4,6 +4,7 @@ import { X, Calculator, Upload, FileText, AlertCircle } from 'lucide-react';
 import { getDispatchers, getTransporters, getDrivers } from '../services/loadService';
 import { uploadRateConfirmationPdf } from '../services/storageService';
 import { PlacesAutocomplete } from './PlacesAutocomplete';
+import { calculateDistance } from '../services/distanceService';
 
 interface LoadFormProps {
   onClose: () => void;
@@ -23,6 +24,9 @@ export const LoadForm: React.FC<LoadFormProps> = ({ onClose, onSave, currentUser
   const [pdfPreview, setPdfPreview] = useState<string | null>(loadToEdit?.rateConfirmationPdfUrl || null);
   const [uploadingPdf, setUploadingPdf] = useState(false);
   const [errorModal, setErrorModal] = useState<{ isOpen: boolean; message: string }>({ isOpen: false, message: '' });
+  const [originPlace, setOriginPlace] = useState<google.maps.places.PlaceResult | null>(null);
+  const [destinationPlace, setDestinationPlace] = useState<google.maps.places.PlaceResult | null>(null);
+  const [calculatingDistance, setCalculatingDistance] = useState(false);
 
   const [formData, setFormData] = useState({
     company: loadToEdit?.company || '',
@@ -74,6 +78,47 @@ export const LoadForm: React.FC<LoadFormProps> = ({ onClose, onSave, currentUser
     : (formData.transporterId 
         ? drivers.filter(d => d.transporterId === formData.transporterId)
         : []);
+
+  // Calculate distance when both origin and destination are available
+  useEffect(() => {
+    const calculateMiles = async () => {
+      // Only calculate if both fields have values
+      if (!formData.origin || !formData.destination) {
+        return;
+      }
+
+      // Only calculate if we have at least one place selected from autocomplete
+      // This ensures we only auto-calculate when user selects from suggestions
+      if (!originPlace && !destinationPlace) {
+        return; // User typed manually, don't auto-calculate
+      }
+
+      setCalculatingDistance(true);
+      try {
+        const result = await calculateDistance(
+          formData.origin,
+          formData.destination,
+          originPlace || undefined,
+          destinationPlace || undefined
+        );
+
+        if (result.distance > 0) {
+          setFormData(prev => ({ ...prev, miles: result.distance.toString() }));
+        } else if (result.error) {
+          console.warn('Distance calculation error:', result.error);
+          // Don't show error to user, just log it
+        }
+      } catch (error) {
+        console.error('Error calculating distance:', error);
+      } finally {
+        setCalculatingDistance(false);
+      }
+    };
+
+    // Debounce the calculation to avoid excessive API calls
+    const timeoutId = setTimeout(calculateMiles, 500);
+    return () => clearTimeout(timeoutId);
+  }, [formData.origin, formData.destination, originPlace, destinationPlace]);
 
   // Real-time preview calculations
   const gross = parseFloat(formData.gross) || 0;
@@ -291,15 +336,23 @@ export const LoadForm: React.FC<LoadFormProps> = ({ onClose, onSave, currentUser
                 </div>
                 <div className="col-span-2 md:col-span-1">
                   <label className="block text-sm font-medium text-slate-700 mb-1">Miles</label>
-                  <input
-                    required
-                    name="miles"
-                    type="number"
-                    value={formData.miles}
-                    onChange={handleChange}
-                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
-                    placeholder="0"
-                  />
+                  <div className="relative">
+                    <input
+                      required
+                      name="miles"
+                      type="number"
+                      min="0"
+                      value={formData.miles}
+                      onChange={handleChange}
+                      className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                      placeholder="0"
+                    />
+                    {calculatingDistance && (
+                      <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                        <div className="w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+                      </div>
+                    )}
+                  </div>
                 </div>
                  <div className="col-span-2 md:col-span-1">
                   <label className="block text-sm font-medium text-slate-700 mb-1">Gas Advance ($)</label>
@@ -333,7 +386,13 @@ export const LoadForm: React.FC<LoadFormProps> = ({ onClose, onSave, currentUser
                 <label className="block text-sm font-medium text-slate-700 mb-1">Origin (From)</label>
                 <PlacesAutocomplete
                   value={formData.origin}
-                  onChange={(value) => setFormData({ ...formData, origin: value })}
+                  onChange={(value) => {
+                    setFormData({ ...formData, origin: value });
+                    if (!value) setOriginPlace(null); // Clear place when input is cleared
+                  }}
+                  onPlaceSelect={(place) => {
+                    setOriginPlace(place);
+                  }}
                   placeholder="City, ST"
                   className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
                   required
@@ -343,7 +402,13 @@ export const LoadForm: React.FC<LoadFormProps> = ({ onClose, onSave, currentUser
                 <label className="block text-sm font-medium text-slate-700 mb-1">Destination (To)</label>
                 <PlacesAutocomplete
                   value={formData.destination}
-                  onChange={(value) => setFormData({ ...formData, destination: value })}
+                  onChange={(value) => {
+                    setFormData({ ...formData, destination: value });
+                    if (!value) setDestinationPlace(null); // Clear place when input is cleared
+                  }}
+                  onPlaceSelect={(place) => {
+                    setDestinationPlace(place);
+                  }}
                   placeholder="City, ST"
                   className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
                   required
