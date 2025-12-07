@@ -1,22 +1,23 @@
 import { supabase, isSupabaseConfigured } from './supabaseClient';
-import { Load, DispatcherName, Transporter, Driver, UserProfile } from '../types';
+import { Load, DispatcherName, Transporter, Driver, UserProfile, Dispatcher } from '../types';
+import { getCompany, createCompany } from './companyService';
 
 // Mock Data for Demo Mode
 const MOCK_TRANSPORTERS: Transporter[] = [
-  { id: 't1', name: 'Smith Transport LLC', mcNumber: 'MC123456', contactPhone: '555-0101' },
-  { id: 't2', name: 'Fast Lane Logistics', mcNumber: 'MC987654', contactPhone: '555-0102' }
+  { id: 't1', name: 'Smith Transport LLC', mcNumber: 'MC123456', contactPhone: '555-0101', companyId: 'c1' },
+  { id: 't2', name: 'Fast Lane Logistics', mcNumber: 'MC987654', contactPhone: '555-0102', companyId: 'c1' }
 ];
 
 const MOCK_DRIVERS: Driver[] = [
-  { id: 'd1', name: 'Mike Johnson', transporterId: 't1', phone: '555-1111' },
-  { id: 'd2', name: 'Sarah Connor', transporterId: 't1', phone: '555-2222' },
-  { id: 'd3', name: 'Bob Lee', transporterId: 't2', phone: '555-3333' }
+  { id: 'd1', name: 'Mike Johnson', transporterId: 't1', phone: '555-1111', companyId: 'c1' },
+  { id: 'd2', name: 'Sarah Connor', transporterId: 't1', phone: '555-2222', companyId: 'c1' },
+  { id: 'd3', name: 'Bob Lee', transporterId: 't2', phone: '555-3333', companyId: 'c1' }
 ];
 
-const MOCK_DISPATCHERS: UserProfile[] = [
-  { id: 'u1', name: 'John', email: 'john@demo.com', role: 'dispatcher', feePercentage: 12 },
-  { id: 'u2', name: 'Nick', email: 'nick@demo.com', role: 'dispatcher', feePercentage: 12 },
-  { id: 'u3', name: 'Logan', email: 'logan@demo.com', role: 'dispatcher', feePercentage: 12 }
+const MOCK_DISPATCHERS: Dispatcher[] = [
+  { id: 'u1', name: 'John', email: 'john@demo.com', feePercentage: 12, companyId: 'c1' },
+  { id: 'u2', name: 'Nick', email: 'nick@demo.com', feePercentage: 12, companyId: 'c1' },
+  { id: 'u3', name: 'Logan', email: 'logan@demo.com', feePercentage: 12, companyId: 'c1' }
 ];
 
 const MOCK_LOADS: Load[] = [
@@ -33,7 +34,8 @@ const MOCK_LOADS: Load[] = [
     driverId: 'd1',
     origin: 'Miffinburg, PA',
     destination: 'Nashville, TN',
-    status: 'Factored'
+    status: 'Factored',
+    companyId: 'c1'
   },
   {
     id: '2',
@@ -48,7 +50,8 @@ const MOCK_LOADS: Load[] = [
     driverId: 'd2',
     origin: 'Arden, NC',
     destination: 'Delta, OH',
-    status: 'Factored'
+    status: 'Factored',
+    companyId: 'c1'
   },
   {
     id: '3',
@@ -63,7 +66,8 @@ const MOCK_LOADS: Load[] = [
     driverId: 'd3',
     origin: 'Topeka, IN',
     destination: 'Jamesport, MO',
-    status: 'Factored'
+    status: 'Factored',
+    companyId: 'c1'
   },
   {
     id: '4',
@@ -78,7 +82,8 @@ const MOCK_LOADS: Load[] = [
     driverId: 'd3',
     origin: 'Montgomery, AL',
     destination: 'Tucson, AZ',
-    status: 'Not yet Factored'
+    status: 'Not yet Factored',
+    companyId: 'c1'
   }
 ];
 
@@ -125,7 +130,8 @@ export const getLoads = async (): Promise<Load[]> => {
     destination: item.destination,
     status: item.status,
     rateConfirmationPdfUrl: item.rate_confirmation_pdf_url || undefined,
-    driverPayoutStatus: item.driver_payout_status || 'pending'
+    driverPayoutStatus: item.driver_payout_status || 'pending',
+    companyId: item.company_id
   }));
 };
 
@@ -135,6 +141,46 @@ export const createLoad = async (load: Omit<Load, 'id'>): Promise<Load> => {
     const newLoad = { ...load, id: Math.random().toString(36).substr(2, 9) };
     MOCK_LOADS.unshift(newLoad);
     return newLoad;
+  }
+
+  // Get current user's company_id using getCompany() which has fallback logic
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session?.user) {
+    throw new Error('User not authenticated');
+  }
+
+  // Use getCompany() which includes fallback logic to find company by owner_id
+  let company = await getCompany();
+  let companyId: string | undefined;
+  
+  if (!company) {
+    // If no company exists, try to create one for owners
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('role, name')
+      .eq('id', session.user.id)
+      .single();
+    
+    if (profile?.role === 'owner') {
+      try {
+        const newCompany = await createCompany(
+          profile?.name ? `${profile.name}'s Company` : 'My Company',
+          session.user.id
+        );
+        companyId = newCompany.id;
+      } catch (error) {
+        console.error('Error creating company for owner:', error);
+        throw new Error('Failed to create company. Please try again.');
+      }
+    } else {
+      throw new Error('User does not have a company assigned. Please contact support.');
+    }
+  } else {
+    companyId = company.id;
+  }
+
+  if (!companyId) {
+    throw new Error('User does not have a company assigned. Please contact support.');
   }
 
   const { data, error } = await supabase
@@ -153,7 +199,8 @@ export const createLoad = async (load: Omit<Load, 'id'>): Promise<Load> => {
       destination: load.destination,
       status: load.status,
       rate_confirmation_pdf_url: load.rateConfirmationPdfUrl || null,
-      driver_payout_status: load.driverPayoutStatus || 'pending'
+      driver_payout_status: load.driverPayoutStatus || 'pending',
+      company_id: companyId
     }])
     .select()
     .single();
@@ -176,7 +223,10 @@ export const createLoad = async (load: Omit<Load, 'id'>): Promise<Load> => {
     driverId: data.driver_id,
     origin: data.origin,
     destination: data.destination,
-    status: data.status
+    status: data.status,
+    rateConfirmationPdfUrl: data.rate_confirmation_pdf_url || undefined,
+    driverPayoutStatus: data.driver_payout_status || 'pending',
+    companyId: data.company_id
   };
 };
 
@@ -240,31 +290,129 @@ export const updateLoad = async (id: string, load: Omit<Load, 'id'>): Promise<Lo
     destination: data.destination,
     status: data.status,
     rateConfirmationPdfUrl: data.rate_confirmation_pdf_url || undefined,
-    driverPayoutStatus: data.driver_payout_status || 'pending'
+    driverPayoutStatus: data.driver_payout_status || 'pending',
+    companyId: data.company_id
   };
 };
 
 // --- FLEET OPERATIONS ---
 
-export const getDispatchers = async (): Promise<UserProfile[]> => {
+export const getDispatchers = async (): Promise<Dispatcher[]> => {
   if (!isSupabaseConfigured || !supabase) {
     return MOCK_DISPATCHERS;
   }
-  
-  const { data, error } = await supabase
-    .from('profiles')
-    .select('*')
-    .eq('role', 'dispatcher');
-    
+
+  const { data, error } = await supabase.from('dispatchers').select('*');
   if (error) throw error;
-  
-  return (data || []).map((profile: any) => ({
-    id: profile.id,
-    email: profile.email,
-    name: profile.name,
-    role: profile.role,
-    feePercentage: profile.fee_percentage || 12 // Default to 12% if not set
+
+  return (data || []).map((d: any) => ({
+    id: d.id,
+    name: d.name,
+    email: d.email,
+    phone: d.phone,
+    feePercentage: d.fee_percentage || 12,
+    companyId: d.company_id
   }));
+};
+
+export const createDispatcher = async (d: Omit<Dispatcher, 'id'>): Promise<Dispatcher> => {
+  if (!isSupabaseConfigured || !supabase) {
+    const newD = { ...d, id: Math.random().toString(36).substr(2, 9) };
+    MOCK_DISPATCHERS.push(newD);
+    return newD;
+  }
+
+  // Get current user's company_id
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session?.user) {
+    throw new Error('User not authenticated');
+  }
+
+  // Use getCompany() which has fallback logic to find company by owner_id
+  let company = await getCompany();
+  
+  // If no company found, check if user is an owner and create one
+  if (!company) {
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('role, name')
+      .eq('id', session.user.id)
+      .single();
+
+    if (profile?.role === 'owner') {
+      try {
+        company = await createCompany(
+          profile?.name ? `${profile.name}'s Company` : 'My Company',
+          session.user.id
+        );
+      } catch (error) {
+        console.error('Error creating company for owner:', error);
+        throw new Error('Failed to create company. Please try again.');
+      }
+    }
+  }
+
+  if (!company) {
+    throw new Error('User does not have a company assigned. Please create a company in Settings first.');
+  }
+
+  const companyId = company.id;
+
+  const { data: dispatcherData, error } = await supabase
+    .from('dispatchers')
+    .insert([{
+      name: d.name,
+      email: d.email,
+      phone: d.phone,
+      fee_percentage: d.feePercentage || 12,
+      company_id: companyId
+    }])
+    .select()
+    .single();
+
+  if (error) throw error;
+
+  return {
+    id: dispatcherData.id,
+    name: dispatcherData.name,
+    email: dispatcherData.email,
+    phone: dispatcherData.phone,
+    feePercentage: dispatcherData.fee_percentage || 12,
+    companyId: dispatcherData.company_id
+  };
+};
+
+export const updateDispatcher = async (id: string, d: Partial<Omit<Dispatcher, 'id' | 'companyId'>>): Promise<Dispatcher> => {
+  if (!isSupabaseConfigured || !supabase) {
+    const dispatcher = MOCK_DISPATCHERS.find(d => d.id === id);
+    if (!dispatcher) throw new Error('Dispatcher not found');
+    Object.assign(dispatcher, d);
+    return dispatcher;
+  }
+
+  const updateData: any = {};
+  if (d.name !== undefined) updateData.name = d.name;
+  if (d.email !== undefined) updateData.email = d.email;
+  if (d.phone !== undefined) updateData.phone = d.phone;
+  if (d.feePercentage !== undefined) updateData.fee_percentage = d.feePercentage;
+
+  const { data, error } = await supabase
+    .from('dispatchers')
+    .update(updateData)
+    .eq('id', id)
+    .select()
+    .single();
+
+  if (error) throw error;
+
+  return {
+    id: data.id,
+    name: data.name,
+    email: data.email,
+    phone: data.phone,
+    feePercentage: data.fee_percentage || 12,
+    companyId: data.company_id
+  };
 };
 
 export const getTransporters = async (): Promise<Transporter[]> => {
@@ -280,7 +428,8 @@ export const getTransporters = async (): Promise<Transporter[]> => {
     name: t.name,
     mcNumber: t.mc_number,
     contactEmail: t.contact_email,
-    contactPhone: t.contact_phone
+    contactPhone: t.contact_phone,
+    companyId: t.company_id
   }));
 };
 
@@ -291,25 +440,62 @@ export const createTransporter = async (t: Omit<Transporter, 'id'>): Promise<Tra
     return newT;
   }
 
+  // Get current user's company_id
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session?.user) {
+    throw new Error('User not authenticated');
+  }
+
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('company_id, role, name')
+    .eq('id', session.user.id)
+    .single();
+
+  let companyId = profile?.company_id;
+
+  // If user is an owner and doesn't have a company, create one
+  if (!companyId && profile?.role === 'owner') {
+    try {
+      const company = await createCompany(
+        profile?.name ? `${profile.name}'s Company` : 'My Company',
+        session.user.id
+      );
+      companyId = company.id;
+    } catch (error) {
+      console.error('Error creating company for owner:', error);
+      throw new Error('Failed to create company. Please try again.');
+    }
+  }
+
+  if (!companyId) {
+    throw new Error('User does not have a company assigned. Please contact support.');
+  }
+
   const { data, error } = await supabase
     .from('transporters')
     .insert([{
       name: t.name,
       mc_number: t.mcNumber,
       contact_email: t.contactEmail,
-      contact_phone: t.contactPhone
+      contact_phone: t.contactPhone,
+      company_id: companyId
     }])
     .select()
     .single();
 
-  if (error) throw error;
+  if (error) {
+    console.error('Error creating transporter:', error);
+    throw error;
+  }
 
   return {
     id: data.id,
     name: data.name,
     mcNumber: data.mc_number,
     contactEmail: data.contact_email,
-    contactPhone: data.contact_phone
+    contactPhone: data.contact_phone,
+    companyId: data.company_id
   };
 };
 
@@ -326,7 +512,8 @@ export const getDrivers = async (): Promise<Driver[]> => {
     name: d.name,
     transporterId: d.transporter_id,
     phone: d.phone,
-    email: d.email
+    email: d.email,
+    companyId: d.company_id
   }));
 };
 
@@ -337,13 +524,50 @@ export const createDriver = async (d: Omit<Driver, 'id'>): Promise<Driver> => {
     return newD;
   }
 
+  // Get current user's company_id
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session?.user) {
+    throw new Error('User not authenticated');
+  }
+
+  // Use getCompany() which has fallback logic to find company by owner_id
+  let company = await getCompany();
+  
+  // If no company found, check if user is an owner and create one
+  if (!company) {
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('role, name')
+      .eq('id', session.user.id)
+      .single();
+
+    if (profile?.role === 'owner') {
+      try {
+        company = await createCompany(
+          profile?.name ? `${profile.name}'s Company` : 'My Company',
+          session.user.id
+        );
+      } catch (error) {
+        console.error('Error creating company for owner:', error);
+        throw new Error('Failed to create company. Please try again.');
+      }
+    }
+  }
+
+  if (!company) {
+    throw new Error('User does not have a company assigned. Please create a company in Settings first.');
+  }
+
+  const companyId = company.id;
+
   const { data, error } = await supabase
     .from('drivers')
     .insert([{
       name: d.name,
-      transporter_id: d.transporterId,
+      transporter_id: d.transporterId || null,
       phone: d.phone,
-      email: d.email
+      email: d.email,
+      company_id: companyId
     }])
     .select()
     .single();
@@ -355,6 +579,46 @@ export const createDriver = async (d: Omit<Driver, 'id'>): Promise<Driver> => {
     name: data.name,
     transporterId: data.transporter_id,
     phone: data.phone,
-    email: data.email
+    email: data.email,
+    companyId: data.company_id
+  };
+};
+
+export const updateDriver = async (id: string, d: Partial<Omit<Driver, 'id' | 'companyId'>>): Promise<Driver> => {
+  if (!isSupabaseConfigured || !supabase) {
+    const index = MOCK_DRIVERS.findIndex(driver => driver.id === id);
+    if (index === -1) {
+      throw new Error('Driver not found');
+    }
+    const updatedDriver = { ...MOCK_DRIVERS[index], ...d };
+    MOCK_DRIVERS[index] = updatedDriver;
+    return updatedDriver;
+  }
+
+  const updateData: any = {};
+  if (d.name !== undefined) updateData.name = d.name;
+  if (d.phone !== undefined) updateData.phone = d.phone;
+  if (d.email !== undefined) updateData.email = d.email;
+  if (d.transporterId !== undefined) updateData.transporter_id = d.transporterId || null;
+
+  const { data, error } = await supabase
+    .from('drivers')
+    .update(updateData)
+    .eq('id', id)
+    .select()
+    .single();
+
+  if (error) {
+    console.error('Error updating driver:', error);
+    throw error;
+  }
+
+  return {
+    id: data.id,
+    name: data.name,
+    transporterId: data.transporter_id,
+    phone: data.phone,
+    email: data.email,
+    companyId: data.company_id
   };
 };

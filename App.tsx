@@ -20,7 +20,10 @@ import {
   ChevronRight,
   CreditCard,
   Megaphone,
-  Calendar
+  Calendar,
+  Building2,
+  FileBarChart,
+  FileDown
 } from 'lucide-react';
 import { Load, DispatcherName, CalculatedLoad, UserProfile, Driver } from './types';
 import { StatsCard } from './components/StatsCard';
@@ -33,10 +36,15 @@ import { Pricing } from './components/Pricing';
 import { PaymentConfirmation } from './components/PaymentConfirmation';
 import { Subscriptions } from './components/Subscriptions';
 import { Marketing } from './components/Marketing';
+import { CompanySettings } from './components/CompanySettings';
+import { ProfileSetup } from './components/ProfileSetup';
+import { Reports } from './components/reports/Reports';
 import { saveSubscription } from './services/subscriptionService';
 import { analyzeFleetPerformance } from './services/geminiService';
 import { getLoads, createLoad, updateLoad, getDrivers, getDispatchers } from './services/loadService';
 import { getCurrentUser, signOut } from './services/authService';
+import { getCompany } from './services/companyService';
+import { exportAIAnalysisToPDF } from './services/reports/reportService';
 import {
   BarChart,
   XAxis,
@@ -54,6 +62,7 @@ function App() {
   const [loads, setLoads] = useState<Load[]>([]);
   const [drivers, setDrivers] = useState<Driver[]>([]);
   const [dispatchers, setDispatchers] = useState<UserProfile[]>([]);
+  const [companyName, setCompanyName] = useState<string>('');
   const [dataLoading, setDataLoading] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [loadToEdit, setLoadToEdit] = useState<Load | null>(null);
@@ -67,7 +76,7 @@ function App() {
   const itemsPerPage = 10;
   const [aiAnalysis, setAiAnalysis] = useState<string | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
-  const [view, setView] = useState<'dashboard' | 'loads' | 'fleet' | 'pricing' | 'subscriptions' | 'marketing'>('dashboard');
+  const [view, setView] = useState<'dashboard' | 'loads' | 'fleet' | 'pricing' | 'subscriptions' | 'marketing' | 'company' | 'reports'>('dashboard');
   const [paymentStatus, setPaymentStatus] = useState<'success' | 'cancel' | null>(null);
   const [paymentPlan, setPaymentPlan] = useState<string | null>(null);
   const [paymentSessionId, setPaymentSessionId] = useState<string | null>(null);
@@ -337,14 +346,18 @@ function App() {
   const fetchData = async () => {
     setDataLoading(true);
     try {
-      const [loadsData, driversData, dispatchersData] = await Promise.all([
+      const [loadsData, driversData, dispatchersData, companyData] = await Promise.all([
         getLoads(),
         getDrivers(),
-        getDispatchers()
+        getDispatchers(),
+        getCompany()
       ]);
       setLoads(loadsData);
       setDrivers(driversData);
       setDispatchers(dispatchersData);
+      if (companyData) {
+        setCompanyName(companyData.name);
+      }
     } catch (error) {
       console.error("Failed to load data", error);
     } finally {
@@ -570,6 +583,23 @@ function App() {
     );
   }
 
+  // Check if user needs to create a profile
+  const needsProfileSetup = user && (user as any)._profileMissing === true;
+
+  if (needsProfileSetup) {
+    return (
+      <ProfileSetup
+        userId={user.id}
+        userEmail={user.email}
+        onProfileCreated={async () => {
+          // Refresh user data after profile is created
+          const updatedUser = await getCurrentUser();
+          setUser(updatedUser);
+        }}
+      />
+    );
+  }
+
   if (!user) {
     // Show payment confirmation even if not logged in (for public checkout)
     if (paymentStatus) {
@@ -658,6 +688,26 @@ function App() {
               <Users size={20} className="flex-shrink-0" />
               <span className="opacity-0 group-hover:opacity-100 transition-opacity duration-300 whitespace-nowrap overflow-hidden">Fleet & Drivers</span>
             </button>
+            {user.role === 'owner' && (
+              <button 
+                onClick={() => setView('reports')}
+                className={`w-full flex items-center justify-center group-hover:justify-start gap-3 px-4 py-3 rounded-xl transition-colors ${view === 'reports' ? 'bg-blue-600/10 text-blue-400 font-medium' : 'hover:bg-slate-800'}`}
+                title="Reports"
+              >
+                <FileBarChart size={20} className="flex-shrink-0" />
+                <span className="opacity-0 group-hover:opacity-100 transition-opacity duration-300 whitespace-nowrap overflow-hidden">Reports</span>
+              </button>
+            )}
+            {user.email === 'partsonmanyika@gmail.com' && (
+              <button 
+                onClick={() => setView('marketing')}
+                className={`w-full flex items-center justify-center group-hover:justify-start gap-3 px-4 py-3 rounded-xl transition-colors ${view === 'marketing' ? 'bg-blue-600/10 text-blue-400 font-medium' : 'hover:bg-slate-800'}`}
+                title="Marketing"
+              >
+                <Megaphone size={20} className="flex-shrink-0" />
+                <span className="opacity-0 group-hover:opacity-100 transition-opacity duration-300 whitespace-nowrap overflow-hidden">Marketing</span>
+              </button>
+            )}
             <button 
               onClick={() => setView('pricing')}
               className={`w-full flex items-center justify-center group-hover:justify-start gap-3 px-4 py-3 rounded-xl transition-colors ${view === 'pricing' ? 'bg-blue-600/10 text-blue-400 font-medium' : 'hover:bg-slate-800'}`}
@@ -677,12 +727,12 @@ function App() {
               </button>
             )}
             <button 
-              onClick={() => setView('marketing')}
-              className={`w-full flex items-center justify-center group-hover:justify-start gap-3 px-4 py-3 rounded-xl transition-colors ${view === 'marketing' ? 'bg-blue-600/10 text-blue-400 font-medium' : 'hover:bg-slate-800'}`}
-              title="Marketing"
+              onClick={() => setView('company')}
+              className={`w-full flex items-center justify-center group-hover:justify-start gap-3 px-4 py-3 rounded-xl transition-colors ${view === 'company' ? 'bg-blue-600/10 text-blue-400 font-medium' : 'hover:bg-slate-800'}`}
+              title={user.role === 'owner' ? 'Company Settings' : 'Company Information'}
             >
-              <Megaphone size={20} className="flex-shrink-0" />
-              <span className="opacity-0 group-hover:opacity-100 transition-opacity duration-300 whitespace-nowrap overflow-hidden">Marketing</span>
+              <Building2 size={20} className="flex-shrink-0" />
+              <span className="opacity-0 group-hover:opacity-100 transition-opacity duration-300 whitespace-nowrap overflow-hidden">Settings</span>
             </button>
           </nav>
         </div>
@@ -715,12 +765,17 @@ function App() {
       <main className="flex-1 flex flex-col overflow-hidden">
         <header className="bg-white border-b border-slate-200 flex-shrink-0 z-30">
           <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
-            <h1 className="text-2xl font-bold text-slate-800">
-              {view === 'dashboard' ? 'Fleet Overview' : view === 'fleet' ? 'Fleet Management' : view === 'pricing' ? 'Pricing Plans' : view === 'subscriptions' ? 'My Subscriptions' : view === 'marketing' ? 'Marketing Management' : 'Load Management'}
-            </h1>
+            <div>
+              <h1 className="text-2xl font-bold text-slate-800">
+                {view === 'dashboard' ? 'Fleet Overview' : view === 'fleet' ? 'Fleet Management' : view === 'pricing' ? 'Pricing Plans' : view === 'subscriptions' ? 'My Subscriptions' : view === 'marketing' ? 'Marketing Management' : view === 'reports' ? 'Reports' : view === 'company' ? 'Company Settings' : 'Load Management'}
+              </h1>
+              {companyName && user.role === 'dispatcher' && (
+                <p className="text-sm text-slate-500 mt-1">{companyName}</p>
+              )}
+            </div>
             <div className="flex items-center gap-4">
               {dataLoading && <span className="text-sm text-slate-400 animate-pulse">Syncing...</span>}
-               {view !== 'fleet' && view !== 'pricing' && view !== 'subscriptions' && view !== 'marketing' && (
+               {view !== 'fleet' && view !== 'pricing' && view !== 'subscriptions' && view !== 'marketing' && view !== 'company' && (
                  <button 
                   onClick={() => setIsModalOpen(true)}
                   className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2.5 rounded-lg text-sm font-medium shadow-sm transition-all hover:shadow-md"
@@ -742,6 +797,21 @@ function App() {
             <div className="max-w-7xl mx-auto px-6 py-8">
               <Marketing user={user} />
             </div>
+          ) : view === 'reports' ? (
+            <div className="max-w-7xl mx-auto px-6 py-8">
+              <Reports user={user} />
+            </div>
+          ) : view === 'company' ? (
+            <CompanySettings 
+              user={user} 
+              onCompanyCreated={async () => {
+                // Refresh user data to get updated companyId
+                const updatedUser = await getCurrentUser();
+                if (updatedUser) {
+                  setUser(updatedUser);
+                }
+              }}
+            />
           ) : (
         <div className="max-w-7xl mx-auto px-6 py-8 space-y-8">
           
@@ -830,14 +900,14 @@ function App() {
                   <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm flex flex-col">
                     <div className="flex items-center justify-between mb-6">
                       <div className="flex items-center gap-2">
-                        <BrainCircuit className="text-purple-600" size={24} />
+                        <BrainCircuit className="text-slate-600" size={24} />
                         <h3 className="text-lg font-bold text-slate-800">AI Analyst</h3>
                       </div>
                       {!aiAnalysis && (
                         <button 
                           onClick={handleGenerateAIReport}
                           disabled={isAnalyzing}
-                          className="text-sm text-purple-600 font-medium hover:text-purple-700 disabled:opacity-50"
+                          className="text-sm text-slate-600 font-medium hover:text-slate-800 disabled:opacity-50"
                         >
                           {isAnalyzing ? 'Thinking...' : 'Generate Report'}
                         </button>
@@ -847,7 +917,7 @@ function App() {
                     <div className="flex-1 bg-slate-50 rounded-xl p-4 border border-slate-100 overflow-y-auto max-h-[300px]">
                       {isAnalyzing ? (
                         <div className="flex flex-col items-center justify-center h-full text-slate-400 space-y-3">
-                          <div className="w-6 h-6 border-2 border-purple-500 border-t-transparent rounded-full animate-spin"></div>
+                          <div className="w-6 h-6 border-2 border-slate-500 border-t-transparent rounded-full animate-spin"></div>
                           <span className="text-sm">Analyzing market data...</span>
                         </div>
                       ) : aiAnalysis ? (
@@ -855,12 +925,21 @@ function App() {
                           <div className="whitespace-pre-wrap text-slate-600 text-sm leading-relaxed font-medium">
                             {aiAnalysis}
                           </div>
-                          <button 
-                            onClick={() => setAiAnalysis(null)} 
-                            className="mt-4 text-xs text-slate-400 underline hover:text-slate-600"
-                          >
-                            Clear Report
-                          </button>
+                          <div className="mt-4 flex items-center gap-3">
+                            <button
+                              onClick={() => exportAIAnalysisToPDF(aiAnalysis, `ai-analysis-${new Date().toISOString().split('T')[0]}`)}
+                              className="flex items-center gap-2 px-3 py-2 text-sm text-slate-600 hover:text-slate-800 hover:bg-slate-100 rounded-lg transition-colors"
+                            >
+                              <FileDown size={16} />
+                              Export PDF
+                            </button>
+                            <button 
+                              onClick={() => setAiAnalysis(null)} 
+                              className="text-xs text-slate-400 underline hover:text-slate-600"
+                            >
+                              Clear Report
+                            </button>
+                          </div>
                         </div>
                       ) : (
                         <div className="flex flex-col items-center justify-center h-full text-center">

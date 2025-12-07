@@ -540,7 +540,9 @@ export const getMarketingAnalytics = async (): Promise<MarketingAnalytics> => {
   ]);
 
   const totalPosts = posts.length;
-  const totalResponses = metrics.filter(m => m.metricType === 'response').length;
+  // Total responses includes all metric types (response, call_scheduled, demo_scheduled, conversion, not_interested)
+  // All of these are responses to marketing posts
+  const totalResponses = metrics.length;
   const totalCallsScheduled = metrics.filter(m => m.metricType === 'call_scheduled').length;
   const totalDemosScheduled = metrics.filter(m => m.metricType === 'demo_scheduled').length;
   const totalConversions = metrics.filter(m => m.metricType === 'conversion').length;

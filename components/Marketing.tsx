@@ -919,7 +919,13 @@ export const Marketing: React.FC<MarketingProps> = ({ user }) => {
                   <ResponsiveContainer width="100%" height={300}>
                     <PieChart>
                       <Pie
-                        data={analytics.metricsByType.filter(m => m.count > 0)}
+                        data={analytics.metricsByType
+                          .filter(m => m.count > 0)
+                          .map((m, index) => ({
+                            ...m,
+                            name: m.type.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase()),
+                            color: COLORS[index % COLORS.length]
+                          }))}
                         cx="50%"
                         cy="50%"
                         labelLine={false}
@@ -928,11 +934,13 @@ export const Marketing: React.FC<MarketingProps> = ({ user }) => {
                         fill="#8884d8"
                         dataKey="count"
                       >
-                        {analytics.metricsByType.map((entry, index) => (
-                          <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                        ))}
+                        {analytics.metricsByType
+                          .filter(m => m.count > 0)
+                          .map((entry, index) => (
+                            <Cell key={`cell-${entry.type}`} fill={COLORS[index % COLORS.length]} />
+                          ))}
                       </Pie>
-                      <Tooltip />
+                      <Tooltip formatter={(value: number) => [`${value}`, 'Count']} />
                     </PieChart>
                   </ResponsiveContainer>
                 </div>

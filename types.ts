@@ -1,9 +1,18 @@
+export interface Company {
+  id: string;
+  name: string;
+  ownerId: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface Transporter {
   id: string;
   name: string;
   mcNumber: string;
   contactEmail?: string;
   contactPhone?: string;
+  companyId: string;
 }
 
 export interface Driver {
@@ -12,6 +21,16 @@ export interface Driver {
   transporterId: string; // Link to Transporter
   phone?: string;
   email?: string;
+  companyId: string;
+}
+
+export interface Dispatcher {
+  id: string;
+  name: string;
+  email?: string;
+  phone?: string;
+  feePercentage: number;
+  companyId: string;
 }
 
 export interface Load {
@@ -30,6 +49,7 @@ export interface Load {
   status: 'Factored' | 'Not yet Factored';
   rateConfirmationPdfUrl?: string; // URL to the Rate Confirmation PDF
   driverPayoutStatus?: 'pending' | 'paid' | 'partial'; // Status of driver payout
+  companyId: string; // Reference to the company that owns this load
 }
 
 export interface CalculatedLoad extends Load {
@@ -56,16 +76,19 @@ export enum DispatcherName {
 }
 
 export type UserRole = 'owner' | 'dispatcher' | 'driver';
+export type UserStatus = 'active' | 'inactive';
 
 export interface UserProfile {
   id: string;
   email: string;
   name: string;
   role: UserRole;
+  status?: UserStatus; // User status: active or inactive
   feePercentage?: number; // Fee percentage for dispatchers (e.g., 12 for 12%)
   subscriptionPlan?: 'essential' | 'professional' | 'enterprise' | null;
   subscriptionStatus?: 'active' | 'trialing' | 'past_due' | 'canceled' | 'incomplete' | null;
   stripeCustomerId?: string;
+  companyId?: string; // Reference to the company this user belongs to
 }
 
 export interface MarketingAd {

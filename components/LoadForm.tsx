@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Load, Transporter, Driver, UserProfile } from '../types';
+import { Load, Transporter, Driver, UserProfile, Dispatcher } from '../types';
 import { X, Calculator, Upload, FileText } from 'lucide-react';
 import { getDispatchers, getTransporters, getDrivers } from '../services/loadService';
 import { uploadRateConfirmationPdf } from '../services/storageService';
@@ -14,7 +14,7 @@ interface LoadFormProps {
 export const LoadForm: React.FC<LoadFormProps> = ({ onClose, onSave, currentUser, loadToEdit }) => {
   const isEditMode = !!loadToEdit;
   // Data Options
-  const [dispatchers, setDispatchers] = useState<UserProfile[]>([]);
+  const [dispatchers, setDispatchers] = useState<Dispatcher[]>([]);
   const [transporters, setTransporters] = useState<Transporter[]>([]);
   const [drivers, setDrivers] = useState<Driver[]>([]);
   const [loadingOptions, setLoadingOptions] = useState(true);
@@ -65,10 +65,13 @@ export const LoadForm: React.FC<LoadFormProps> = ({ onClose, onSave, currentUser
     fetchData();
   }, [currentUser, isEditMode]);
 
-  // Filter drivers based on selected transporter
-  const availableDrivers = formData.transporterId 
-    ? drivers.filter(d => d.transporterId === formData.transporterId)
-    : [];
+  // Filter drivers based on selected transporter (for dispatchers)
+  // For owners, show all drivers from their company (no transporter filter needed)
+  const availableDrivers = currentUser.role === 'owner'
+    ? drivers // Owners see all drivers from their company
+    : (formData.transporterId 
+        ? drivers.filter(d => d.transporterId === formData.transporterId)
+        : []);
 
   // Real-time preview calculations
   const gross = parseFloat(formData.gross) || 0;
@@ -230,30 +233,33 @@ export const LoadForm: React.FC<LoadFormProps> = ({ onClose, onSave, currentUser
                     ))}
                   </select>
                </div>
-               <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">Carrier</label>
-                  <select
-                    name="transporterId"
-                    value={formData.transporterId}
-                    onChange={handleChange}
-                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-white"
-                  >
-                    <option value="">Select Carrier...</option>
-                    {transporters.map(t => (
-                      <option key={t.id} value={t.id}>{t.name}</option>
-                    ))}
-                  </select>
-               </div>
+               {/* Carrier field - only visible to dispatchers (owners don't manage transporters) */}
+               {currentUser.role !== 'owner' && (
+                 <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-1">Carrier</label>
+                    <select
+                      name="transporterId"
+                      value={formData.transporterId}
+                      onChange={handleChange}
+                      className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-white"
+                    >
+                      <option value="">Select Carrier...</option>
+                      {transporters.map(t => (
+                        <option key={t.id} value={t.id}>{t.name}</option>
+                      ))}
+                    </select>
+                 </div>
+               )}
                <div>
                   <label className="block text-sm font-medium text-slate-700 mb-1">Driver</label>
                   <select
                     name="driverId"
                     value={formData.driverId}
                     onChange={handleChange}
-                    disabled={!formData.transporterId}
+                    disabled={currentUser.role !== 'owner' && !formData.transporterId}
                     className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-white disabled:bg-slate-100 disabled:text-slate-400"
                   >
-                    <option value="">{formData.transporterId ? 'Select Driver...' : 'Select Carrier First'}</option>
+                    <option value="">{currentUser.role === 'owner' ? 'Select Driver...' : (formData.transporterId ? 'Select Driver...' : 'Select Carrier First')}</option>
                     {availableDrivers.map(d => (
                       <option key={d.id} value={d.id}>{d.name}</option>
                     ))}

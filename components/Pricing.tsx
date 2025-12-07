@@ -54,11 +54,9 @@ export const Pricing: React.FC<PricingProps> = ({ onClose }) => {
         { text: 'Load management & tracking', included: true },
         { text: 'Basic dashboard & analytics', included: true },
         { text: 'Mobile driver app access', included: true },
-        { text: '5 AI analysis reports/month', included: true },
         { text: 'Email support', included: true },
         { text: '30-day data retention', included: true },
-        { text: 'Custom dispatcher fees', included: false },
-        { text: 'Export reports (CSV, PDF)', included: false },
+        { text: 'Export reports (CSV, PDF)', included: true },
         { text: 'Priority support', included: false },
       ],
       cta: 'Start Free Trial',
@@ -75,7 +73,6 @@ export const Pricing: React.FC<PricingProps> = ({ onClose }) => {
         { text: 'Up to 15 users', included: true },
         { text: 'Up to 500 loads/month', included: true },
         { text: 'Everything in Essential', included: true },
-        { text: '20 AI analysis reports/month', included: true },
         { text: 'Custom dispatcher fee percentages', included: true },
         { text: 'Advanced analytics & reporting', included: true },
         { text: 'Priority email support', included: true },
@@ -106,8 +103,6 @@ export const Pricing: React.FC<PricingProps> = ({ onClose }) => {
         { text: 'Phone & email support', included: true },
         { text: 'Unlimited data retention', included: true },
         { text: 'Custom billing & invoicing', included: true },
-        { text: 'Multi-location support', included: true },
-        { text: 'SLA guarantees', included: true },
       ],
       cta: 'Contact Sales',
       popular: false,
@@ -397,14 +392,20 @@ export const Pricing: React.FC<PricingProps> = ({ onClose }) => {
           <h2 className="text-2xl font-bold text-slate-900 mb-4">Questions? We're here to help.</h2>
           <p className="text-slate-600 mb-6">Contact our sales team to discuss Enterprise pricing or custom solutions.</p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <button className="bg-slate-900 text-white px-8 py-3 rounded-xl font-semibold hover:bg-slate-800 transition-colors flex items-center justify-center gap-2">
+            <a 
+              href="mailto:partsonmanyika@gmail.com?subject=Enterprise Plan Inquiry&body=Hi, I'm interested in the Enterprise plan. Please contact me."
+              className="bg-slate-900 text-white px-8 py-3 rounded-xl font-semibold hover:bg-slate-800 transition-colors flex items-center justify-center gap-2"
+            >
               <Mail className="w-5 h-5" />
               Email Sales
-            </button>
-            <button className="bg-white text-slate-900 border-2 border-slate-300 px-8 py-3 rounded-xl font-semibold hover:border-slate-400 transition-colors flex items-center justify-center gap-2">
+            </a>
+            <a 
+              href="tel:+14694738724"
+              className="bg-white text-slate-900 border-2 border-slate-300 px-8 py-3 rounded-xl font-semibold hover:border-slate-400 transition-colors flex items-center justify-center gap-2"
+            >
               <Phone className="w-5 h-5" />
               Schedule a Demo
-            </button>
+            </a>
           </div>
         </div>
     </div>

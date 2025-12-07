@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { Transporter, Driver, UserProfile } from '../types';
-import { getTransporters, getDrivers, createTransporter, createDriver, getDispatchers } from '../services/loadService';
-import { createDispatcher } from '../services/authService';
-import { Truck, User, Plus, Search, Building2, Phone, Mail, FileBadge, Users as UsersIcon, AlertCircle, DollarSign } from 'lucide-react';
+import { Transporter, Driver, UserProfile, Dispatcher } from '../types';
+import { getTransporters, getDrivers, createTransporter, createDriver, updateDriver, getDispatchers, createDispatcher, updateDispatcher } from '../services/loadService';
+import { getCompany } from '../services/companyService';
+import { Truck, User, Plus, Search, Building2, Phone, Mail, FileBadge, Users as UsersIcon, AlertCircle, DollarSign, Edit2, X, Check } from 'lucide-react';
 
 interface FleetManagementProps {
   user: UserProfile;
@@ -13,15 +13,20 @@ export const FleetManagement: React.FC<FleetManagementProps> = ({ user }) => {
   const [activeTab, setActiveTab] = useState<'transporters' | 'drivers' | 'dispatchers'>(isOwner ? 'dispatchers' : 'transporters');
   const [transporters, setTransporters] = useState<Transporter[]>([]);
   const [drivers, setDrivers] = useState<Driver[]>([]);
-  const [dispatchers, setDispatchers] = useState<UserProfile[]>([]);
+  const [dispatchers, setDispatchers] = useState<Dispatcher[]>([]);
+  const [companyName, setCompanyName] = useState<string>('');
   const [loading, setLoading] = useState(false);
   const [showAddForm, setShowAddForm] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [editingDriverId, setEditingDriverId] = useState<string | null>(null);
+  const [editDriverForm, setEditDriverForm] = useState({ name: '', phone: '', email: '' });
+  const [editingDispatcherId, setEditingDispatcherId] = useState<string | null>(null);
+  const [editDispatcherForm, setEditDispatcherForm] = useState({ name: '', email: '', phone: '', feePercentage: '12' });
 
   // Form States
   const [tForm, setTForm] = useState({ name: '', mcNumber: '', contactPhone: '', contactEmail: '' });
-  const [dForm, setDForm] = useState({ name: '', transporterId: '', phone: '', email: '' });
-  const [dispForm, setDispForm] = useState({ name: '', email: '', password: '', feePercentage: '12' });
+  const [dForm, setDForm] = useState({ name: '', phone: '', email: '' });
+  const [dispForm, setDispForm] = useState({ name: '', email: '', phone: '', feePercentage: '12' });
 
   useEffect(() => {
     fetchData();
@@ -30,12 +35,16 @@ export const FleetManagement: React.FC<FleetManagementProps> = ({ user }) => {
   const fetchData = async () => {
     setLoading(true);
     try {
-      const [transportersData, driversData] = await Promise.all([
+      const [transportersData, driversData, companyData] = await Promise.all([
         getTransporters(),
-        getDrivers()
+        getDrivers(),
+        getCompany()
       ]);
       setTransporters(transportersData);
       setDrivers(driversData);
+      if (companyData) {
+        setCompanyName(companyData.name);
+      }
       
       if (isOwner) {
         const dispatchersData = await getDispatchers();
@@ -51,7 +60,8 @@ export const FleetManagement: React.FC<FleetManagementProps> = ({ user }) => {
   const handleAddTransporter = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const newT = await createTransporter(tForm);
+      // companyId is added automatically by createTransporter service
+      const newT = await createTransporter(tForm as any);
       setTransporters([...transporters, newT]);
       setShowAddForm(false);
       setTForm({ name: '', mcNumber: '', contactPhone: '', contactEmail: '' });
@@ -63,12 +73,76 @@ export const FleetManagement: React.FC<FleetManagementProps> = ({ user }) => {
   const handleAddDriver = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const newD = await createDriver(dForm);
+      // companyId is handled automatically by createDriver service
+      // transporterId is set to null for owners since they don't manage transporters
+      const newD = await createDriver({ ...dForm, transporterId: null as any } as any);
       setDrivers([...drivers, newD]);
       setShowAddForm(false);
-      setDForm({ name: '', transporterId: '', phone: '', email: '' });
-    } catch (e) {
-      alert('Failed to create driver');
+      setDForm({ name: '', phone: '', email: '' });
+    } catch (e: any) {
+      console.error('Error creating driver:', e);
+      alert(e.message || 'Failed to create driver');
+    }
+  };
+
+  const handleEditDriver = (driver: Driver) => {
+    setEditingDriverId(driver.id);
+    setEditDriverForm({ name: driver.name, phone: driver.phone || '', email: driver.email || '' });
+  };
+
+  const handleCancelEditDriver = () => {
+    setEditingDriverId(null);
+    setEditDriverForm({ name: '', phone: '', email: '' });
+  };
+
+  const handleSaveDriver = async (driverId: string) => {
+    try {
+      const updated = await updateDriver(driverId, editDriverForm);
+      setDrivers(drivers.map(d => d.id === driverId ? updated : d));
+      setEditingDriverId(null);
+      setEditDriverForm({ name: '', phone: '', email: '' });
+    } catch (e: any) {
+      console.error('Error updating driver:', e);
+      alert(e.message || 'Failed to update driver');
+    }
+  };
+
+  const handleEditDispatcher = (dispatcher: Dispatcher) => {
+    setEditingDispatcherId(dispatcher.id);
+    setEditDispatcherForm({ 
+      name: dispatcher.name, 
+      email: dispatcher.email || '', 
+      phone: dispatcher.phone || '',
+      feePercentage: dispatcher.feePercentage?.toString() || '12' 
+    });
+  };
+
+  const handleCancelEditDispatcher = () => {
+    setEditingDispatcherId(null);
+    setEditDispatcherForm({ name: '', email: '', phone: '', feePercentage: '12' });
+  };
+
+  const handleSaveDispatcher = async (dispatcherId: string) => {
+    try {
+      const feePercentage = parseFloat(editDispatcherForm.feePercentage) || 12;
+      if (feePercentage < 0 || feePercentage > 100) {
+        alert('Fee percentage must be between 0 and 100');
+        return;
+      }
+
+      const updated = await updateDispatcher(dispatcherId, {
+        name: editDispatcherForm.name,
+        email: editDispatcherForm.email || undefined,
+        phone: editDispatcherForm.phone || undefined,
+        feePercentage
+      });
+
+      setDispatchers(dispatchers.map(d => d.id === dispatcherId ? updated : d));
+      setEditingDispatcherId(null);
+      setEditDispatcherForm({ name: '', email: '', phone: '', feePercentage: '12' });
+    } catch (e: any) {
+      console.error('Error updating dispatcher:', e);
+      alert(e.message || 'Failed to update dispatcher');
     }
   };
 
@@ -77,30 +151,28 @@ export const FleetManagement: React.FC<FleetManagementProps> = ({ user }) => {
     setError(null);
     try {
       const feePercentage = parseFloat(dispForm.feePercentage) || 12;
+      
       if (feePercentage < 0 || feePercentage > 100) {
         setError('Fee percentage must be between 0 and 100');
         return;
       }
       
-      const { user: newDispatcher, error: createError } = await createDispatcher(
-        dispForm.email,
-        dispForm.password,
-        dispForm.name,
-        feePercentage
-      );
+      const newDispatcher = await createDispatcher({
+        name: dispForm.name,
+        email: dispForm.email || undefined,
+        phone: dispForm.phone || undefined,
+        feePercentage,
+        companyId: '' // Will be set by service
+      });
       
-      if (createError) {
-        setError(createError);
-        return;
-      }
-      
-      if (newDispatcher) {
-        setDispatchers([...dispatchers, newDispatcher]);
-        setShowAddForm(false);
-        setDispForm({ name: '', email: '', password: '', feePercentage: '12' });
-        setError(null);
-      }
+      // Refetch dispatchers to ensure we have the latest data from the database
+      const dispatchersData = await getDispatchers();
+      setDispatchers(dispatchersData);
+      setShowAddForm(false);
+      setDispForm({ name: '', email: '', phone: '', feePercentage: '12' });
+      setError(null);
     } catch (e: any) {
+      console.error('Error creating dispatcher:', e);
       setError(e.message || 'Failed to create dispatcher');
     }
   };
@@ -112,7 +184,7 @@ export const FleetManagement: React.FC<FleetManagementProps> = ({ user }) => {
           <div>
             <h2 className="text-xl font-bold text-slate-800">Fleet Management</h2>
             <p className="text-sm text-slate-500">
-              {isOwner ? 'Manage your carriers, drivers, and dispatchers' : 'Manage your carriers and drivers'}
+              {isOwner ? 'Manage your drivers and dispatchers' : 'Manage your carriers and drivers'}
             </p>
           </div>
           <button 
@@ -121,7 +193,7 @@ export const FleetManagement: React.FC<FleetManagementProps> = ({ user }) => {
           >
             <Plus size={18} />
             Add {
-              activeTab === 'transporters' ? 'Carrier' : 
+              !isOwner && activeTab === 'transporters' ? 'Carrier' : 
               activeTab === 'drivers' ? 'Driver' : 
               'Dispatcher'
             }
@@ -140,15 +212,17 @@ export const FleetManagement: React.FC<FleetManagementProps> = ({ user }) => {
               {activeTab === 'dispatchers' && <div className="absolute bottom-0 left-0 w-full h-0.5 bg-blue-600 rounded-t-full"></div>}
             </button>
           )}
-          <button 
-            onClick={() => setActiveTab('transporters')}
-            className={`pb-4 text-sm font-medium transition-colors relative ${
-              activeTab === 'transporters' ? 'text-blue-600' : 'text-slate-500 hover:text-slate-700'
-            }`}
-          >
-            Transporters / Carriers
-            {activeTab === 'transporters' && <div className="absolute bottom-0 left-0 w-full h-0.5 bg-blue-600 rounded-t-full"></div>}
-          </button>
+          {!isOwner && (
+            <button 
+              onClick={() => setActiveTab('transporters')}
+              className={`pb-4 text-sm font-medium transition-colors relative ${
+                activeTab === 'transporters' ? 'text-blue-600' : 'text-slate-500 hover:text-slate-700'
+              }`}
+            >
+              Transporters / Carriers
+              {activeTab === 'transporters' && <div className="absolute bottom-0 left-0 w-full h-0.5 bg-blue-600 rounded-t-full"></div>}
+            </button>
+          )}
           <button 
             onClick={() => setActiveTab('drivers')}
             className={`pb-4 text-sm font-medium transition-colors relative ${
@@ -189,10 +263,12 @@ export const FleetManagement: React.FC<FleetManagementProps> = ({ user }) => {
                  ) : activeTab === 'drivers' ? (
                    <form onSubmit={handleAddDriver} className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <input required placeholder="Driver Name" className="p-2 border rounded-lg" value={dForm.name} onChange={e => setDForm({...dForm, name: e.target.value})} />
-                      <select required className="p-2 border rounded-lg bg-white" value={dForm.transporterId} onChange={e => setDForm({...dForm, transporterId: e.target.value})}>
-                        <option value="">Select Carrier...</option>
-                        {transporters.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
-                      </select>
+                      <input 
+                        disabled 
+                        placeholder="Carrier" 
+                        className="p-2 border rounded-lg bg-slate-100 text-slate-600 cursor-not-allowed" 
+                        value={companyName || 'Company Name'} 
+                      />
                       <input placeholder="Phone" className="p-2 border rounded-lg" value={dForm.phone} onChange={e => setDForm({...dForm, phone: e.target.value})} />
                       <input placeholder="Email" className="p-2 border rounded-lg" value={dForm.email} onChange={e => setDForm({...dForm, email: e.target.value})} />
                       <button type="submit" className="md:col-span-2 bg-blue-600 text-white py-2 rounded-lg font-medium hover:bg-blue-700">Register Driver</button>
@@ -213,39 +289,28 @@ export const FleetManagement: React.FC<FleetManagementProps> = ({ user }) => {
                         onChange={e => setDispForm({...dispForm, name: e.target.value})} 
                       />
                       <input 
-                        required 
                         type="email"
-                        placeholder="Email Address" 
+                        placeholder="Email Address (Optional)" 
                         className="p-2 border rounded-lg" 
                         value={dispForm.email} 
                         onChange={e => setDispForm({...dispForm, email: e.target.value})} 
                       />
                       <input 
-                        required 
-                        type="password"
-                        placeholder="Password" 
+                        placeholder="Phone (Optional)" 
                         className="p-2 border rounded-lg" 
-                        value={dispForm.password} 
-                        onChange={e => setDispForm({...dispForm, password: e.target.value})} 
+                        value={dispForm.phone} 
+                        onChange={e => setDispForm({...dispForm, phone: e.target.value})} 
                       />
-                      <div className="relative">
-                        <label className="block text-xs text-slate-600 mb-1">Fee Percentage (%)</label>
-                        <input 
-                          required 
-                          type="number"
-                          min="0"
-                          max="100"
-                          step="0.1"
-                          placeholder="12.0" 
-                          className="p-2 border rounded-lg w-full" 
-                          value={dispForm.feePercentage} 
-                          onChange={e => setDispForm({...dispForm, feePercentage: e.target.value})} 
-                        />
-                        <span className="absolute right-3 top-8 text-slate-400 text-sm">%</span>
-                      </div>
-                      <div className="md:col-span-2 text-xs text-slate-500">
-                        The dispatcher will receive login credentials to access the system. Fee percentage determines their commission rate.
-                      </div>
+                      <input 
+                        type="number"
+                        min="0"
+                        max="100"
+                        step="0.1"
+                        placeholder="Fee Percentage (%)" 
+                        className="p-2 border rounded-lg" 
+                        value={dispForm.feePercentage} 
+                        onChange={e => setDispForm({...dispForm, feePercentage: e.target.value})} 
+                      />
                       <button type="submit" className="md:col-span-2 bg-blue-600 text-white py-2 rounded-lg font-medium hover:bg-blue-700">Register Dispatcher</button>
                    </form>
                  )}
@@ -253,7 +318,7 @@ export const FleetManagement: React.FC<FleetManagementProps> = ({ user }) => {
             )}
 
             {/* LISTS */}
-            {activeTab === 'transporters' && (
+            {!isOwner && activeTab === 'transporters' && (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {transporters.map(t => (
                   <div key={t.id} className="p-4 border border-slate-200 rounded-xl hover:shadow-md transition-shadow bg-white">
@@ -288,24 +353,95 @@ export const FleetManagement: React.FC<FleetManagementProps> = ({ user }) => {
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {drivers.map(d => {
                   const carrier = transporters.find(t => t.id === d.transporterId);
+                  // For owners, show company name instead of carrier
+                  const displayCarrier = isOwner 
+                    ? (companyName || 'Company')
+                    : (carrier ? carrier.name : 'Unknown Carrier');
+                  const isEditing = editingDriverId === d.id;
+                  
                   return (
                     <div key={d.id} className="p-4 border border-slate-200 rounded-xl hover:shadow-md transition-shadow bg-white">
                       <div className="flex items-start justify-between mb-3">
-                        <div className="flex items-center gap-3">
+                        <div className="flex items-center gap-3 flex-1">
                           <div className="p-2 bg-emerald-100 rounded-lg text-emerald-600">
                             <User size={20} />
                           </div>
-                          <div>
-                            <h4 className="font-bold text-slate-800">{d.name}</h4>
-                            <div className="text-xs text-slate-500">
-                              {carrier ? carrier.name : 'Unknown Carrier'}
+                          <div className="flex-1">
+                            {isEditing ? (
+                              <input
+                                type="text"
+                                value={editDriverForm.name}
+                                onChange={(e) => setEditDriverForm({...editDriverForm, name: e.target.value})}
+                                className="w-full px-2 py-1 border border-slate-300 rounded text-sm font-bold text-slate-800"
+                                placeholder="Driver Name"
+                              />
+                            ) : (
+                              <h4 className="font-bold text-slate-800">{d.name}</h4>
+                            )}
+                            <div className="text-xs text-slate-500 mt-1">
+                              {displayCarrier}
                             </div>
                           </div>
                         </div>
+                        <div className="flex items-center gap-1">
+                          {isEditing ? (
+                            <>
+                              <button
+                                onClick={() => handleSaveDriver(d.id)}
+                                className="p-1.5 text-green-600 hover:bg-green-50 rounded transition-colors"
+                                title="Save"
+                              >
+                                <Check size={16} />
+                              </button>
+                              <button
+                                onClick={handleCancelEditDriver}
+                                className="p-1.5 text-red-600 hover:bg-red-50 rounded transition-colors"
+                                title="Cancel"
+                              >
+                                <X size={16} />
+                              </button>
+                            </>
+                          ) : (
+                            <button
+                              onClick={() => handleEditDriver(d)}
+                              className="p-1.5 text-slate-400 hover:text-slate-600 hover:bg-slate-50 rounded transition-colors"
+                              title="Edit"
+                            >
+                              <Edit2 size={16} />
+                            </button>
+                          )}
+                        </div>
                       </div>
                       <div className="space-y-2 text-sm text-slate-600 mt-4 pt-4 border-t border-slate-50">
-                         {d.phone && <div className="flex items-center gap-2"><Phone size={14} className="text-slate-400"/> {d.phone}</div>}
-                         {d.email && <div className="flex items-center gap-2"><Mail size={14} className="text-slate-400"/> {d.email}</div>}
+                        {isEditing ? (
+                          <>
+                            <div className="flex items-center gap-2">
+                              <Phone size={14} className="text-slate-400"/>
+                              <input
+                                type="text"
+                                value={editDriverForm.phone}
+                                onChange={(e) => setEditDriverForm({...editDriverForm, phone: e.target.value})}
+                                className="flex-1 px-2 py-1 border border-slate-300 rounded text-sm"
+                                placeholder="Phone"
+                              />
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <Mail size={14} className="text-slate-400"/>
+                              <input
+                                type="email"
+                                value={editDriverForm.email}
+                                onChange={(e) => setEditDriverForm({...editDriverForm, email: e.target.value})}
+                                className="flex-1 px-2 py-1 border border-slate-300 rounded text-sm"
+                                placeholder="Email"
+                              />
+                            </div>
+                          </>
+                        ) : (
+                          <>
+                            {d.phone && <div className="flex items-center gap-2"><Phone size={14} className="text-slate-400"/> {d.phone}</div>}
+                            {d.email && <div className="flex items-center gap-2"><Mail size={14} className="text-slate-400"/> {d.email}</div>}
+                          </>
+                        )}
                       </div>
                     </div>
                   );
@@ -316,32 +452,115 @@ export const FleetManagement: React.FC<FleetManagementProps> = ({ user }) => {
 
             {activeTab === 'dispatchers' && (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {dispatchers.map(d => (
-                  <div key={d.id} className="p-4 border border-slate-200 rounded-xl hover:shadow-md transition-shadow bg-white">
-                    <div className="flex items-start justify-between mb-3">
-                      <div className="flex items-center gap-3">
-                        <div className="p-2 bg-blue-100 rounded-lg text-blue-600">
-                          <UsersIcon size={20} />
-                        </div>
-                        <div>
-                          <h4 className="font-bold text-slate-800">{d.name}</h4>
-                          <div className="text-xs text-slate-500">
-                            Dispatcher
+                {dispatchers.map(d => {
+                  const isEditing = editingDispatcherId === d.id;
+                  
+                  return (
+                    <div key={d.id} className="p-4 border border-slate-200 rounded-xl hover:shadow-md transition-shadow bg-white">
+                      <div className="flex items-start justify-between mb-3">
+                        <div className="flex items-center gap-3 flex-1">
+                          <div className="p-2 bg-blue-100 rounded-lg text-blue-600">
+                            <UsersIcon size={20} />
+                          </div>
+                          <div className="flex-1">
+                            {isEditing ? (
+                              <input
+                                type="text"
+                                value={editDispatcherForm.name}
+                                onChange={(e) => setEditDispatcherForm({...editDispatcherForm, name: e.target.value})}
+                                className="w-full px-2 py-1 border border-slate-300 rounded text-sm font-bold text-slate-800"
+                                placeholder="Full Name"
+                              />
+                            ) : (
+                              <h4 className="font-bold text-slate-800">{d.name}</h4>
+                            )}
+                            <div className="text-xs text-slate-500 mt-1">
+                              Dispatcher
+                            </div>
                           </div>
                         </div>
+                        <div className="flex items-center gap-1">
+                          {isEditing ? (
+                            <>
+                              <button
+                                onClick={() => handleSaveDispatcher(d.id)}
+                                className="p-1.5 text-green-600 hover:bg-green-50 rounded transition-colors"
+                                title="Save"
+                              >
+                                <Check size={16} />
+                              </button>
+                              <button
+                                onClick={handleCancelEditDispatcher}
+                                className="p-1.5 text-red-600 hover:bg-red-50 rounded transition-colors"
+                                title="Cancel"
+                              >
+                                <X size={16} />
+                              </button>
+                            </>
+                          ) : (
+                            <button
+                              onClick={() => handleEditDispatcher(d)}
+                              className="p-1.5 text-slate-400 hover:text-slate-600 hover:bg-slate-50 rounded transition-colors"
+                              title="Edit"
+                            >
+                              <Edit2 size={16} />
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                      <div className="space-y-2 text-sm text-slate-600 mt-4 pt-4 border-t border-slate-50">
+                        {isEditing ? (
+                          <>
+                            <div className="flex items-center gap-2">
+                              <Mail size={14} className="text-slate-400"/>
+                              <input
+                                type="email"
+                                value={editDispatcherForm.email}
+                                onChange={(e) => setEditDispatcherForm({...editDispatcherForm, email: e.target.value})}
+                                className="flex-1 px-2 py-1 border border-slate-300 rounded text-sm"
+                                placeholder="Email"
+                              />
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <Phone size={14} className="text-slate-400"/>
+                              <input
+                                type="tel"
+                                value={editDispatcherForm.phone}
+                                onChange={(e) => setEditDispatcherForm({...editDispatcherForm, phone: e.target.value})}
+                                className="flex-1 px-2 py-1 border border-slate-300 rounded text-sm"
+                                placeholder="Phone"
+                              />
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <DollarSign size={14} className="text-slate-400"/>
+                              <input
+                                type="number"
+                                min="0"
+                                max="100"
+                                step="0.1"
+                                value={editDispatcherForm.feePercentage}
+                                onChange={(e) => setEditDispatcherForm({...editDispatcherForm, feePercentage: e.target.value})}
+                                className="flex-1 px-2 py-1 border border-slate-300 rounded text-sm"
+                                placeholder="Fee %"
+                              />
+                            </div>
+                          </>
+                        ) : (
+                          <>
+                            {d.email && <div className="flex items-center gap-2"><Mail size={14} className="text-slate-400"/> {d.email}</div>}
+                            {d.phone && <div className="flex items-center gap-2"><Phone size={14} className="text-slate-400"/> {d.phone}</div>}
+                            {d.feePercentage !== undefined && (
+                              <div className="flex items-center gap-2">
+                                <DollarSign size={14} className="text-slate-400"/>
+                                <span>Fee: {d.feePercentage}%</span>
+                              </div>
+                            )}
+                          </>
+                        )}
                       </div>
                     </div>
-                    <div className="space-y-2 text-sm text-slate-600 mt-4 pt-4 border-t border-slate-50">
-                       <div className="flex items-center gap-2"><Mail size={14} className="text-slate-400"/> {d.email}</div>
-                       {d.feePercentage !== undefined && (
-                         <div className="flex items-center gap-2">
-                           <DollarSign size={14} className="text-slate-400"/>
-                           <span>Fee: {d.feePercentage}%</span>
-                         </div>
-                       )}
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
                 {dispatchers.length === 0 && <div className="col-span-3 text-center text-slate-400 py-10">No dispatchers registered yet.</div>}
               </div>
             )}
