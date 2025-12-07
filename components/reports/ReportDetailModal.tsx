@@ -28,9 +28,9 @@ export const ReportDetailModal: React.FC<ReportDetailModalProps> = ({
         <div className="sticky top-0 bg-white border-b border-slate-200 px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
             {isDriver ? (
-              <Truck className="w-6 h-6 text-blue-600" />
+              <Truck className="w-6 h-6 text-slate-600" />
             ) : (
-              <Users className="w-6 h-6 text-blue-600" />
+              <Users className="w-6 h-6 text-slate-600" />
             )}
             <h2 className="text-2xl font-bold text-slate-800">
               {isDriver ? driverReport?.driverName : dispatcherReport?.dispatcherName}
@@ -129,13 +129,13 @@ export const ReportDetailModal: React.FC<ReportDetailModalProps> = ({
                 <div className="space-y-2">
                   <div className="flex justify-between">
                     <span className="text-slate-600">Factored:</span>
-                    <span className="font-semibold text-emerald-600">
+                    <span className="font-semibold text-slate-800">
                       {driverReport?.loadsByStatus.factored}
                     </span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-slate-600">Not Factored:</span>
-                    <span className="font-semibold text-amber-600">
+                    <span className="font-semibold text-slate-800">
                       {driverReport?.loadsByStatus.notFactored}
                     </span>
                   </div>
@@ -152,13 +152,13 @@ export const ReportDetailModal: React.FC<ReportDetailModalProps> = ({
                   </div>
                   <div className="flex justify-between">
                     <span className="text-slate-600">Paid:</span>
-                    <span className="font-semibold text-green-600">
+                    <span className="font-semibold text-slate-800">
                       {driverReport?.payoutStatus.paid}
                     </span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-slate-600">Partial:</span>
-                    <span className="font-semibold text-yellow-600">
+                    <span className="font-semibold text-slate-800">
                       {driverReport?.payoutStatus.partial}
                     </span>
                   </div>
@@ -209,14 +209,14 @@ export const ReportDetailModal: React.FC<ReportDetailModalProps> = ({
                       </td>
                       {isDriver ? (
                         <>
-                          <td className="p-3 text-sm text-right font-semibold text-emerald-600">
+                          <td className="p-3 text-sm text-right font-semibold text-slate-800">
                             ${load.driverPay.toFixed(2)}
                           </td>
                           <td className="p-3 text-center">
                             <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
                               load.status === 'Factored' 
-                                ? 'bg-emerald-100 text-emerald-800' 
-                                : 'bg-amber-100 text-amber-800'
+                                ? 'bg-slate-100 text-slate-800' 
+                                : 'bg-slate-100 text-slate-800'
                             }`}>
                               {load.status}
                             </span>
@@ -224,9 +224,9 @@ export const ReportDetailModal: React.FC<ReportDetailModalProps> = ({
                           <td className="p-3 text-center">
                             <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
                               load.driverPayoutStatus === 'paid' 
-                                ? 'bg-green-100 text-green-800' 
+                                ? 'bg-slate-100 text-slate-800' 
                                 : load.driverPayoutStatus === 'partial'
-                                ? 'bg-yellow-100 text-yellow-800'
+                                ? 'bg-slate-100 text-slate-800'
                                 : 'bg-slate-100 text-slate-800'
                             }`}>
                               {load.driverPayoutStatus === 'paid' ? 'Paid' :
@@ -236,14 +236,14 @@ export const ReportDetailModal: React.FC<ReportDetailModalProps> = ({
                         </>
                       ) : (
                         <>
-                          <td className="p-3 text-sm text-right font-semibold text-blue-600">
+                          <td className="p-3 text-sm text-right font-semibold text-slate-800">
                             ${load.dispatchFee.toFixed(2)}
                           </td>
                           <td className="p-3 text-center">
                             <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
                               load.status === 'Factored' 
-                                ? 'bg-emerald-100 text-emerald-800' 
-                                : 'bg-amber-100 text-amber-800'
+                                ? 'bg-slate-100 text-slate-800' 
+                                : 'bg-slate-100 text-slate-800'
                             }`}>
                               {load.status}
                             </span>

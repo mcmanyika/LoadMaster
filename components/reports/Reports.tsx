@@ -233,7 +233,7 @@ export const Reports: React.FC<ReportsProps> = ({ user }) => {
               }}
               className={`flex-1 px-6 py-4 text-sm font-medium transition-colors ${
                 activeTab === 'drivers'
-                  ? 'text-blue-600 border-b-2 border-blue-600 bg-blue-50/50'
+                  ? 'text-slate-800 border-b-2 border-slate-600 bg-slate-50/50'
                   : 'text-slate-600 hover:text-slate-800 hover:bg-slate-50'
               }`}
             >
@@ -247,7 +247,7 @@ export const Reports: React.FC<ReportsProps> = ({ user }) => {
               }}
               className={`flex-1 px-6 py-4 text-sm font-medium transition-colors ${
                 activeTab === 'dispatchers'
-                  ? 'text-blue-600 border-b-2 border-blue-600 bg-blue-50/50'
+                  ? 'text-slate-800 border-b-2 border-slate-600 bg-slate-50/50'
                   : 'text-slate-600 hover:text-slate-800 hover:bg-slate-50'
               }`}
             >

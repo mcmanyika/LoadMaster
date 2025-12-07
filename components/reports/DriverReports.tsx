@@ -88,8 +88,8 @@ export const DriverReports: React.FC<DriverReportsProps> = ({
       return <ArrowUpDown size={14} className="text-slate-400 ml-1" />;
     }
     return localSortDirection === 'asc' 
-      ? <ArrowUp size={14} className="text-blue-600 ml-1" />
-      : <ArrowDown size={14} className="text-blue-600 ml-1" />;
+      ? <ArrowUp size={14} className="text-slate-600 ml-1" />
+      : <ArrowDown size={14} className="text-slate-600 ml-1" />;
   };
 
   const handleExportCSV = () => {
@@ -129,21 +129,18 @@ export const DriverReports: React.FC<DriverReportsProps> = ({
         <ReportCard
           title="Total Driver Pay"
           value={`$${summary.totalPay.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
-          icon={<DollarSign className="w-5 h-5 text-emerald-400" />}
-          colorClass="bg-emerald-50"
+          icon={<DollarSign className="w-5 h-5 text-slate-400" />}
         />
         <ReportCard
           title="Total Miles"
           value={summary.totalMiles.toLocaleString()}
-          icon={<MapPin className="w-5 h-5 text-blue-400" />}
-          colorClass="bg-blue-50"
+          icon={<MapPin className="w-5 h-5 text-slate-400" />}
         />
         <ReportCard
           title="Avg Rate/Mile"
           value={`$${summary.avgRPM.toFixed(2)}`}
           subValue="Across all drivers"
-          icon={<DollarSign className="w-5 h-5 text-purple-400" />}
-          colorClass="bg-purple-50"
+          icon={<DollarSign className="w-5 h-5 text-slate-400" />}
         />
       </div>
 
@@ -240,7 +237,7 @@ export const DriverReports: React.FC<DriverReportsProps> = ({
                     <td className="p-4 font-medium text-slate-800">{report.driverName}</td>
                     <td className="p-4 text-right text-slate-600">{report.totalLoads}</td>
                     <td className="p-4 text-right">
-                      <span className="font-semibold text-emerald-600">
+                      <span className="font-semibold text-slate-800">
                         ${report.totalPay.toFixed(2)}
                       </span>
                     </td>
@@ -252,10 +249,10 @@ export const DriverReports: React.FC<DriverReportsProps> = ({
                     </td>
                     <td className="p-4 text-center">
                       <div className="flex flex-col gap-1 text-xs">
-                        <span className="text-emerald-600">
+                        <span className="text-slate-600">
                           F: {report.loadsByStatus.factored}
                         </span>
-                        <span className="text-amber-600">
+                        <span className="text-slate-600">
                           NF: {report.loadsByStatus.notFactored}
                         </span>
                       </div>
@@ -265,10 +262,10 @@ export const DriverReports: React.FC<DriverReportsProps> = ({
                         <span className="text-slate-600">
                           P: {report.payoutStatus.pending}
                         </span>
-                        <span className="text-green-600">
+                        <span className="text-slate-600">
                           Paid: {report.payoutStatus.paid}
                         </span>
-                        <span className="text-yellow-600">
+                        <span className="text-slate-600">
                           Part: {report.payoutStatus.partial}
                         </span>
                       </div>
@@ -321,7 +318,7 @@ export const DriverReports: React.FC<DriverReportsProps> = ({
                     onClick={() => setCurrentPage(pageNum)}
                     className={`px-3 py-1 rounded-lg text-sm font-medium transition-colors ${
                       currentPage === pageNum
-                        ? 'bg-blue-600 text-white'
+                        ? 'bg-slate-600 text-white'
                         : 'text-slate-600 hover:bg-slate-100'
                     }`}
                   >
