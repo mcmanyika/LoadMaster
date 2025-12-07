@@ -427,6 +427,7 @@ export const getTransporters = async (): Promise<Transporter[]> => {
     id: t.id,
     name: t.name,
     mcNumber: t.mc_number,
+    registrationNumber: t.registration_number,
     contactEmail: t.contact_email,
     contactPhone: t.contact_phone,
     companyId: t.company_id
@@ -476,7 +477,8 @@ export const createTransporter = async (t: Omit<Transporter, 'id'>): Promise<Tra
     .from('transporters')
     .insert([{
       name: t.name,
-      mc_number: t.mcNumber,
+      mc_number: t.mcNumber || null,
+      registration_number: t.registrationNumber || null,
       contact_email: t.contactEmail,
       contact_phone: t.contactPhone,
       company_id: companyId
@@ -493,6 +495,48 @@ export const createTransporter = async (t: Omit<Transporter, 'id'>): Promise<Tra
     id: data.id,
     name: data.name,
     mcNumber: data.mc_number,
+    registrationNumber: data.registration_number,
+    contactEmail: data.contact_email,
+    contactPhone: data.contact_phone,
+    companyId: data.company_id
+  };
+};
+
+export const updateTransporter = async (id: string, t: Partial<Omit<Transporter, 'id' | 'companyId'>>): Promise<Transporter> => {
+  if (!isSupabaseConfigured || !supabase) {
+    const index = MOCK_TRANSPORTERS.findIndex(transporter => transporter.id === id);
+    if (index === -1) {
+      throw new Error('Transporter not found');
+    }
+    const updatedTransporter = { ...MOCK_TRANSPORTERS[index], ...t };
+    MOCK_TRANSPORTERS[index] = updatedTransporter;
+    return updatedTransporter;
+  }
+
+  const updateData: any = {};
+  if (t.name !== undefined) updateData.name = t.name;
+  if (t.mcNumber !== undefined) updateData.mc_number = t.mcNumber || null;
+  if (t.registrationNumber !== undefined) updateData.registration_number = t.registrationNumber || null;
+  if (t.contactEmail !== undefined) updateData.contact_email = t.contactEmail || null;
+  if (t.contactPhone !== undefined) updateData.contact_phone = t.contactPhone || null;
+
+  const { data, error } = await supabase
+    .from('transporters')
+    .update(updateData)
+    .eq('id', id)
+    .select()
+    .single();
+
+  if (error) {
+    console.error('Error updating transporter:', error);
+    throw error;
+  }
+
+  return {
+    id: data.id,
+    name: data.name,
+    mcNumber: data.mc_number,
+    registrationNumber: data.registration_number,
     contactEmail: data.contact_email,
     contactPhone: data.contact_phone,
     companyId: data.company_id

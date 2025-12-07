@@ -28,6 +28,7 @@ import {
   Filter
 } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
+import { ErrorModal } from './ErrorModal';
 
 interface MarketingProps {
   user: UserProfile;
@@ -47,6 +48,7 @@ export const Marketing: React.FC<MarketingProps> = ({ user }) => {
   const [editingPostId, setEditingPostId] = useState<string | null>(null);
   const [editingMetricId, setEditingMetricId] = useState<string | null>(null);
   const [dateFilter, setDateFilter] = useState({ startDate: '', endDate: '' });
+  const [errorModal, setErrorModal] = useState<{ isOpen: boolean; message: string }>({ isOpen: false, message: '' });
 
   // Form states
   const [postForm, setPostForm] = useState({ adId: '', notes: '', platform: 'whatsapp', postedAt: '' });
@@ -128,7 +130,7 @@ export const Marketing: React.FC<MarketingProps> = ({ user }) => {
     } catch (error: any) {
       console.error('Error saving post:', error);
       const errorMessage = error?.message || error?.error_description || 'Unknown error occurred';
-      alert(`Failed to ${editingPostId ? 'update' : 'create'} post: ${errorMessage}`);
+      setErrorModal({ isOpen: true, message: `Failed to ${editingPostId ? 'update' : 'create'} post: ${errorMessage}` });
     }
   };
 
@@ -186,9 +188,9 @@ export const Marketing: React.FC<MarketingProps> = ({ user }) => {
         notes: ''
       });
       fetchData();
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error saving metric:', error);
-      alert(`Failed to ${editingMetricId ? 'update' : 'create'} metric`);
+      setErrorModal({ isOpen: true, message: `Failed to ${editingMetricId ? 'update' : 'create'} metric: ${error?.message || 'Unknown error occurred'}` });
     }
   };
 
@@ -969,6 +971,11 @@ export const Marketing: React.FC<MarketingProps> = ({ user }) => {
           )}
         </>
       )}
+      <ErrorModal
+        isOpen={errorModal.isOpen}
+        message={errorModal.message}
+        onClose={() => setErrorModal({ isOpen: false, message: '' })}
+      />
     </div>
   );
 };

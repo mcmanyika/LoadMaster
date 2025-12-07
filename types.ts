@@ -9,7 +9,8 @@ export interface Company {
 export interface Transporter {
   id: string;
   name: string;
-  mcNumber: string;
+  mcNumber?: string;
+  registrationNumber?: string;
   contactEmail?: string;
   contactPhone?: string;
   companyId: string;
@@ -122,4 +123,59 @@ export interface MarketingMetric {
   notes?: string;
   createdAt: string;
   createdBy?: string;
+}
+
+export interface ExpenseCategory {
+  id: string;
+  name: string;
+  description?: string;
+  icon?: string;
+  color?: string;
+  createdAt: string;
+}
+
+export type PaymentMethod = 'cash' | 'check' | 'credit_card' | 'ach' | 'other';
+export type PaymentStatus = 'paid' | 'pending' | 'recurring';
+export type RecurringFrequency = 'monthly' | 'quarterly' | 'yearly';
+
+export interface Expense {
+  id: string;
+  companyId: string;
+  categoryId: string;
+  amount: number;
+  description?: string;
+  expenseDate: string;
+  vendor?: string;
+  receiptUrl?: string;
+  vehicleId?: string; // transporterId
+  driverId?: string;
+  loadId?: string;
+  paymentMethod?: PaymentMethod;
+  paymentStatus: PaymentStatus;
+  recurringFrequency?: RecurringFrequency | null;
+  createdBy?: string;
+  createdAt: string;
+  updatedAt: string;
+  // Joined fields
+  category?: ExpenseCategory;
+  vehicleName?: string;
+  driverName?: string;
+  loadCompany?: string;
+}
+
+export interface ExpenseSummary {
+  totalExpenses: number;
+  expensesByCategory: Array<{
+    categoryId: string;
+    categoryName: string;
+    total: number;
+    count: number;
+  }>;
+  expensesByMonth: Array<{
+    month: string;
+    total: number;
+    count: number;
+  }>;
+  averageExpense: number;
+  largestExpense: Expense | null;
 }

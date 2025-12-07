@@ -34,11 +34,11 @@ export const filterLoadsByDate = (
 
 /**
  * Export data to CSV format
+ * Returns { success: boolean, error?: string }
  */
-export const exportToCSV = (data: any[], filename: string): void => {
+export const exportToCSV = (data: any[], filename: string): { success: boolean; error?: string } => {
   if (data.length === 0) {
-    alert('No data to export');
-    return;
+    return { success: false, error: 'No data to export' };
   }
 
   // Get headers from first object
@@ -80,23 +80,115 @@ export const exportToCSV = (data: any[], filename: string): void => {
   document.body.removeChild(link);
   
   URL.revokeObjectURL(url);
+  return { success: true };
 };
 
 /**
- * Export data to PDF using browser print functionality
- * For a more advanced PDF, consider using a library like jsPDF
+ * Export expenses to PDF using browser print functionality
+ * Returns { success: boolean, error?: string }
  */
-export const exportToPDF = (data: any[], type: 'driver' | 'dispatcher', filename: string): void => {
-  if (data.length === 0) {
-    alert('No data to export');
-    return;
+export const exportExpensesToPDF = (expenses: any[], filename: string): { success: boolean; error?: string } => {
+  if (expenses.length === 0) {
+    return { success: false, error: 'No data to export' };
   }
 
   // Create a printable table
   const printWindow = window.open('', '_blank');
   if (!printWindow) {
-    alert('Please allow popups to export PDF');
-    return;
+    return { success: false, error: 'Please allow popups to export PDF' };
+  }
+
+  const totalAmount = expenses.reduce((sum, exp) => sum + (exp.amount || 0), 0);
+  
+  printWindow.document.write(`
+    <!DOCTYPE html>
+    <html>
+      <head>
+        <title>Expense Report - ${filename}</title>
+        <style>
+          body { font-family: Arial, sans-serif; padding: 20px; }
+          h1 { color: #1e293b; margin-bottom: 10px; }
+          .meta { color: #64748b; margin-bottom: 20px; }
+          table { width: 100%; border-collapse: collapse; margin-top: 20px; font-size: 12px; }
+          th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+          th { background-color: #f1f5f9; font-weight: bold; }
+          tr:nth-child(even) { background-color: #f9fafb; }
+          .total-row { font-weight: bold; background-color: #e0e7ff; }
+          @media print {
+            body { margin: 0; }
+            @page { margin: 1cm; }
+          }
+        </style>
+      </head>
+      <body>
+        <h1>Expense Report</h1>
+        <div class="meta">
+          <p>Generated: ${new Date().toLocaleString()}</p>
+          <p>Total Expenses: ${expenses.length} | Total Amount: $${totalAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+        </div>
+        <table>
+          <thead>
+            <tr>
+              <th>Date</th>
+              <th>Category</th>
+              <th>Description</th>
+              <th>Vendor</th>
+              <th>Amount</th>
+              <th>Vehicle</th>
+              <th>Driver</th>
+              <th>Payment Method</th>
+              <th>Payment Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${expenses.map(exp => `
+              <tr>
+                <td>${new Date(exp.expenseDate).toLocaleDateString()}</td>
+                <td>${exp.category?.name || 'N/A'}</td>
+                <td>${exp.description || 'N/A'}</td>
+                <td>${exp.vendor || 'N/A'}</td>
+                <td>$${exp.amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                <td>${exp.vehicleName || 'N/A'}</td>
+                <td>${exp.driverName || 'N/A'}</td>
+                <td>${exp.paymentMethod ? exp.paymentMethod.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase()) : 'N/A'}</td>
+                <td>${exp.paymentStatus ? exp.paymentStatus.charAt(0).toUpperCase() + exp.paymentStatus.slice(1) : 'N/A'}</td>
+              </tr>
+            `).join('')}
+            <tr class="total-row">
+              <td colspan="4"><strong>Total</strong></td>
+              <td><strong>$${totalAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</strong></td>
+              <td colspan="4"></td>
+            </tr>
+          </tbody>
+        </table>
+      </body>
+    </html>
+  `);
+  
+  printWindow.document.close();
+  printWindow.focus();
+  
+  // Wait for content to load, then print
+  setTimeout(() => {
+    printWindow.print();
+  }, 250);
+  return { success: true };
+};
+
+/**
+ * Export data to PDF using browser print functionality
+ * For a more advanced PDF, consider using a library like jsPDF
+ * Returns { success: boolean, error?: string }
+ */
+export const exportToPDF = (data: any[], type: 'driver' | 'dispatcher', filename: string): { success: boolean; error?: string } => {
+  if (data.length === 0) {
+    return { success: false, error: 'No data to export' };
+  }
+
+  // Create a printable table
+  const printWindow = window.open('', '_blank');
+  if (!printWindow) {
+    return { success: false, error: 'Please allow popups to export PDF' };
   }
 
   const reportType = type === 'driver' ? 'Driver' : 'Dispatcher';
@@ -136,6 +228,7 @@ export const exportToPDF = (data: any[], type: 'driver' | 'dispatcher', filename
     // Optionally close after printing
     // printWindow.close();
   }, 250);
+  return { success: true };
 };
 
 /**
@@ -209,18 +302,17 @@ const generateHTMLTable = (data: any[], type: 'driver' | 'dispatcher'): string =
 
 /**
  * Export AI analysis report to PDF
+ * Returns { success: boolean, error?: string }
  */
-export const exportAIAnalysisToPDF = (analysis: string, filename: string = 'ai-analysis'): void => {
+export const exportAIAnalysisToPDF = (analysis: string, filename: string = 'ai-analysis'): { success: boolean; error?: string } => {
   if (!analysis || analysis.trim() === '') {
-    alert('No analysis to export');
-    return;
+    return { success: false, error: 'No analysis to export' };
   }
 
   // Create a printable document
   const printWindow = window.open('', '_blank');
   if (!printWindow) {
-    alert('Please allow popups to export PDF');
-    return;
+    return { success: false, error: 'Please allow popups to export PDF' };
   }
 
   // Convert markdown-like formatting to HTML
@@ -292,5 +384,6 @@ export const exportAIAnalysisToPDF = (analysis: string, filename: string = 'ai-a
   setTimeout(() => {
     printWindow.print();
   }, 250);
+  return { success: true };
 };
 

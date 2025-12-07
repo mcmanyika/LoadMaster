@@ -23,7 +23,9 @@ import {
   Calendar,
   Building2,
   FileBarChart,
-  FileDown
+  FileDown,
+  Receipt,
+  TrendingUp
 } from 'lucide-react';
 import { Load, DispatcherName, CalculatedLoad, UserProfile, Driver } from './types';
 import { StatsCard } from './components/StatsCard';
@@ -39,11 +41,14 @@ import { Marketing } from './components/Marketing';
 import { CompanySettings } from './components/CompanySettings';
 import { ProfileSetup } from './components/ProfileSetup';
 import { Reports } from './components/reports/Reports';
+import { Expenses } from './components/Expenses';
+import { ErrorModal } from './components/ErrorModal';
 import { saveSubscription } from './services/subscriptionService';
 import { analyzeFleetPerformance } from './services/geminiService';
 import { getLoads, createLoad, updateLoad, getDrivers, getDispatchers } from './services/loadService';
 import { getCurrentUser, signOut } from './services/authService';
 import { getCompany } from './services/companyService';
+import { getExpenseSummary } from './services/expenseService';
 import { exportAIAnalysisToPDF } from './services/reports/reportService';
 import {
   BarChart,
@@ -63,6 +68,8 @@ function App() {
   const [drivers, setDrivers] = useState<Driver[]>([]);
   const [dispatchers, setDispatchers] = useState<UserProfile[]>([]);
   const [companyName, setCompanyName] = useState<string>('');
+  const [company, setCompany] = useState<{ id: string; name: string } | null>(null);
+  const [expenseSummary, setExpenseSummary] = useState<any>(null);
   const [dataLoading, setDataLoading] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [loadToEdit, setLoadToEdit] = useState<Load | null>(null);
@@ -71,12 +78,13 @@ function App() {
   const [selectedDriverId, setSelectedDriverId] = useState<string>('');
   const [dateFilter, setDateFilter] = useState({ startDate: '', endDate: '' });
   const [sortBy, setSortBy] = useState<keyof CalculatedLoad>('dropDate');
+  const [errorModal, setErrorModal] = useState<{ isOpen: boolean; message: string }>({ isOpen: false, message: '' });
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
   const [aiAnalysis, setAiAnalysis] = useState<string | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
-  const [view, setView] = useState<'dashboard' | 'loads' | 'fleet' | 'pricing' | 'subscriptions' | 'marketing' | 'company' | 'reports'>('dashboard');
+  const [view, setView] = useState<'dashboard' | 'loads' | 'fleet' | 'pricing' | 'subscriptions' | 'marketing' | 'company' | 'reports' | 'expenses'>('dashboard');
   const [paymentStatus, setPaymentStatus] = useState<'success' | 'cancel' | null>(null);
   const [paymentPlan, setPaymentPlan] = useState<string | null>(null);
   const [paymentSessionId, setPaymentSessionId] = useState<string | null>(null);
@@ -357,6 +365,10 @@ function App() {
       setDispatchers(dispatchersData);
       if (companyData) {
         setCompanyName(companyData.name);
+        setCompany({ id: companyData.id, name: companyData.name });
+        // Fetch expense summary for dashboard
+        const summary = await getExpenseSummary(companyData.id);
+        setExpenseSummary(summary);
       }
     } catch (error) {
       console.error("Failed to load data", error);
@@ -474,9 +486,9 @@ function App() {
     try {
       const newLoad = await createLoad(newLoadData);
       setLoads(prev => [newLoad, ...prev]);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Failed to save load", error);
-      alert("Failed to save load. Please check your connection.");
+      setErrorModal({ isOpen: true, message: error?.message || "Failed to save load. Please check your connection." });
     }
   };
 
@@ -486,9 +498,9 @@ function App() {
       const updatedLoad = await updateLoad(loadToEdit.id, loadData);
       setLoads(prev => prev.map(l => l.id === loadToEdit.id ? updatedLoad : l));
       setLoadToEdit(null);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Failed to update load", error);
-      alert("Failed to update load. Please check your connection.");
+      setErrorModal({ isOpen: true, message: error?.message || "Failed to update load. Please check your connection." });
     }
   };
 
@@ -700,6 +712,16 @@ function App() {
                 <span className="opacity-0 group-hover:opacity-100 transition-opacity duration-300 whitespace-nowrap overflow-hidden">Reports</span>
               </button>
             )}
+            {user.role === 'owner' && (
+              <button 
+                onClick={() => setView('expenses')}
+                className={`w-full flex items-center justify-center group-hover:justify-start gap-3 px-4 py-3 rounded-xl transition-colors ${view === 'expenses' ? 'bg-blue-600/10 text-blue-400 font-medium' : 'hover:bg-slate-800'}`}
+                title="Expenses"
+              >
+                <Receipt size={20} className="flex-shrink-0" />
+                <span className="opacity-0 group-hover:opacity-100 transition-opacity duration-300 whitespace-nowrap overflow-hidden">Expenses</span>
+              </button>
+            )}
             {user.email === 'partsonmanyika@gmail.com' && (
               <button 
                 onClick={() => setView('marketing')}
@@ -769,7 +791,7 @@ function App() {
           <div className="mx-auto px-4 py-4 flex items-center justify-between">
             <div>
               <h1 className="text-2xl font-bold text-slate-800">
-                {view === 'dashboard' ? 'Fleet Overview' : view === 'fleet' ? 'Fleet Management' : view === 'pricing' ? 'Pricing Plans' : view === 'subscriptions' ? 'My Subscriptions' : view === 'marketing' ? 'Marketing Management' : view === 'reports' ? 'Reports' : view === 'company' ? 'Company Settings' : 'Load Management'}
+                {view === 'dashboard' ? 'Fleet Overview' : view === 'fleet' ? 'Fleet Management' : view === 'pricing' ? 'Pricing Plans' : view === 'subscriptions' ? 'My Subscriptions' : view === 'marketing' ? 'Marketing Management' : view === 'reports' ? 'Reports' : view === 'expenses' ? 'Expenses' : view === 'company' ? 'Company Settings' : 'Load Management'}
               </h1>
               {companyName && user.role === 'dispatcher' && (
                 <p className="text-sm text-slate-500 mt-1">{companyName}</p>
@@ -777,7 +799,7 @@ function App() {
             </div>
             <div className="flex items-center gap-4">
               {dataLoading && <span className="text-sm text-slate-400 animate-pulse">Syncing...</span>}
-               {view !== 'fleet' && view !== 'pricing' && view !== 'subscriptions' && view !== 'marketing' && view !== 'company' && (
+               {view !== 'fleet' && view !== 'pricing' && view !== 'subscriptions' && view !== 'marketing' && view !== 'company' && view !== 'expenses' && (
                  <button 
                   onClick={() => setIsModalOpen(true)}
                   className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2.5 rounded-lg text-sm font-medium shadow-sm transition-all hover:shadow-md"
@@ -803,6 +825,18 @@ function App() {
             <div className="mx-auto px-4 py-8">
               <Reports user={user} />
             </div>
+          ) : view === 'expenses' ? (
+            company ? (
+              <div className="mx-auto px-4 py-8">
+                <Expenses user={user} companyId={company.id} />
+              </div>
+            ) : (
+              <div className="mx-auto px-4 py-8">
+                <div className="bg-white rounded-lg border border-slate-200 p-12 text-center">
+                  <p className="text-slate-500">Please set up your company first in Company Settings.</p>
+                </div>
+              </div>
+            )
           ) : view === 'company' ? (
             <CompanySettings 
               user={user} 
@@ -811,6 +845,12 @@ function App() {
                 const updatedUser = await getCurrentUser();
                 if (updatedUser) {
                   setUser(updatedUser);
+                }
+                // Refresh company data
+                const companyData = await getCompany();
+                if (companyData) {
+                  setCompanyName(companyData.name);
+                  setCompany({ id: companyData.id, name: companyData.name });
                 }
               }}
             />
@@ -862,7 +902,41 @@ function App() {
 
               {/* Dashboard View Specifics */}
               {view === 'dashboard' && (
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                <>
+                  {/* Expense Summary Cards */}
+                  {expenseSummary && company && (
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                      <StatsCard
+                        title="Total Expenses"
+                        value={`$${expenseSummary.totalExpenses.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
+                        subValue="All time"
+                        icon={<Receipt className="w-6 h-6 text-slate-900" />}
+                        colorClass="bg-slate-100"
+                      />
+                      <StatsCard
+                        title="Average Expense"
+                        value={`$${expenseSummary.averageExpense.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
+                        subValue={`${expenseSummary.expensesByCategory.reduce((sum: number, cat: any) => sum + cat.count, 0)} expenses`}
+                        icon={<TrendingUp className="w-6 h-6 text-slate-900" />}
+                        colorClass="bg-slate-100"
+                      />
+                      <StatsCard
+                        title="Top Category"
+                        value={expenseSummary.expensesByCategory.length > 0 ? expenseSummary.expensesByCategory[0].categoryName : 'N/A'}
+                        subValue={expenseSummary.expensesByCategory.length > 0 ? `$${expenseSummary.expensesByCategory[0].total.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : 'No expenses'}
+                        icon={<DollarSign className="w-6 h-6 text-slate-900" />}
+                        colorClass="bg-slate-100"
+                      />
+                      <StatsCard
+                        title="Largest Expense"
+                        value={expenseSummary.largestExpense ? `$${expenseSummary.largestExpense.amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '$0.00'}
+                        subValue={expenseSummary.largestExpense?.category?.name || 'N/A'}
+                        icon={<FileText className="w-6 h-6 text-slate-900" />}
+                        colorClass="bg-slate-100"
+                      />
+                    </div>
+                  )}
+                  <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                   
                   {/* Chart Section */}
                   <div className="lg:col-span-2 bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
@@ -929,7 +1003,12 @@ function App() {
                           </div>
                           <div className="mt-4 flex items-center gap-3">
                             <button
-                              onClick={() => exportAIAnalysisToPDF(aiAnalysis, `ai-analysis-${new Date().toISOString().split('T')[0]}`)}
+                              onClick={() => {
+                                const result = exportAIAnalysisToPDF(aiAnalysis, `ai-analysis-${new Date().toISOString().split('T')[0]}`);
+                                if (!result.success && result.error) {
+                                  setErrorModal({ isOpen: true, message: result.error });
+                                }
+                              }}
                               className="flex items-center gap-2 px-3 py-2 text-sm text-slate-600 hover:text-slate-800 hover:bg-slate-100 rounded-lg transition-colors"
                             >
                               <FileDown size={16} />
@@ -951,8 +1030,8 @@ function App() {
                       )}
                     </div>
                   </div>
-
                 </div>
+                </>
               )}
 
               {/* Recent Loads / All Loads Table */}
@@ -1260,6 +1339,11 @@ function App() {
         />
       )}
       {isSettingsOpen && <ConnectionModal onClose={() => setIsSettingsOpen(false)} />}
+      <ErrorModal
+        isOpen={errorModal.isOpen}
+        message={errorModal.message}
+        onClose={() => setErrorModal({ isOpen: false, message: '' })}
+      />
     </div>
   );
 }

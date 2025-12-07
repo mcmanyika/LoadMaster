@@ -91,11 +91,11 @@ export const LoadForm: React.FC<LoadFormProps> = ({ onClose, onSave, currentUser
     const file = e.target.files?.[0];
     if (file) {
       if (file.type !== 'application/pdf') {
-        alert('Please upload a PDF file');
+        setErrorModal({ isOpen: true, message: 'Please upload a PDF file' });
         return;
       }
       if (file.size > 10 * 1024 * 1024) { // 10MB limit
-        alert('File size must be less than 10MB');
+        setErrorModal({ isOpen: true, message: 'File size must be less than 10MB' });
         return;
       }
       setPdfFile(file);

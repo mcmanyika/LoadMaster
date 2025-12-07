@@ -3,6 +3,7 @@ import { DriverReport } from '../../types/reports';
 import { ReportCard } from './ReportCard';
 import { ReportDetailModal } from './ReportDetailModal';
 import { exportToCSV, exportToPDF } from '../../services/reports/reportService';
+import { ErrorModal } from '../ErrorModal';
 import { Truck, DollarSign, MapPin, FileText, Download, FileDown, ArrowUpDown, ArrowUp, ArrowDown, ChevronLeft, ChevronRight } from 'lucide-react';
 
 interface DriverReportsProps {
@@ -24,6 +25,7 @@ export const DriverReports: React.FC<DriverReportsProps> = ({
   const itemsPerPage = 10;
   const [selectedReport, setSelectedReport] = useState<DriverReport | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [errorModal, setErrorModal] = useState<{ isOpen: boolean; message: string }>({ isOpen: false, message: '' });
 
   // Calculate summary statistics
   const summary = useMemo(() => {
@@ -105,11 +107,17 @@ export const DriverReports: React.FC<DriverReportsProps> = ({
       'Paid Payouts': r.payoutStatus.paid,
       'Partial Payouts': r.payoutStatus.partial
     }));
-    exportToCSV(csvData, `driver-reports-${new Date().toISOString().split('T')[0]}`);
+    const result = exportToCSV(csvData, `driver-reports-${new Date().toISOString().split('T')[0]}`);
+    if (!result.success && result.error) {
+      setErrorModal({ isOpen: true, message: result.error });
+    }
   };
 
   const handleExportPDF = () => {
-    exportToPDF(sortedReports, 'driver', `driver-reports-${new Date().toISOString().split('T')[0]}`);
+    const result = exportToPDF(sortedReports, 'driver', `driver-reports-${new Date().toISOString().split('T')[0]}`);
+    if (!result.success && result.error) {
+      setErrorModal({ isOpen: true, message: result.error });
+    }
   };
 
   return (
@@ -346,6 +354,11 @@ export const DriverReports: React.FC<DriverReportsProps> = ({
         onClose={() => setIsModalOpen(false)}
         report={selectedReport}
         type="driver"
+      />
+      <ErrorModal
+        isOpen={errorModal.isOpen}
+        message={errorModal.message}
+        onClose={() => setErrorModal({ isOpen: false, message: '' })}
       />
     </div>
   );

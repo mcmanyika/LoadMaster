@@ -3,6 +3,7 @@ import { DispatcherReport } from '../../types/reports';
 import { ReportCard } from './ReportCard';
 import { ReportDetailModal } from './ReportDetailModal';
 import { exportToCSV, exportToPDF } from '../../services/reports/reportService';
+import { ErrorModal } from '../ErrorModal';
 import { Users, DollarSign, FileText, Download, FileDown, ArrowUpDown, ArrowUp, ArrowDown, ChevronLeft, ChevronRight } from 'lucide-react';
 
 interface DispatcherReportsProps {
@@ -24,6 +25,7 @@ export const DispatcherReports: React.FC<DispatcherReportsProps> = ({
   const itemsPerPage = 10;
   const [selectedReport, setSelectedReport] = useState<DispatcherReport | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [errorModal, setErrorModal] = useState<{ isOpen: boolean; message: string }>({ isOpen: false, message: '' });
 
   // Calculate summary statistics
   const summary = useMemo(() => {
@@ -100,11 +102,17 @@ export const DispatcherReports: React.FC<DispatcherReportsProps> = ({
       'Factored Loads': r.loadsByStatus.factored,
       'Not Factored Loads': r.loadsByStatus.notFactored
     }));
-    exportToCSV(csvData, `dispatcher-reports-${new Date().toISOString().split('T')[0]}`);
+    const result = exportToCSV(csvData, `dispatcher-reports-${new Date().toISOString().split('T')[0]}`);
+    if (!result.success && result.error) {
+      setErrorModal({ isOpen: true, message: result.error });
+    }
   };
 
   const handleExportPDF = () => {
-    exportToPDF(sortedReports, 'dispatcher', `dispatcher-reports-${new Date().toISOString().split('T')[0]}`);
+    const result = exportToPDF(sortedReports, 'dispatcher', `dispatcher-reports-${new Date().toISOString().split('T')[0]}`);
+    if (!result.success && result.error) {
+      setErrorModal({ isOpen: true, message: result.error });
+    }
   };
 
   return (
@@ -310,6 +318,11 @@ export const DispatcherReports: React.FC<DispatcherReportsProps> = ({
         onClose={() => setIsModalOpen(false)}
         report={selectedReport}
         type="dispatcher"
+      />
+      <ErrorModal
+        isOpen={errorModal.isOpen}
+        message={errorModal.message}
+        onClose={() => setErrorModal({ isOpen: false, message: '' })}
       />
     </div>
   );
