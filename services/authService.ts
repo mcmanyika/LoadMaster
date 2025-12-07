@@ -66,7 +66,7 @@ export const signIn = async (email: string, password: string): Promise<{ user: U
       feePercentage: profile?.fee_percentage,
       companyId: profile?.company_id,
     };
-    
+
     return { user: userProfile, error: null };
   }
 
@@ -96,7 +96,7 @@ export const signUp = async (email: string, password: string, name: string, role
   if (data.user) {
     // Create profile entry with default status 'active'
     await supabase.from('profiles').insert([{ id: data.user.id, name, role, status: 'active' }]);
-    
+
     // If user is an owner, create a company for them
     if (role === 'owner') {
       try {
@@ -107,19 +107,19 @@ export const signUp = async (email: string, password: string, name: string, role
         // Continue anyway - company can be created later
       }
     }
-    
+
     // Fetch profile again to get company_id
     const { data: profile } = await supabase
       .from('profiles')
       .select('company_id')
       .eq('id', data.user.id)
       .single();
-    
+
     return {
-      user: { 
-        id: data.user.id, 
-        email: data.user.email!, 
-        name, 
+      user: {
+        id: data.user.id,
+        email: data.user.email!,
+        name,
         role,
         companyId: profile?.company_id
       },
@@ -132,9 +132,23 @@ export const signUp = async (email: string, password: string, name: string, role
 
 export const signOut = async () => {
   if (isSupabaseConfigured && supabase) {
+    // Sign out from Supabase - this clears the session
     await supabase.auth.signOut();
   }
+  // Clear local storage
   localStorage.removeItem('trucking_user');
+  // Clear all Supabase-related localStorage items to ensure complete sign out
+  Object.keys(localStorage).forEach(key => {
+    if (key.startsWith('sb-') || key.includes('supabase') || key.includes('auth-token')) {
+      localStorage.removeItem(key);
+    }
+  });
+  // Also clear sessionStorage
+  Object.keys(sessionStorage).forEach(key => {
+    if (key.startsWith('sb-') || key.includes('supabase') || key.includes('auth-token')) {
+      sessionStorage.removeItem(key);
+    }
+  });
 };
 
 export const getCurrentUser = async (): Promise<UserProfile | null> => {
@@ -148,10 +162,10 @@ export const getCurrentUser = async (): Promise<UserProfile | null> => {
 
   // Fetch profile
   const { data: profile, error: profileError } = await supabase
-      .from('profiles')
-      .select('*')
-      .eq('id', session.user.id)
-      .single();
+    .from('profiles')
+    .select('*')
+    .eq('id', session.user.id)
+    .single();
 
   // If profile doesn't exist, return a special marker object
   // The App component will detect this and show the ProfileSetup component
@@ -216,7 +230,7 @@ export const createDispatcher = async (email: string, password: string, name: st
       .select('*')
       .eq('owner_id', ownerUserId)
       .single();
-    
+
     if (companyData) {
       ownerCompany = {
         id: companyData.id,
@@ -227,7 +241,7 @@ export const createDispatcher = async (email: string, password: string, name: st
       };
     }
   }
-  
+
   if (!ownerCompany) {
     return { user: null, error: 'Owner does not have a company assigned. Please create a company first in Settings.' };
   }
@@ -246,15 +260,15 @@ export const createDispatcher = async (email: string, password: string, name: st
   if (error) {
     // Handle specific error cases
     if (error.message.includes('rate limit') || error.message.includes('rate_limit')) {
-      return { 
-        user: null, 
-        error: 'Email rate limit exceeded. Please wait a few minutes before creating another dispatcher, or disable email confirmation in Supabase Dashboard > Authentication > Settings.' 
+      return {
+        user: null,
+        error: 'Email rate limit exceeded. Please wait a few minutes before creating another dispatcher, or disable email confirmation in Supabase Dashboard > Authentication > Settings.'
       };
     }
     if (error.message.includes('already registered') || error.message.includes('already exists')) {
-      return { 
-        user: null, 
-        error: 'A user with this email already exists. Please use a different email address.' 
+      return {
+        user: null,
+        error: 'A user with this email already exists. Please use a different email address.'
       };
     }
     return { user: null, error: error.message };
@@ -264,11 +278,11 @@ export const createDispatcher = async (email: string, password: string, name: st
     // IMPORTANT: signUp() automatically signs in the new dispatcher user
     // We need to sign out the dispatcher immediately to prevent auto-login
     await supabase.auth.signOut();
-    
+
     // Note: The owner will need to log in again after creating a dispatcher
     // In production, use Supabase Admin API with service role key to create users
     // without auto-signing them in
-    
+
     if (!ownerCompany) {
       return { user: null, error: 'Owner does not have a company assigned. Please create a company first in Settings.' };
     }
@@ -276,15 +290,15 @@ export const createDispatcher = async (email: string, password: string, name: st
     // Wait a brief moment for the trigger to create the profile (if it exists)
     // Then use upsert to handle both insert and update cases
     await new Promise(resolve => setTimeout(resolve, 100));
-    
+
     // Use upsert with array syntax - this will insert if doesn't exist, or update if it does
     const { error: profileError } = await supabase
       .from('profiles')
-      .upsert([{ 
-        id: data.user.id, 
-        name, 
-        role: 'dispatcher', 
-        email, 
+      .upsert([{
+        id: data.user.id,
+        name,
+        role: 'dispatcher',
+        email,
         fee_percentage: feePercentage,
         company_id: ownerCompany.id
       }], {
@@ -298,11 +312,11 @@ export const createDispatcher = async (email: string, password: string, name: st
     }
 
     return {
-      user: { 
-        id: data.user.id, 
-        email: data.user.email!, 
-        name, 
-        role: 'dispatcher', 
+      user: {
+        id: data.user.id,
+        email: data.user.email!,
+        name,
+        role: 'dispatcher',
         feePercentage,
         companyId: ownerCompany.id
       },
