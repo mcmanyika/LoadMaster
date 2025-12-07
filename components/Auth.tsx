@@ -1,8 +1,7 @@
 import React, { useState } from 'react';
-import { Truck, Lock, Mail, User, AlertCircle, Settings } from 'lucide-react';
+import { Truck, Lock, Mail, User, AlertCircle } from 'lucide-react';
 import { signIn, signUp } from '../services/authService';
 import { UserRole, UserProfile } from '../types';
-import { ConnectionModal } from './ConnectionModal';
 import { isSupabaseConfigured } from '../services/supabaseClient';
 
 interface AuthProps {
@@ -13,7 +12,6 @@ export const Auth: React.FC<AuthProps> = ({ onLogin }) => {
   const [isLogin, setIsLogin] = useState(true);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [showSettings, setShowSettings] = useState(false);
   
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -43,19 +41,8 @@ export const Auth: React.FC<AuthProps> = ({ onLogin }) => {
   };
 
   return (
-    <>
-      <div className="min-h-screen bg-slate-900 flex items-center justify-center p-4 relative">
-        
-        {/* Settings Toggle */}
-        <button 
-          onClick={() => setShowSettings(true)}
-          className="absolute top-4 right-4 p-2 text-slate-500 hover:text-white transition-colors"
-          title="Configure Database Connection"
-        >
-          <Settings size={20} />
-        </button>
-
-        <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden flex flex-col">
+    <div className="min-h-screen bg-slate-900 flex items-center justify-center p-4">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden flex flex-col">
           
           {/* Header */}
           <div className="bg-blue-600 p-8 text-center relative overflow-hidden">
@@ -195,8 +182,5 @@ export const Auth: React.FC<AuthProps> = ({ onLogin }) => {
           </div>
         </div>
       </div>
-      
-      {showSettings && <ConnectionModal onClose={() => setShowSettings(false)} />}
-    </>
   );
 };
