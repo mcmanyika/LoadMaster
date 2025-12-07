@@ -29,7 +29,14 @@ export const uploadRateConfirmationPdf = async (
 
     if (error) {
       console.error('Error uploading PDF:', error);
-      return { url: null, error };
+      // Provide more helpful error messages
+      let errorMessage = error.message || 'Unknown error';
+      if (error.message?.includes('Bucket not found') || error.message?.includes('does not exist')) {
+        errorMessage = `Storage bucket '${STORAGE_BUCKET}' does not exist. Please create it in your Supabase Dashboard or run: node scripts/create-storage-bucket.js`;
+      } else if (error.message?.includes('new row violates row-level security')) {
+        errorMessage = 'Permission denied. Please check your storage bucket policies.';
+      }
+      return { url: null, error: new Error(errorMessage) };
     }
 
     // Get the public URL

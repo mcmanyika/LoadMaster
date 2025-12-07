@@ -766,7 +766,7 @@ function App() {
       {/* Main Content */}
       <main className="flex-1 flex flex-col overflow-hidden">
         <header className="bg-white border-b border-slate-200 flex-shrink-0 z-30">
-          <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
+          <div className="mx-auto px-4 py-4 flex items-center justify-between">
             <div>
               <h1 className="text-2xl font-bold text-slate-800">
                 {view === 'dashboard' ? 'Fleet Overview' : view === 'fleet' ? 'Fleet Management' : view === 'pricing' ? 'Pricing Plans' : view === 'subscriptions' ? 'My Subscriptions' : view === 'marketing' ? 'Marketing Management' : view === 'reports' ? 'Reports' : view === 'company' ? 'Company Settings' : 'Load Management'}
@@ -800,7 +800,7 @@ function App() {
               <Marketing user={user} />
             </div>
           ) : view === 'reports' ? (
-            <div className="max-w-7xl mx-auto px-6 py-8">
+            <div className="mx-auto px-4 py-8">
               <Reports user={user} />
             </div>
           ) : view === 'company' ? (
@@ -815,7 +815,7 @@ function App() {
               }}
             />
           ) : (
-        <div className="max-w-7xl mx-auto px-6 py-8 space-y-8">
+        <div className="mx-auto px-4 py-8 space-y-8">
           
           {/* Fleet Management View */}
           {view === 'fleet' ? (

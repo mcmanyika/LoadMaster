@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Load, Transporter, Driver, UserProfile, Dispatcher } from '../types';
-import { X, Calculator, Upload, FileText } from 'lucide-react';
+import { X, Calculator, Upload, FileText, AlertCircle } from 'lucide-react';
 import { getDispatchers, getTransporters, getDrivers } from '../services/loadService';
 import { uploadRateConfirmationPdf } from '../services/storageService';
 
@@ -21,6 +21,7 @@ export const LoadForm: React.FC<LoadFormProps> = ({ onClose, onSave, currentUser
   const [pdfFile, setPdfFile] = useState<File | null>(null);
   const [pdfPreview, setPdfPreview] = useState<string | null>(loadToEdit?.rateConfirmationPdfUrl || null);
   const [uploadingPdf, setUploadingPdf] = useState(false);
+  const [errorModal, setErrorModal] = useState<{ isOpen: boolean; message: string }>({ isOpen: false, message: '' });
 
   const [formData, setFormData] = useState({
     company: loadToEdit?.company || '',
@@ -126,15 +127,18 @@ export const LoadForm: React.FC<LoadFormProps> = ({ onClose, onSave, currentUser
         const uploadResult = await uploadRateConfirmationPdf(pdfFile, tempId);
         
         if (uploadResult.error) {
-          alert('Failed to upload PDF. Please try again.');
+          const errorMessage = uploadResult.error.message || 'Unknown error';
+          console.error('PDF upload error:', uploadResult.error);
+          setErrorModal({ isOpen: true, message: `Failed to upload PDF: ${errorMessage}` });
           setUploadingPdf(false);
           return;
         }
         
         pdfUrl = uploadResult.url;
-      } catch (error) {
+      } catch (error: any) {
+        const errorMessage = error?.message || 'Unknown error';
         console.error('Error uploading PDF:', error);
-        alert('Failed to upload PDF. Please try again.');
+        setErrorModal({ isOpen: true, message: `Failed to upload PDF: ${errorMessage}` });
         setUploadingPdf(false);
         return;
       } finally {
@@ -473,6 +477,37 @@ export const LoadForm: React.FC<LoadFormProps> = ({ onClose, onSave, currentUser
           </div>
         </form>
       </div>
+
+      {/* Error Modal */}
+      {errorModal.isOpen && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-[70] p-4">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden">
+            <div className="bg-red-50 px-6 py-4 flex justify-between items-center border-b border-red-100">
+              <div className="flex items-center gap-2 text-red-800">
+                <AlertCircle size={20} className="text-red-600" />
+                <h2 className="font-bold text-lg">Upload Error</h2>
+              </div>
+              <button 
+                onClick={() => setErrorModal({ isOpen: false, message: '' })} 
+                className="text-red-400 hover:text-red-600 transition-colors"
+              >
+                <X size={20} />
+              </button>
+            </div>
+            <div className="p-6">
+              <p className="text-slate-700 mb-6">{errorModal.message}</p>
+              <div className="flex justify-end">
+                <button
+                  onClick={() => setErrorModal({ isOpen: false, message: '' })}
+                  className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg font-medium transition-colors"
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
