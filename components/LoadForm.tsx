@@ -3,6 +3,7 @@ import { Load, Transporter, Driver, UserProfile, Dispatcher } from '../types';
 import { X, Calculator, Upload, FileText, AlertCircle } from 'lucide-react';
 import { getDispatchers, getTransporters, getDrivers } from '../services/loadService';
 import { uploadRateConfirmationPdf } from '../services/storageService';
+import { PlacesAutocomplete } from './PlacesAutocomplete';
 
 interface LoadFormProps {
   onClose: () => void;
@@ -330,26 +331,22 @@ export const LoadForm: React.FC<LoadFormProps> = ({ onClose, onSave, currentUser
             <div className="col-span-2 grid grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1">Origin (From)</label>
-                <input
-                  required
-                  name="origin"
-                  type="text"
+                <PlacesAutocomplete
                   value={formData.origin}
-                  onChange={handleChange}
-                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                  onChange={(value) => setFormData({ ...formData, origin: value })}
                   placeholder="City, ST"
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                  required
                 />
               </div>
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1">Destination (To)</label>
-                <input
-                  required
-                  name="destination"
-                  type="text"
+                <PlacesAutocomplete
                   value={formData.destination}
-                  onChange={handleChange}
-                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                  onChange={(value) => setFormData({ ...formData, destination: value })}
                   placeholder="City, ST"
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                  required
                 />
               </div>
             </div>
