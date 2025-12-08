@@ -903,39 +903,6 @@ function App() {
               {/* Dashboard View Specifics */}
               {view === 'dashboard' && (
                 <>
-                  {/* Expense Summary Cards */}
-                  {expenseSummary && company && (
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                      <StatsCard
-                        title="Total Expenses"
-                        value={`$${expenseSummary.totalExpenses.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
-                        subValue="All time"
-                        icon={<Receipt className="w-6 h-6 text-slate-900" />}
-                        colorClass="bg-slate-100"
-                      />
-                      <StatsCard
-                        title="Average Expense"
-                        value={`$${expenseSummary.averageExpense.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
-                        subValue={`${expenseSummary.expensesByCategory.reduce((sum: number, cat: any) => sum + cat.count, 0)} expenses`}
-                        icon={<TrendingUp className="w-6 h-6 text-slate-900" />}
-                        colorClass="bg-slate-100"
-                      />
-                      <StatsCard
-                        title="Top Category"
-                        value={expenseSummary.expensesByCategory.length > 0 ? expenseSummary.expensesByCategory[0].categoryName : 'N/A'}
-                        subValue={expenseSummary.expensesByCategory.length > 0 ? `$${expenseSummary.expensesByCategory[0].total.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : 'No expenses'}
-                        icon={<DollarSign className="w-6 h-6 text-slate-900" />}
-                        colorClass="bg-slate-100"
-                      />
-                      <StatsCard
-                        title="Largest Expense"
-                        value={expenseSummary.largestExpense ? `$${expenseSummary.largestExpense.amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '$0.00'}
-                        subValue={expenseSummary.largestExpense?.category?.name || 'N/A'}
-                        icon={<FileText className="w-6 h-6 text-slate-900" />}
-                        colorClass="bg-slate-100"
-                      />
-                    </div>
-                  )}
                   <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                   
                   {/* Chart Section */}
