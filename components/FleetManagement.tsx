@@ -12,7 +12,7 @@ interface FleetManagementProps {
 
 export const FleetManagement: React.FC<FleetManagementProps> = ({ user }) => {
   const isOwner = user.role === 'owner';
-  const [activeTab, setActiveTab] = useState<'transporters' | 'drivers' | 'dispatchers' | 'vehicles'>(isOwner ? 'dispatchers' : 'transporters');
+  const [activeTab, setActiveTab] = useState<'transporters' | 'drivers' | 'dispatchers' | 'vehicles'>(isOwner ? 'dispatchers' : 'dispatchers');
   const [transporters, setTransporters] = useState<Transporter[]>([]);
   const [drivers, setDrivers] = useState<Driver[]>([]);
   const [dispatchers, setDispatchers] = useState<Dispatcher[]>([]);
@@ -243,18 +243,21 @@ export const FleetManagement: React.FC<FleetManagementProps> = ({ user }) => {
               {isOwner ? 'Manage your drivers and dispatchers' : 'Manage your carriers and drivers'}
             </p>
           </div>
-          <button 
-            onClick={() => setShowAddForm(true)}
-            className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium shadow-sm transition-colors"
-          >
-            <Plus size={18} />
-            Add {
-              activeTab === 'vehicles' ? 'Vehicle' :
-              !isOwner && activeTab === 'transporters' ? 'Carrier' : 
-              activeTab === 'drivers' ? 'Driver' : 
-              'Dispatcher'
-            }
-          </button>
+          {/* Add button - only show for owners, and not for dispatchers tab */}
+          {isOwner && activeTab !== 'dispatchers' && (
+            <button 
+              onClick={() => setShowAddForm(true)}
+              className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium shadow-sm transition-colors"
+            >
+              <Plus size={18} />
+              Add {
+                activeTab === 'vehicles' ? 'Vehicle' :
+                activeTab === 'transporters' ? 'Carrier' : 
+                activeTab === 'drivers' ? 'Driver' : 
+                'Dispatcher'
+              }
+            </button>
+          )}
         </div>
         
         <div className="flex px-6 gap-6">
@@ -268,26 +271,29 @@ export const FleetManagement: React.FC<FleetManagementProps> = ({ user }) => {
             {isOwner ? 'Dispatchers' : 'Join Company'}
             {activeTab === 'dispatchers' && <div className="absolute bottom-0 left-0 w-full h-0.5 bg-blue-600 rounded-t-full"></div>}
           </button>
-          {!isOwner && (
-            <button 
-              onClick={() => setActiveTab('transporters')}
-              className={`pb-4 text-sm font-medium transition-colors relative ${
-                activeTab === 'transporters' ? 'text-blue-600' : 'text-slate-500 hover:text-slate-700'
-              }`}
-            >
-              Transporters / Carriers
-              {activeTab === 'transporters' && <div className="absolute bottom-0 left-0 w-full h-0.5 bg-blue-600 rounded-t-full"></div>}
-            </button>
+          {/* Transporters / Carriers tab - only for owners */}
+          {isOwner && (
+            <>
+              <button 
+                onClick={() => setActiveTab('transporters')}
+                className={`pb-4 text-sm font-medium transition-colors relative ${
+                  activeTab === 'transporters' ? 'text-blue-600' : 'text-slate-500 hover:text-slate-700'
+                }`}
+              >
+                Transporters / Carriers
+                {activeTab === 'transporters' && <div className="absolute bottom-0 left-0 w-full h-0.5 bg-blue-600 rounded-t-full"></div>}
+              </button>
+              <button 
+                onClick={() => setActiveTab('drivers')}
+                className={`pb-4 text-sm font-medium transition-colors relative ${
+                  activeTab === 'drivers' ? 'text-blue-600' : 'text-slate-500 hover:text-slate-700'
+                }`}
+              >
+                Drivers
+                {activeTab === 'drivers' && <div className="absolute bottom-0 left-0 w-full h-0.5 bg-blue-600 rounded-t-full"></div>}
+              </button>
+            </>
           )}
-          <button 
-            onClick={() => setActiveTab('drivers')}
-            className={`pb-4 text-sm font-medium transition-colors relative ${
-              activeTab === 'drivers' ? 'text-blue-600' : 'text-slate-500 hover:text-slate-700'
-            }`}
-          >
-            Drivers
-            {activeTab === 'drivers' && <div className="absolute bottom-0 left-0 w-full h-0.5 bg-blue-600 rounded-t-full"></div>}
-          </button>
           {isOwner && (
             <button 
               onClick={() => setActiveTab('vehicles')}

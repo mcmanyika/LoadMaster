@@ -416,8 +416,13 @@ function App() {
       // For dispatchers, use currentCompanyId; for owners, getCompany() will handle it
       const companyData = await getCompany(currentCompanyId || undefined);
       
+      // For dispatchers, filter loads by their name and selected company
+      // For owners, show all loads for their company
+      const dispatcherName = user?.role === 'dispatcher' ? user.name : undefined;
+      const companyIdForLoads = companyData?.id;
+      
       const [loadsData, driversData, dispatchersData] = await Promise.all([
-        getLoads(),
+        getLoads(companyIdForLoads, dispatcherName), // Filter by company and dispatcher if applicable
         getDrivers(),
         getDispatchers(companyData?.id) // Filter dispatchers by company
       ]);
@@ -802,14 +807,16 @@ function App() {
                 <span className="opacity-0 group-hover:opacity-100 transition-opacity duration-300 whitespace-nowrap overflow-hidden">Marketing</span>
               </button>
             )}
-            <button 
-              onClick={() => setView('pricing')}
-              className={`w-full flex items-center justify-center group-hover:justify-start gap-3 px-4 py-3 rounded-xl transition-colors ${view === 'pricing' ? 'bg-blue-600/10 text-blue-400 font-medium' : 'hover:bg-slate-800'}`}
-              title="Pricing"
-            >
-              <CreditCard size={20} className="flex-shrink-0" />
-              <span className="opacity-0 group-hover:opacity-100 transition-opacity duration-300 whitespace-nowrap overflow-hidden">Pricing</span>
-            </button>
+            {user.role === 'owner' && (
+              <button 
+                onClick={() => setView('pricing')}
+                className={`w-full flex items-center justify-center group-hover:justify-start gap-3 px-4 py-3 rounded-xl transition-colors ${view === 'pricing' ? 'bg-blue-600/10 text-blue-400 font-medium' : 'hover:bg-slate-800'}`}
+                title="Pricing"
+              >
+                <CreditCard size={20} className="flex-shrink-0" />
+                <span className="opacity-0 group-hover:opacity-100 transition-opacity duration-300 whitespace-nowrap overflow-hidden">Pricing</span>
+              </button>
+            )}
             {user.role === 'owner' && (
               <button 
                 onClick={() => setView('subscriptions')}
@@ -820,14 +827,16 @@ function App() {
                 <span className="opacity-0 group-hover:opacity-100 transition-opacity duration-300 whitespace-nowrap overflow-hidden">My Subscriptions</span>
               </button>
             )}
-            <button 
-              onClick={() => setView('company')}
-              className={`w-full flex items-center justify-center group-hover:justify-start gap-3 px-4 py-3 rounded-xl transition-colors ${view === 'company' ? 'bg-blue-600/10 text-blue-400 font-medium' : 'hover:bg-slate-800'}`}
-              title={user.role === 'owner' ? 'Company Settings' : 'Company Information'}
-            >
-              <Building2 size={20} className="flex-shrink-0" />
-              <span className="opacity-0 group-hover:opacity-100 transition-opacity duration-300 whitespace-nowrap overflow-hidden">Settings</span>
-            </button>
+            {user.role === 'owner' && (
+              <button 
+                onClick={() => setView('company')}
+                className={`w-full flex items-center justify-center group-hover:justify-start gap-3 px-4 py-3 rounded-xl transition-colors ${view === 'company' ? 'bg-blue-600/10 text-blue-400 font-medium' : 'hover:bg-slate-800'}`}
+                title="Company Settings"
+              >
+                <Building2 size={20} className="flex-shrink-0" />
+                <span className="opacity-0 group-hover:opacity-100 transition-opacity duration-300 whitespace-nowrap overflow-hidden">Settings</span>
+              </button>
+            )}
           </nav>
         </div>
         
@@ -903,7 +912,7 @@ function App() {
             </div>
           ) : view === 'reports' ? (
             <div className="mx-auto px-4 py-8">
-              <Reports user={user} />
+              <Reports user={user} companyId={currentCompanyId || company?.id} />
             </div>
           ) : view === 'expenses' ? (
             company ? (

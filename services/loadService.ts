@@ -90,30 +90,51 @@ const MOCK_LOADS: Load[] = [
 
 // --- LOAD OPERATIONS ---
 
-export const getLoads = async (): Promise<Load[]> => {
+export const getLoads = async (companyId?: string, dispatcherName?: string): Promise<Load[]> => {
   if (!isSupabaseConfigured || !supabase) {
     console.warn("Supabase not configured. Using Mock Data.");
     await new Promise(resolve => setTimeout(resolve, 800));
-    return [...MOCK_LOADS];
+    let mockLoads = [...MOCK_LOADS];
+    // Filter mock data if filters provided
+    if (companyId) {
+      mockLoads = mockLoads.filter(l => l.companyId === companyId);
+    }
+    if (dispatcherName) {
+      mockLoads = mockLoads.filter(l => l.dispatcher === dispatcherName);
+    }
+    return mockLoads;
   }
 
-  // We use a select query that joins transporters and drivers to get their names if needed,
-  // though currently the UI might mostly use the IDs or we might want to map them.
-  const { data, error } = await supabase
+  // Build query with filters
+  let query = supabase
     .from('loads')
     .select(`
       *,
       transporters ( name ),
       drivers ( name )
-    `)
-    .order('drop_date', { ascending: false });
+    `);
+
+  // Filter by company_id if provided
+  if (companyId) {
+    query = query.eq('company_id', companyId);
+  }
+
+  // Filter by dispatcher name if provided (for dispatchers to see only their loads)
+  if (dispatcherName) {
+    query = query.eq('dispatcher', dispatcherName);
+  }
+
+  // Order by drop date descending
+  query = query.order('drop_date', { ascending: false });
+
+  const { data, error } = await query;
 
   if (error) {
     console.error("Error fetching loads:", error);
     throw error;
   }
 
-  return data.map((item: any) => ({
+  return (data || []).map((item: any) => ({
     id: item.id,
     company: item.company,
     gross: item.gross,
@@ -546,15 +567,26 @@ export const updateDispatcher = async (id: string, d: Partial<Omit<Dispatcher, '
   };
 };
 
-export const getTransporters = async (): Promise<Transporter[]> => {
+export const getTransporters = async (companyId?: string): Promise<Transporter[]> => {
   if (!isSupabaseConfigured || !supabase) {
-    return MOCK_TRANSPORTERS;
+    let mockTransporters = MOCK_TRANSPORTERS;
+    if (companyId) {
+      mockTransporters = mockTransporters.filter(t => t.companyId === companyId);
+    }
+    return mockTransporters;
   }
   
-  const { data, error } = await supabase.from('transporters').select('*');
+  let query = supabase.from('transporters').select('*');
+  
+  // Filter by company_id if provided
+  if (companyId) {
+    query = query.eq('company_id', companyId);
+  }
+  
+  const { data, error } = await query;
   if (error) throw error;
   
-  return data.map((t: any) => ({
+  return (data || []).map((t: any) => ({
     id: t.id,
     name: t.name,
     mcNumber: t.mc_number,
@@ -674,15 +706,26 @@ export const updateTransporter = async (id: string, t: Partial<Omit<Transporter,
   };
 };
 
-export const getDrivers = async (): Promise<Driver[]> => {
+export const getDrivers = async (companyId?: string): Promise<Driver[]> => {
   if (!isSupabaseConfigured || !supabase) {
-    return MOCK_DRIVERS;
+    let mockDrivers = MOCK_DRIVERS;
+    if (companyId) {
+      mockDrivers = mockDrivers.filter(d => d.companyId === companyId);
+    }
+    return mockDrivers;
   }
 
-  const { data, error } = await supabase.from('drivers').select('*');
+  let query = supabase.from('drivers').select('*');
+  
+  // Filter by company_id if provided
+  if (companyId) {
+    query = query.eq('company_id', companyId);
+  }
+
+  const { data, error } = await query;
   if (error) throw error;
 
-  return data.map((d: any) => ({
+  return (data || []).map((d: any) => ({
     id: d.id,
     name: d.name,
     transporterId: d.transporter_id,

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Check, X, Zap, Users, Building2, Sparkles, ArrowRight, BarChart3, Brain, Shield, Mail, Phone, Headphones, Loader2, AlertCircle, CheckCircle2 } from 'lucide-react';
+import { Check, X, Zap, Users, Building2, ArrowRight, Mail, Phone, Loader2, AlertCircle, CheckCircle2 } from 'lucide-react';
 import { getCurrentUser } from '../services/authService';
 import { createSubscriptionIntent } from '../services/paymentIntentService';
 import { getActiveSubscription, Subscription } from '../services/subscriptionService';
@@ -45,8 +45,8 @@ export const Pricing: React.FC<PricingProps> = ({ onClose }) => {
       name: 'Essential',
       tagline: 'Perfect for small fleets',
       icon: <Zap className="w-6 h-6" />,
-      monthlyPrice: 99,
-      annualPrice: 85, // 15% off
+      monthlyPrice: 20,
+      annualPrice: 17, // 15% off
       features: [
         { text: 'Up to 5 users', included: true },
         { text: 'Up to 50 loads/month', included: true },
@@ -67,8 +67,8 @@ export const Pricing: React.FC<PricingProps> = ({ onClose }) => {
       name: 'Professional',
       tagline: 'For growing fleets',
       icon: <Users className="w-6 h-6" />,
-      monthlyPrice: 199,
-      annualPrice: 170, // 15% off
+      monthlyPrice: 40,
+      annualPrice: 34, // 15% off
       features: [
         { text: 'Up to 15 users', included: true },
         { text: 'Up to 500 loads/month', included: true },
@@ -109,12 +109,6 @@ export const Pricing: React.FC<PricingProps> = ({ onClose }) => {
     },
   ];
 
-  const addOns = [
-    { name: 'Extra AI Analysis Reports', price: '$2.50 each', pack: '$50 for 25-pack', icon: <Brain className="w-5 h-5" /> },
-    { name: 'Advanced Reporting Suite', price: '+$50/month', icon: <BarChart3 className="w-5 h-5" /> },
-    { name: 'API Access', price: '+$99/month', icon: <Sparkles className="w-5 h-5" /> },
-    { name: 'White-Label Option', price: '+$149/month', icon: <Shield className="w-5 h-5" /> },
-  ];
 
   const handleSubscribe = async (planId: 'essential' | 'professional' | 'enterprise') => {
     // Don't allow subscription to the same plan if user already has it active
@@ -345,46 +339,6 @@ export const Pricing: React.FC<PricingProps> = ({ onClose }) => {
               </div>
             </div>
           ))}
-        </div>
-
-        {/* Add-Ons Section */}
-        <div className="bg-white rounded-2xl border border-slate-200 shadow-lg p-8 mb-16">
-          <h2 className="text-2xl font-bold text-slate-900 mb-2">Add-On Services</h2>
-          <p className="text-slate-600 mb-8">Enhance your plan with these optional services</p>
-          
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {addOns.map((addon, idx) => (
-              <div
-                key={idx}
-                className="flex items-start gap-4 p-4 rounded-xl border border-slate-200 hover:border-slate-300 hover:shadow-md transition-all"
-              >
-                <div className="p-2 bg-slate-100 rounded-lg text-slate-900 flex-shrink-0">
-                  {addon.icon}
-                </div>
-                <div className="flex-1">
-                  <h3 className="font-semibold text-slate-900 mb-1">{addon.name}</h3>
-                  <div className="flex items-center gap-2 text-sm text-slate-600">
-                    <span className="font-medium">{addon.price}</span>
-                    {addon.pack && (
-                      <>
-                        <span>•</span>
-                        <span>{addon.pack}</span>
-                      </>
-                    )}
-                  </div>
-                </div>
-              </div>
-            ))}
-            <div className="flex items-start gap-4 p-4 rounded-xl border border-slate-200 hover:border-slate-300 hover:shadow-md transition-all">
-              <div className="p-2 bg-slate-100 rounded-lg text-slate-900 flex-shrink-0">
-                <Headphones className="w-5 h-5" />
-              </div>
-              <div className="flex-1">
-                <h3 className="font-semibold text-slate-900 mb-1">Onboarding & Training</h3>
-                <p className="text-sm text-slate-600 font-medium">$250 one-time</p>
-              </div>
-            </div>
-          </div>
         </div>
 
         {/* Contact CTA */}

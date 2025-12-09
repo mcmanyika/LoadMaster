@@ -10,9 +10,10 @@ import { Calendar, FileBarChart, User, Users, X } from 'lucide-react';
 
 interface ReportsProps {
   user: UserProfile;
+  companyId?: string;
 }
 
-export const Reports: React.FC<ReportsProps> = ({ user }) => {
+export const Reports: React.FC<ReportsProps> = ({ user, companyId }) => {
   const [activeTab, setActiveTab] = useState<'drivers' | 'dispatchers'>('drivers');
   const [loads, setLoads] = useState<CalculatedLoad[]>([]);
   const [drivers, setDrivers] = useState<Driver[]>([]);
@@ -28,16 +29,19 @@ export const Reports: React.FC<ReportsProps> = ({ user }) => {
 
   useEffect(() => {
     fetchData();
-  }, []);
+  }, [companyId, user]);
 
   const fetchData = async () => {
     setLoading(true);
     setError(null);
     try {
+      // For dispatchers, filter loads by their name and selected company
+      // For owners, filter by company only
+      const dispatcherName = user?.role === 'dispatcher' ? user.name : undefined;
       const [loadsData, driversData, dispatchersData] = await Promise.all([
-        getLoads(),
+        getLoads(companyId, dispatcherName),
         getDrivers(),
-        getDispatchers()
+        getDispatchers(companyId)
       ]);
 
       setLoads(loadsData || []);

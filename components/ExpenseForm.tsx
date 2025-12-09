@@ -42,11 +42,14 @@ export const ExpenseForm: React.FC<ExpenseFormProps> = ({ onClose, onSave, curre
   useEffect(() => {
     const fetchData = async () => {
       try {
+        // For dispatchers, filter loads by their name and company
+        // For owners, filter by company only
+        const dispatcherName = currentUser?.role === 'dispatcher' ? currentUser.name : undefined;
         const [cats, trans, drivs, lds] = await Promise.all([
           getExpenseCategories(),
           getTransporters(),
           getDrivers(),
-          getLoads()
+          getLoads(companyId, dispatcherName)
         ]);
         setCategories(cats);
         setTransporters(trans);
@@ -59,7 +62,7 @@ export const ExpenseForm: React.FC<ExpenseFormProps> = ({ onClose, onSave, curre
       }
     };
     fetchData();
-  }, []);
+  }, [companyId, currentUser]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });

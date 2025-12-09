@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { Load, Transporter, Driver, UserProfile, Dispatcher } from '../types';
+import { Load, Driver, UserProfile, Dispatcher } from '../types';
 import { X, Calculator, Upload, FileText, AlertCircle } from 'lucide-react';
-import { getTransporters, getDrivers } from '../services/loadService';
+import { getDrivers } from '../services/loadService';
 import { getCompany } from '../services/companyService';
 import { getCompanyDispatchers } from '../services/dispatcherAssociationService';
 import { uploadRateConfirmationPdf } from '../services/storageService';
@@ -20,7 +20,6 @@ export const LoadForm: React.FC<LoadFormProps> = ({ onClose, onSave, currentUser
   const isEditMode = !!loadToEdit;
   // Data Options
   const [dispatchers, setDispatchers] = useState<Dispatcher[]>([]);
-  const [transporters, setTransporters] = useState<Transporter[]>([]);
   const [drivers, setDrivers] = useState<Driver[]>([]);
   const [loadingOptions, setLoadingOptions] = useState(true);
   const [pdfFile, setPdfFile] = useState<File | null>(null);
@@ -50,15 +49,18 @@ export const LoadForm: React.FC<LoadFormProps> = ({ onClose, onSave, currentUser
   useEffect(() => {
     const fetchData = async () => {
       try {
-        // Fetch company first (exactly like FleetManagement does)
-        const companyData = await getCompany();
+        // Use companyId prop if provided, otherwise fetch company
+        let companyData;
+        if (companyId) {
+          companyData = await getCompany(companyId);
+        } else {
+          companyData = await getCompany();
+        }
         
-        // Fetch transporters and drivers (always fetch these)
-        const [transportersData, driversData] = await Promise.all([
-          getTransporters(), 
-          getDrivers()
-        ]);
-        setTransporters(transportersData);
+        const targetCompanyId = companyId || companyData?.id;
+        
+        // Fetch drivers filtered by company (transporters no longer needed for UI)
+        const driversData = await getDrivers(targetCompanyId);
         setDrivers(driversData);
         
         // Fetch dispatchers only if we have companyData
@@ -88,6 +90,7 @@ export const LoadForm: React.FC<LoadFormProps> = ({ onClose, onSave, currentUser
               setFormData(prev => ({ ...prev, dispatcher: dispatchersData[0].name }));
             }
           }
+          
         } else {
           setDispatchers([]); // No dispatchers without company
         }
@@ -100,13 +103,8 @@ export const LoadForm: React.FC<LoadFormProps> = ({ onClose, onSave, currentUser
     fetchData();
   }, [currentUser, isEditMode, companyId]);
 
-  // Filter drivers based on selected transporter (for dispatchers)
-  // For owners, show all drivers from their company (no transporter filter needed)
-  const availableDrivers = currentUser.role === 'owner'
-    ? drivers // Owners see all drivers from their company
-    : (formData.transporterId 
-        ? drivers.filter(d => d.transporterId === formData.transporterId)
-        : []);
+  // Show all drivers from the selected company (already filtered by companyId in fetch)
+  const availableDrivers = drivers;
 
   // Calculate distance when both origin and destination are available
   useEffect(() => {
@@ -225,8 +223,9 @@ export const LoadForm: React.FC<LoadFormProps> = ({ onClose, onSave, currentUser
       company: formData.company,
       gross: gross,
       miles: parseFloat(formData.miles) || 0,
-      gasAmount: gas,
-      gasNotes: formData.gasNotes,
+      // For dispatchers, set gas fields to defaults since they can't edit them
+      gasAmount: currentUser.role === 'dispatcher' ? 0 : gas,
+      gasNotes: currentUser.role === 'dispatcher' ? '' : formData.gasNotes,
       dropDate: formData.dropDate,
       dispatcher: formData.dispatcher,
       transporterId: formData.transporterId,
@@ -294,7 +293,7 @@ export const LoadForm: React.FC<LoadFormProps> = ({ onClose, onSave, currentUser
             </div>
 
             {/* Fleet & Dispatch */}
-            <div className="col-span-2 grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="col-span-2 grid grid-cols-1 md:grid-cols-2 gap-4">
                <div>
                   <label className="block text-sm font-medium text-slate-700 mb-1">Dispatcher</label>
                   <select
@@ -312,33 +311,15 @@ export const LoadForm: React.FC<LoadFormProps> = ({ onClose, onSave, currentUser
                     ))}
                   </select>
                </div>
-               {/* Carrier field - only visible to dispatchers (owners don't manage transporters) */}
-               {currentUser.role !== 'owner' && (
-                 <div>
-                    <label className="block text-sm font-medium text-slate-700 mb-1">Carrier</label>
-                    <select
-                      name="transporterId"
-                      value={formData.transporterId}
-                      onChange={handleChange}
-                      className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-white"
-                    >
-                      <option value="">Select Carrier...</option>
-                      {transporters.map(t => (
-                        <option key={t.id} value={t.id}>{t.name}</option>
-                      ))}
-                    </select>
-                 </div>
-               )}
                <div>
                   <label className="block text-sm font-medium text-slate-700 mb-1">Driver</label>
                   <select
                     name="driverId"
                     value={formData.driverId}
                     onChange={handleChange}
-                    disabled={currentUser.role !== 'owner' && !formData.transporterId}
-                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-white disabled:bg-slate-100 disabled:text-slate-400"
+                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-white"
                   >
-                    <option value="">{currentUser.role === 'owner' ? 'Select Driver...' : (formData.transporterId ? 'Select Driver...' : 'Select Carrier First')}</option>
+                    <option value="">Select Driver...</option>
                     {availableDrivers.map(d => (
                       <option key={d.id} value={d.id}>{d.name}</option>
                     ))}
@@ -349,7 +330,7 @@ export const LoadForm: React.FC<LoadFormProps> = ({ onClose, onSave, currentUser
             {/* Financials */}
             <div className="col-span-2 space-y-4">
                <h3 className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Financials</h3>
-               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+               <div className={`grid grid-cols-2 gap-4 ${currentUser.role === 'owner' ? 'md:grid-cols-4' : 'md:grid-cols-2'}`}>
                 <div className="col-span-2 md:col-span-1">
                   <label className="block text-sm font-medium text-slate-700 mb-1">Gross ($)</label>
                   <input
@@ -383,29 +364,34 @@ export const LoadForm: React.FC<LoadFormProps> = ({ onClose, onSave, currentUser
                     )}
                   </div>
                 </div>
-                 <div className="col-span-2 md:col-span-1">
-                  <label className="block text-sm font-medium text-slate-700 mb-1">Gas Advance ($)</label>
-                  <input
-                    name="gasAmount"
-                    type="number"
-                    step="0.01"
-                    value={formData.gasAmount}
-                    onChange={handleChange}
-                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
-                    placeholder="0.00"
-                  />
-                </div>
-                <div className="col-span-2 md:col-span-1">
-                  <label className="block text-sm font-medium text-slate-700 mb-1">Gas Notes</label>
-                  <input
-                    name="gasNotes"
-                    type="text"
-                    value={formData.gasNotes}
-                    onChange={handleChange}
-                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
-                    placeholder="e.g. 500+100"
-                  />
-                </div>
+                {/* Gas Advance and Gas Notes - only visible to owners */}
+                {currentUser.role === 'owner' && (
+                  <>
+                    <div className="col-span-2 md:col-span-1">
+                      <label className="block text-sm font-medium text-slate-700 mb-1">Gas Advance ($)</label>
+                      <input
+                        name="gasAmount"
+                        type="number"
+                        step="0.01"
+                        value={formData.gasAmount}
+                        onChange={handleChange}
+                        className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                        placeholder="0.00"
+                      />
+                    </div>
+                    <div className="col-span-2 md:col-span-1">
+                      <label className="block text-sm font-medium text-slate-700 mb-1">Gas Notes</label>
+                      <input
+                        name="gasNotes"
+                        type="text"
+                        value={formData.gasNotes}
+                        onChange={handleChange}
+                        className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                        placeholder="e.g. 500+100"
+                      />
+                    </div>
+                  </>
+                )}
                </div>
             </div>
 
@@ -530,24 +516,26 @@ export const LoadForm: React.FC<LoadFormProps> = ({ onClose, onSave, currentUser
               </div>
             )}
             
-            {/* Live Preview Card */}
-            <div className="col-span-2 bg-blue-50 rounded-xl p-4 border border-blue-100 flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="bg-blue-100 p-2 rounded-lg text-blue-600">
-                  <Calculator size={20} />
+            {/* Live Preview Card - Only visible to owners */}
+            {currentUser.role === 'owner' && (
+              <div className="col-span-2 bg-blue-50 rounded-xl p-4 border border-blue-100 flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="bg-blue-100 p-2 rounded-lg text-blue-600">
+                    <Calculator size={20} />
+                  </div>
+                  <div>
+                    <p className="text-xs font-semibold text-blue-800 uppercase">Estimated Driver Pay</p>
+                    <p className="text-xs text-blue-600">50% of (Gross - Dispatch Fee - Gas)</p>
+                  </div>
                 </div>
-                <div>
-                  <p className="text-xs font-semibold text-blue-800 uppercase">Estimated Driver Pay</p>
-                  <p className="text-xs text-blue-600">50% of (Gross - Dispatch Fee - Gas)</p>
+                <div className="text-right">
+                  <p className="text-2xl font-bold text-blue-900">
+                    ${driverPay > 0 ? driverPay.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '0.00'}
+                  </p>
+                  <p className="text-xs text-blue-600">Dispatch Fee: ${dispatchFee.toFixed(2)}</p>
                 </div>
               </div>
-              <div className="text-right">
-                <p className="text-2xl font-bold text-blue-900">
-                  ${driverPay > 0 ? driverPay.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '0.00'}
-                </p>
-                <p className="text-xs text-blue-600">Dispatch Fee: ${dispatchFee.toFixed(2)}</p>
-              </div>
-            </div>
+            )}
 
           </div>
 
