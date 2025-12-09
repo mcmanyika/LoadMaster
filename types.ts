@@ -31,7 +31,39 @@ export interface Dispatcher {
   email?: string;
   phone?: string;
   feePercentage: number;
+  companyId: string; // Kept for backward compatibility, but associations should be used
+  associations?: DispatcherCompanyAssociation[]; // Multi-company associations
+}
+
+export interface DispatcherCompanyAssociation {
+  id: string;
+  dispatcherId?: string; // Optional: NULL for unused invite codes
   companyId: string;
+  feePercentage: number;
+  status: 'active' | 'inactive' | 'pending' | 'suspended';
+  joinedAt: string;
+  invitedBy?: string;
+  inviteCode?: string; // Unique invite code
+  expiresAt?: string; // Expiration date for invite code
+  createdAt: string;
+  updatedAt: string;
+  // Joined fields
+  company?: Company;
+  dispatcher?: UserProfile;
+}
+
+export interface CompanyInvitation {
+  id: string;
+  associationId: string;
+  companyId: string;
+  dispatcherId?: string;
+  dispatcherEmail?: string; // Optional now (not used in code system)
+  inviteCode?: string; // Invite code
+  feePercentage: number;
+  status: 'pending' | 'accepted' | 'rejected' | 'expired';
+  invitedBy: string;
+  createdAt: string;
+  expiresAt?: string;
 }
 
 export interface Load {

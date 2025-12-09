@@ -4,6 +4,7 @@ import { getTransporters, getDrivers, createTransporter, updateTransporter, crea
 import { getCompany } from '../services/companyService';
 import { Truck, User, Plus, Search, Building2, Phone, Mail, FileBadge, Users as UsersIcon, AlertCircle, DollarSign, Edit2, X, Check } from 'lucide-react';
 import { ErrorModal } from './ErrorModal';
+import { InvitationManagement } from './InvitationManagement';
 
 interface FleetManagementProps {
   user: UserProfile;
@@ -16,6 +17,7 @@ export const FleetManagement: React.FC<FleetManagementProps> = ({ user }) => {
   const [drivers, setDrivers] = useState<Driver[]>([]);
   const [dispatchers, setDispatchers] = useState<Dispatcher[]>([]);
   const [companyName, setCompanyName] = useState<string>('');
+  const [companyId, setCompanyId] = useState<string | undefined>(undefined);
   const [loading, setLoading] = useState(false);
   const [showAddForm, setShowAddForm] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -39,19 +41,20 @@ export const FleetManagement: React.FC<FleetManagementProps> = ({ user }) => {
   const fetchData = async () => {
     setLoading(true);
     try {
-      const [transportersData, driversData, companyData] = await Promise.all([
+      const companyData = await getCompany();
+      const [transportersData, driversData] = await Promise.all([
         getTransporters(),
-        getDrivers(),
-        getCompany()
+        getDrivers()
       ]);
       setTransporters(transportersData);
       setDrivers(driversData);
       if (companyData) {
         setCompanyName(companyData.name);
+        setCompanyId(companyData.id);
       }
       
-      if (isOwner) {
-        const dispatchersData = await getDispatchers();
+      if (isOwner && companyData) {
+        const dispatchersData = await getDispatchers(companyData.id);
         setDispatchers(dispatchersData);
       }
     } catch (e) {
@@ -255,17 +258,16 @@ export const FleetManagement: React.FC<FleetManagementProps> = ({ user }) => {
         </div>
         
         <div className="flex px-6 gap-6">
-          {isOwner && (
-            <button 
-              onClick={() => setActiveTab('dispatchers')}
-              className={`pb-4 text-sm font-medium transition-colors relative ${
-                activeTab === 'dispatchers' ? 'text-blue-600' : 'text-slate-500 hover:text-slate-700'
-              }`}
-            >
-              Dispatchers
-              {activeTab === 'dispatchers' && <div className="absolute bottom-0 left-0 w-full h-0.5 bg-blue-600 rounded-t-full"></div>}
-            </button>
-          )}
+          {/* Show dispatchers tab for both owners and dispatchers */}
+          <button 
+            onClick={() => setActiveTab('dispatchers')}
+            className={`pb-4 text-sm font-medium transition-colors relative ${
+              activeTab === 'dispatchers' ? 'text-blue-600' : 'text-slate-500 hover:text-slate-700'
+            }`}
+          >
+            {isOwner ? 'Dispatchers' : 'Join Company'}
+            {activeTab === 'dispatchers' && <div className="absolute bottom-0 left-0 w-full h-0.5 bg-blue-600 rounded-t-full"></div>}
+          </button>
           {!isOwner && (
             <button 
               onClick={() => setActiveTab('transporters')}
@@ -586,8 +588,22 @@ export const FleetManagement: React.FC<FleetManagementProps> = ({ user }) => {
             )}
 
             {activeTab === 'dispatchers' && (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {dispatchers.map(d => {
+              <div className="space-y-6">
+                {/* Invitation Management Section - Show for both owners and dispatchers */}
+                <div className="border-b border-slate-200 pb-6">
+                  <InvitationManagement
+                    user={user}
+                    companyId={companyId}
+                    onUpdate={fetchData}
+                  />
+                </div>
+                
+                {/* Dispatchers List - Only show for owners */}
+                {isOwner && (
+                <div>
+                  <h3 className="text-lg font-semibold text-slate-800 mb-4">Active Dispatchers</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {dispatchers.map(d => {
                   const isEditing = editingDispatcherId === d.id;
                   
                   return (
@@ -695,8 +711,11 @@ export const FleetManagement: React.FC<FleetManagementProps> = ({ user }) => {
                       </div>
                     </div>
                   );
-                })}
-                {dispatchers.length === 0 && <div className="col-span-3 text-center text-slate-400 py-10">No dispatchers registered yet.</div>}
+                    })}
+                    {dispatchers.length === 0 && <div className="col-span-3 text-center text-slate-400 py-10">No dispatchers registered yet.</div>}
+                  </div>
+                </div>
+                )}
               </div>
             )}
           </>

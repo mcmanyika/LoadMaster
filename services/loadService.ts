@@ -1,6 +1,7 @@
 import { supabase, isSupabaseConfigured } from './supabaseClient';
 import { Load, DispatcherName, Transporter, Driver, UserProfile, Dispatcher } from '../types';
 import { getCompany, createCompany } from './companyService';
+import { getCompanyDispatchers } from './dispatcherAssociationService';
 
 // Mock Data for Demo Mode
 const MOCK_TRANSPORTERS: Transporter[] = [
@@ -150,21 +151,22 @@ export const createLoad = async (load: Omit<Load, 'id'>): Promise<Load> => {
   }
 
   // Use getCompany() which includes fallback logic to find company by owner_id
-  let company = await getCompany();
+  // For dispatchers, use the companyId from load if provided, or get from context
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('role, company_id')
+    .eq('id', session.user.id)
+    .single();
+
+  let company = await getCompany(load.companyId);
   let companyId: string | undefined;
   
   if (!company) {
     // If no company exists, try to create one for owners
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('role, name')
-      .eq('id', session.user.id)
-      .single();
-    
     if (profile?.role === 'owner') {
       try {
         const newCompany = await createCompany(
-          profile?.name ? `${profile.name}'s Company` : 'My Company',
+          'My Company',
           session.user.id
         );
         companyId = newCompany.id;
@@ -181,6 +183,42 @@ export const createLoad = async (load: Omit<Load, 'id'>): Promise<Load> => {
 
   if (!companyId) {
     throw new Error('User does not have a company assigned. Please contact support.');
+  }
+
+  // Validate dispatcher-company association if dispatcher is provided
+  if (load.dispatcher) {
+    // Find dispatcher profile by name
+    const { data: dispatcherProfile } = await supabase
+      .from('profiles')
+      .select('id')
+      .eq('name', load.dispatcher)
+      .eq('role', 'dispatcher')
+      .single();
+
+    if (dispatcherProfile) {
+      // Check if dispatcher is associated with this company
+      const { data: association } = await supabase
+        .from('dispatcher_company_associations')
+        .select('id')
+        .eq('dispatcher_id', dispatcherProfile.id)
+        .eq('company_id', companyId)
+        .eq('status', 'active')
+        .single();
+
+      // If no active association, check backward compatibility (profiles.company_id)
+      if (!association) {
+        const { data: profileCheck } = await supabase
+          .from('profiles')
+          .select('company_id')
+          .eq('id', dispatcherProfile.id)
+          .single();
+
+        if (profileCheck?.company_id !== companyId) {
+          console.warn(`Dispatcher ${load.dispatcher} is not associated with company ${companyId}`);
+          // Don't throw error, just warn - allow for backward compatibility
+        }
+      }
+    }
   }
 
   const { data, error } = await supabase
@@ -242,6 +280,55 @@ export const updateLoad = async (id: string, load: Omit<Load, 'id'>): Promise<Lo
     return updatedLoad;
   }
 
+  // Get the existing load to get company_id
+  const { data: existingLoad, error: fetchError } = await supabase
+    .from('loads')
+    .select('company_id')
+    .eq('id', id)
+    .single();
+
+  if (fetchError || !existingLoad) {
+    throw new Error('Load not found');
+  }
+
+  const companyId = existingLoad.company_id;
+
+  // Validate dispatcher-company association if dispatcher is being updated
+  if (load.dispatcher && companyId) {
+    // Find dispatcher profile by name
+    const { data: dispatcherProfile } = await supabase
+      .from('profiles')
+      .select('id')
+      .eq('name', load.dispatcher)
+      .eq('role', 'dispatcher')
+      .single();
+
+    if (dispatcherProfile) {
+      // Check if dispatcher is associated with this company
+      const { data: association } = await supabase
+        .from('dispatcher_company_associations')
+        .select('id')
+        .eq('dispatcher_id', dispatcherProfile.id)
+        .eq('company_id', companyId)
+        .eq('status', 'active')
+        .single();
+
+      // If no active association, check backward compatibility (profiles.company_id)
+      if (!association) {
+        const { data: profileCheck } = await supabase
+          .from('profiles')
+          .select('company_id')
+          .eq('id', dispatcherProfile.id)
+          .single();
+
+        if (profileCheck?.company_id !== companyId) {
+          console.warn(`Dispatcher ${load.dispatcher} is not associated with company ${companyId}`);
+          // Don't throw error, just warn - allow for backward compatibility
+        }
+      }
+    }
+  }
+
   const updateData: any = {
     company: load.company,
     gross: load.gross,
@@ -297,11 +384,55 @@ export const updateLoad = async (id: string, load: Omit<Load, 'id'>): Promise<Lo
 
 // --- FLEET OPERATIONS ---
 
-export const getDispatchers = async (): Promise<Dispatcher[]> => {
+export const getDispatchers = async (companyId?: string): Promise<Dispatcher[]> => {
   if (!isSupabaseConfigured || !supabase) {
     return MOCK_DISPATCHERS;
   }
 
+  // If companyId is provided, get dispatchers from associations (already filtered by active status)
+  if (companyId) {
+    try {
+      const associations = await getCompanyDispatchers(companyId);
+      // getCompanyDispatchers already filters by status='active', so no need to filter again
+      const dispatcherIds = associations.map(a => a.dispatcherId);
+
+      if (dispatcherIds.length === 0) {
+        return [];
+      }
+
+      const { data: profiles, error: profilesError } = await supabase
+        .from('profiles')
+        .select('id, name, email, phone')
+        .in('id', dispatcherIds)
+        .eq('role', 'dispatcher');
+
+      if (profilesError) {
+        console.error('Error fetching dispatcher profiles:', profilesError);
+        return []; // Return empty array instead of falling back to dispatchers table
+      } else if (profiles && profiles.length > 0) {
+        // Map profiles to dispatchers with fee from associations
+        return profiles.map((profile: any) => {
+          const association = associations.find(a => a.dispatcherId === profile.id);
+          return {
+            id: profile.id,
+            name: profile.name,
+            email: profile.email,
+            phone: profile.phone,
+            feePercentage: association?.feePercentage || 12,
+            companyId: companyId
+          };
+        });
+      }
+      
+      // If no profiles found, return empty array
+      return [];
+    } catch (error) {
+      console.error('Error fetching dispatchers from associations:', error);
+      return []; // Return empty array instead of falling back to dispatchers table
+    }
+  }
+
+  // Fallback: Get from dispatchers table (backward compatibility - only when companyId is not provided)
   const { data, error } = await supabase.from('dispatchers').select('*');
   if (error) throw error;
 

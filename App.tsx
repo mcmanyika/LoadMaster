@@ -43,12 +43,16 @@ import { ProfileSetup } from './components/ProfileSetup';
 import { Reports } from './components/reports/Reports';
 import { Expenses } from './components/Expenses';
 import { ErrorModal } from './components/ErrorModal';
+import { CompanySwitcher } from './components/CompanySwitcher';
+import { DispatcherCompaniesList } from './components/DispatcherCompaniesList';
 import { saveSubscription } from './services/subscriptionService';
 import { analyzeFleetPerformance } from './services/geminiService';
 import { getLoads, createLoad, updateLoad, getDrivers, getDispatchers } from './services/loadService';
 import { getCurrentUser, signOut } from './services/authService';
-import { getCompany } from './services/companyService';
+import { getCompany, getDispatcherCompanies } from './services/companyService';
 import { getExpenseSummary } from './services/expenseService';
+import { getPendingInvitations, getActiveCompanies } from './services/dispatcherAssociationService';
+import { Company } from './types';
 import { exportAIAnalysisToPDF } from './services/reports/reportService';
 import {
   BarChart,
@@ -89,6 +93,11 @@ function App() {
   const [paymentPlan, setPaymentPlan] = useState<string | null>(null);
   const [paymentSessionId, setPaymentSessionId] = useState<string | null>(null);
   const [paymentInterval, setPaymentInterval] = useState<'month' | 'year' | null>(null);
+  
+  // Multi-company dispatcher context
+  const [currentCompanyId, setCurrentCompanyId] = useState<string | null>(null);
+  const [dispatcherCompanies, setDispatcherCompanies] = useState<Company[]>([]);
+  const [pendingInvitations, setPendingInvitations] = useState<any[]>([]);
 
   // Check URL parameters for payment status on mount and auto-save subscription
   useEffect(() => {
@@ -338,12 +347,62 @@ function App() {
     checkAuth();
   }, []);
 
+  // Load company context for dispatchers
+  useEffect(() => {
+    if (user && user.role === 'dispatcher') {
+      // Load saved company from localStorage
+      const savedCompanyId = localStorage.getItem('currentCompanyId');
+      
+      // Fetch dispatcher's companies and invitations
+      const loadDispatcherContext = async () => {
+        try {
+          const [companies, invitations] = await Promise.all([
+            getActiveCompanies(user.id),
+            getPendingInvitations(user.id)
+          ]);
+          
+          setDispatcherCompanies(companies);
+          setPendingInvitations(invitations);
+          
+          // Set current company: use saved, or first active company, or null
+          if (savedCompanyId && companies.find(c => c.id === savedCompanyId)) {
+            setCurrentCompanyId(savedCompanyId);
+          } else if (companies.length > 0) {
+            setCurrentCompanyId(companies[0].id);
+            localStorage.setItem('currentCompanyId', companies[0].id);
+          } else {
+            setCurrentCompanyId(null);
+            localStorage.removeItem('currentCompanyId');
+          }
+        } catch (error) {
+          console.error('Error loading dispatcher context:', error);
+        }
+      };
+      
+      loadDispatcherContext();
+    } else {
+      // Clear dispatcher context for non-dispatchers
+      setCurrentCompanyId(null);
+      setDispatcherCompanies([]);
+      setPendingInvitations([]);
+    }
+  }, [user]);
+
+  // Save currentCompanyId to localStorage when it changes
+  useEffect(() => {
+    if (currentCompanyId) {
+      localStorage.setItem('currentCompanyId', currentCompanyId);
+    } else {
+      localStorage.removeItem('currentCompanyId');
+    }
+  }, [currentCompanyId]);
+
   // Fetch Data when User exists
   useEffect(() => {
     if (user && view !== 'fleet') {
       fetchData();
     }
-  }, [user, view]);
+  }, [user, view, currentCompanyId]);
 
   const checkAuth = async () => {
     const currentUser = await getCurrentUser();
@@ -354,11 +413,13 @@ function App() {
   const fetchData = async () => {
     setDataLoading(true);
     try {
-      const [loadsData, driversData, dispatchersData, companyData] = await Promise.all([
+      // For dispatchers, use currentCompanyId; for owners, getCompany() will handle it
+      const companyData = await getCompany(currentCompanyId || undefined);
+      
+      const [loadsData, driversData, dispatchersData] = await Promise.all([
         getLoads(),
         getDrivers(),
-        getDispatchers(),
-        getCompany()
+        getDispatchers(companyData?.id) // Filter dispatchers by company
       ]);
       setLoads(loadsData);
       setDrivers(driversData);
@@ -375,6 +436,15 @@ function App() {
     } finally {
       setDataLoading(false);
     }
+  };
+
+  // Switch company for dispatchers
+  const switchCompany = async (companyId: string) => {
+    if (user?.role !== 'dispatcher') return;
+    
+    setCurrentCompanyId(companyId);
+    // Refresh data for the new company
+    await fetchData();
   };
 
   const handleSignOut = async () => {
@@ -789,12 +859,22 @@ function App() {
       <main className="flex-1 flex flex-col overflow-hidden">
         <header className="bg-white border-b border-slate-200 flex-shrink-0 z-30">
           <div className="mx-auto px-4 py-4 flex items-center justify-between">
-            <div>
-              <h1 className="text-2xl font-bold text-slate-800">
-                {view === 'dashboard' ? 'Fleet Overview' : view === 'fleet' ? 'Fleet Management' : view === 'pricing' ? 'Pricing Plans' : view === 'subscriptions' ? 'My Subscriptions' : view === 'marketing' ? 'Marketing Management' : view === 'reports' ? 'Reports' : view === 'expenses' ? 'Expenses' : view === 'company' ? 'Company Settings' : 'Load Management'}
-              </h1>
-              {companyName && user.role === 'dispatcher' && (
-                <p className="text-sm text-slate-500 mt-1">{companyName}</p>
+            <div className="flex items-center gap-4">
+              <div>
+                <h1 className="text-2xl font-bold text-slate-800">
+                  {view === 'dashboard' ? 'Fleet Overview' : view === 'fleet' ? 'Fleet Management' : view === 'pricing' ? 'Pricing Plans' : view === 'subscriptions' ? 'My Subscriptions' : view === 'marketing' ? 'Marketing Management' : view === 'reports' ? 'Reports' : view === 'expenses' ? 'Expenses' : view === 'company' ? 'Company Settings' : 'Load Management'}
+                </h1>
+                {companyName && user.role === 'dispatcher' && (
+                  <p className="text-sm text-slate-500 mt-1">{companyName}</p>
+                )}
+              </div>
+              {user.role === 'dispatcher' && dispatcherCompanies.length > 1 && (
+                <CompanySwitcher
+                  companies={dispatcherCompanies}
+                  currentCompanyId={currentCompanyId}
+                  pendingInvitationsCount={pendingInvitations.length}
+                  onSwitchCompany={switchCompany}
+                />
               )}
             </div>
             <div className="flex items-center gap-4">
@@ -903,6 +983,15 @@ function App() {
               {/* Dashboard View Specifics */}
               {view === 'dashboard' && (
                 <>
+                  {/* Dispatcher Companies List - Show at top for dispatchers */}
+                  {user.role === 'dispatcher' && (
+                    <DispatcherCompaniesList
+                      user={user}
+                      currentCompanyId={currentCompanyId}
+                      onSwitchCompany={switchCompany}
+                    />
+                  )}
+                  
                   <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                   
                   {/* Chart Section */}
@@ -1303,6 +1392,7 @@ function App() {
           onSave={loadToEdit ? handleUpdateLoad : handleAddLoad} 
           currentUser={user}
           loadToEdit={loadToEdit || undefined}
+          companyId={currentCompanyId || company?.id}
         />
       )}
       {isSettingsOpen && <ConnectionModal onClose={() => setIsSettingsOpen(false)} />}

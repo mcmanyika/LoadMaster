@@ -1,5 +1,6 @@
 import { supabase, isSupabaseConfigured } from './supabaseClient';
 import { Company } from '../types';
+import { getActiveCompanies } from './dispatcherAssociationService';
 
 // Mock data for demo mode
 const MOCK_COMPANIES: Company[] = [
@@ -14,7 +15,7 @@ const MOCK_COMPANIES: Company[] = [
 
 // --- COMPANY OPERATIONS ---
 
-export const getCompany = async (): Promise<Company | null> => {
+export const getCompany = async (currentCompanyId?: string): Promise<Company | null> => {
   if (!isSupabaseConfigured || !supabase) {
     return MOCK_COMPANIES[0] || null;
   }
@@ -29,7 +30,7 @@ export const getCompany = async (): Promise<Company | null> => {
 
     console.log('[getCompany] User ID:', session.user.id);
 
-    // Step 1: Get profile with company_id (like your SQL: FROM profiles p)
+    // Step 1: Get profile with company_id and role
     const { data: profile, error: profileError } = await supabase
       .from('profiles')
       .select('company_id, role')
@@ -39,6 +40,57 @@ export const getCompany = async (): Promise<Company | null> => {
     if (profileError) {
       console.error('[getCompany] Error fetching profile:', profileError);
       return null;
+    }
+
+    // For dispatchers: Check junction table first if currentCompanyId is provided
+    if (profile?.role === 'dispatcher' && currentCompanyId) {
+      console.log('[getCompany] Dispatcher with currentCompanyId, checking association');
+      const { data: company, error: companyError } = await supabase
+        .from('companies')
+        .select('*')
+        .eq('id', currentCompanyId)
+        .single();
+
+      if (!companyError && company) {
+        // Verify association exists
+        const { data: association } = await supabase
+          .from('dispatcher_company_associations')
+          .select('id')
+          .eq('dispatcher_id', session.user.id)
+          .eq('company_id', currentCompanyId)
+          .eq('status', 'active')
+          .single();
+
+        if (association) {
+          return {
+            id: company.id,
+            name: company.name,
+            ownerId: company.owner_id,
+            createdAt: company.created_at,
+            updatedAt: company.updated_at
+          };
+        }
+      }
+    }
+
+    // For dispatchers without currentCompanyId: Get first active company from associations
+    if (profile?.role === 'dispatcher') {
+      console.log('[getCompany] Dispatcher, checking associations');
+      const activeCompanies = await getActiveCompanies(session.user.id);
+      if (activeCompanies.length > 0) {
+        // Use first active company or check localStorage for saved preference
+        const savedCompanyId = typeof window !== 'undefined' 
+          ? localStorage.getItem('currentCompanyId') 
+          : null;
+        
+        const selectedCompany = savedCompanyId 
+          ? activeCompanies.find(c => c.id === savedCompanyId) || activeCompanies[0]
+          : activeCompanies[0];
+
+        if (selectedCompany) {
+          return selectedCompany;
+        }
+      }
     }
 
     if (!profile?.company_id) {
@@ -205,6 +257,22 @@ export const getOwnerEmail = async (ownerId: string): Promise<string | null> => 
   } catch (error) {
     console.error('Error in getOwnerEmail:', error);
     return null;
+  }
+};
+
+/**
+ * Get all companies associated with a dispatcher
+ */
+export const getDispatcherCompanies = async (dispatcherId: string): Promise<Company[]> => {
+  if (!isSupabaseConfigured || !supabase) {
+    return [];
+  }
+
+  try {
+    return await getActiveCompanies(dispatcherId);
+  } catch (error) {
+    console.error('Error fetching dispatcher companies:', error);
+    return [];
   }
 };
 

@@ -39,6 +39,7 @@ DECLARE
   current_user_id UUID;
   user_company_id UUID;
   is_owner BOOLEAN;
+  profile_role TEXT;
 BEGIN
   current_user_id := auth.uid();
   
@@ -47,8 +48,8 @@ BEGIN
     RETURN TRUE;
   END IF;
   
-  -- Get user's company_id from profiles (safe because function bypasses RLS)
-  SELECT company_id INTO user_company_id
+  -- Get user's company_id and role from profiles (safe because function bypasses RLS)
+  SELECT company_id, role INTO user_company_id, profile_role
   FROM profiles
   WHERE id = current_user_id;
   
@@ -63,7 +64,25 @@ BEGIN
     WHERE id = profile_company_id AND owner_id = current_user_id
   ) INTO is_owner;
   
-  RETURN is_owner;
+  IF is_owner THEN
+    RETURN TRUE;
+  END IF;
+  
+  -- Allow owners to view dispatcher profiles for invitation purposes
+  -- This allows owners to search for dispatchers to invite them
+  IF profile_role = 'owner' THEN
+    -- Get the profile being checked
+    SELECT role INTO profile_role
+    FROM profiles
+    WHERE id = profile_id;
+    
+    -- If the profile being checked is a dispatcher, allow owners to view it
+    IF profile_role = 'dispatcher' THEN
+      RETURN TRUE;
+    END IF;
+  END IF;
+  
+  RETURN FALSE;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 

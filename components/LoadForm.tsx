@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { Load, Transporter, Driver, UserProfile, Dispatcher } from '../types';
 import { X, Calculator, Upload, FileText, AlertCircle } from 'lucide-react';
-import { getDispatchers, getTransporters, getDrivers } from '../services/loadService';
+import { getTransporters, getDrivers } from '../services/loadService';
+import { getCompany } from '../services/companyService';
+import { getCompanyDispatchers } from '../services/dispatcherAssociationService';
 import { uploadRateConfirmationPdf } from '../services/storageService';
 import { PlacesAutocomplete } from './PlacesAutocomplete';
 import { calculateDistance } from '../services/distanceService';
@@ -11,9 +13,10 @@ interface LoadFormProps {
   onSave: (load: Omit<Load, 'id'>) => void;
   currentUser: UserProfile;
   loadToEdit?: Load; // Optional load for editing
+  companyId?: string; // Current company context for filtering dispatchers
 }
 
-export const LoadForm: React.FC<LoadFormProps> = ({ onClose, onSave, currentUser, loadToEdit }) => {
+export const LoadForm: React.FC<LoadFormProps> = ({ onClose, onSave, currentUser, loadToEdit, companyId }) => {
   const isEditMode = !!loadToEdit;
   // Data Options
   const [dispatchers, setDispatchers] = useState<Dispatcher[]>([]);
@@ -47,20 +50,46 @@ export const LoadForm: React.FC<LoadFormProps> = ({ onClose, onSave, currentUser
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [d, t, dr] = await Promise.all([getDispatchers(), getTransporters(), getDrivers()]);
-        setDispatchers(d);
-        setTransporters(t);
-        setDrivers(dr);
+        // Fetch company first (exactly like FleetManagement does)
+        const companyData = await getCompany();
         
-        // Auto-select dispatcher only if not in edit mode
-        if (!isEditMode) {
-          if (currentUser.role === 'dispatcher') {
-            // If logged in as dispatcher, use their name
-            setFormData(prev => ({ ...prev, dispatcher: currentUser.name }));
-          } else if (d.length > 0) {
-            // Otherwise default to first available
-            setFormData(prev => ({ ...prev, dispatcher: d[0].name }));
+        // Fetch transporters and drivers (always fetch these)
+        const [transportersData, driversData] = await Promise.all([
+          getTransporters(), 
+          getDrivers()
+        ]);
+        setTransporters(transportersData);
+        setDrivers(driversData);
+        
+        // Fetch dispatchers only if we have companyData
+        // Use getCompanyDispatchers directly (like InvitationManagement does) to avoid RLS issues
+        if (companyData) {
+          const associations = await getCompanyDispatchers(companyData.id);
+          // Filter to only active dispatchers with dispatcherId set, then map to Dispatcher format
+          const activeAssociations = associations.filter(a => a.status === 'active' && a.dispatcherId && a.dispatcher);
+          const dispatchersData: Dispatcher[] = activeAssociations.map(association => ({
+            id: association.dispatcherId!,
+            name: association.dispatcher?.name || association.dispatcher?.email || 'Unknown',
+            email: association.dispatcher?.email || '',
+            phone: association.dispatcher?.phone || '',
+            feePercentage: association.feePercentage || 12,
+            companyId: association.companyId
+          }));
+          
+          setDispatchers(dispatchersData);
+          
+          // Auto-select dispatcher only if not in edit mode
+          if (!isEditMode) {
+            if (currentUser.role === 'dispatcher') {
+              // If logged in as dispatcher, use their name
+              setFormData(prev => ({ ...prev, dispatcher: currentUser.name }));
+            } else if (dispatchersData.length > 0) {
+              // Otherwise default to first available
+              setFormData(prev => ({ ...prev, dispatcher: dispatchersData[0].name }));
+            }
           }
+        } else {
+          setDispatchers([]); // No dispatchers without company
         }
       } catch (e) {
         console.error("Failed to load options", e);
@@ -69,7 +98,7 @@ export const LoadForm: React.FC<LoadFormProps> = ({ onClose, onSave, currentUser
       }
     };
     fetchData();
-  }, [currentUser, isEditMode]);
+  }, [currentUser, isEditMode, companyId]);
 
   // Filter drivers based on selected transporter (for dispatchers)
   // For owners, show all drivers from their company (no transporter filter needed)
