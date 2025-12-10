@@ -1,7 +1,9 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Expense, ExpenseCategory, UserProfile, Transporter, Driver } from '../types';
 import { getExpenses, getExpenseCategories, getExpenseSummary, createExpense, updateExpense, deleteExpense } from '../services/expenseService';
-import { getTransporters, getDrivers } from '../services/loadService';
+import { getTransporters } from '../services/loadService';
+import { getCompanyDrivers } from '../services/driverAssociationService';
+import { supabase } from '../services/supabaseClient';
 import { ExpenseForm } from './ExpenseForm';
 import { StatsCard } from './StatsCard';
 import { ErrorModal } from './ErrorModal';
@@ -47,18 +49,88 @@ export const Expenses: React.FC<ExpensesProps> = ({ user, companyId }) => {
       if (vehicleFilter) filters.vehicleId = vehicleFilter;
       if (driverFilter) filters.driverId = driverFilter;
 
-      const [expensesData, categoriesData, transportersData, driversData, summaryData] = await Promise.all([
+      const [expensesData, categoriesData, transportersData, summaryData] = await Promise.all([
         getExpenses(companyId, filters),
         getExpenseCategories(),
         getTransporters(),
-        getDrivers(),
         getExpenseSummary(companyId, startDate || undefined, endDate || undefined)
       ]);
+
+      // Fetch drivers from associations to avoid duplicates
+      const driverAssociations = await getCompanyDrivers(companyId);
+      const activeDriverAssociations = driverAssociations.filter(a => a.status === 'active' && a.driverId && a.driver);
+      
+      // Get unique drivers by profile_id and fetch/create driver records
+      const profileIdSet = new Set<string>();
+      const driversData: Driver[] = [];
+      
+      for (const association of activeDriverAssociations) {
+        if (!association.driverId || !association.driver) continue;
+        
+        const profileId = association.driverId;
+        // Skip if we've already processed this profile
+        if (profileIdSet.has(profileId)) continue;
+        profileIdSet.add(profileId);
+        
+        // Check if driver record exists
+        const { data: existingDriver } = await supabase
+          .from('drivers')
+          .select('id, name, phone, email, transporter_id, company_id')
+          .eq('profile_id', profileId)
+          .eq('company_id', companyId)
+          .maybeSingle();
+        
+        if (existingDriver) {
+          driversData.push({
+            id: existingDriver.id,
+            name: existingDriver.name,
+            email: existingDriver.email || association.driver.email || '',
+            phone: existingDriver.phone || association.driver.phone || '',
+            transporterId: existingDriver.transporter_id || '',
+            companyId: existingDriver.company_id
+          });
+        } else {
+          // Create driver record if it doesn't exist
+          const { data: newDriver } = await supabase
+            .from('drivers')
+            .insert([{
+              name: association.driver.name || association.driver.email || 'Unknown',
+              phone: association.driver.phone || null,
+              email: association.driver.email || null,
+              profile_id: profileId,
+              company_id: companyId,
+              transporter_id: null
+            }])
+            .select('id, name, phone, email, transporter_id, company_id')
+            .single();
+          
+          if (newDriver) {
+            driversData.push({
+              id: newDriver.id,
+              name: newDriver.name,
+              email: newDriver.email || association.driver.email || '',
+              phone: newDriver.phone || association.driver.phone || '',
+              transporterId: newDriver.transporter_id || '',
+              companyId: newDriver.company_id
+            });
+          }
+        }
+      }
+      
+      // Deduplicate by name as well (in case of any remaining duplicates)
+      const driversByName = new Map<string, Driver>();
+      driversData.forEach(driver => {
+        const key = driver.name.toLowerCase().trim();
+        if (!driversByName.has(key)) {
+          driversByName.set(key, driver);
+        }
+      });
+      const finalDrivers = Array.from(driversByName.values());
 
       setExpenses(expensesData);
       setCategories(categoriesData);
       setTransporters(transportersData);
-      setDrivers(driversData);
+      setDrivers(finalDrivers);
       setSummary(summaryData);
     } catch (error) {
       console.error('Error fetching expenses:', error);

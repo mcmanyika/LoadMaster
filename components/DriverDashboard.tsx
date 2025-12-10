@@ -1,6 +1,8 @@
-import React from 'react';
-import { CalculatedLoad, UserProfile } from '../types';
-import { Truck, MapPin, Calendar, DollarSign, LogOut } from 'lucide-react';
+import React, { useState, useEffect, useMemo } from 'react';
+import { CalculatedLoad, UserProfile, Company } from '../types';
+import { Truck, MapPin, Calendar, DollarSign, LogOut, Key, Building2, ChevronLeft, ChevronRight } from 'lucide-react';
+import { DriverInvitationManagement } from './DriverInvitationManagement';
+import { getDriverAssociationsWithCompanies } from '../services/driverAssociationService';
 
 interface DriverDashboardProps {
   user: UserProfile;
@@ -9,10 +11,48 @@ interface DriverDashboardProps {
 }
 
 export const DriverDashboard: React.FC<DriverDashboardProps> = ({ user, loads, onSignOut }) => {
+  const [showInviteCode, setShowInviteCode] = useState(false);
+  const [currentCompany, setCurrentCompany] = useState<Company | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
+
+  useEffect(() => {
+    checkDriverCompany();
+  }, [user]);
+
+  const checkDriverCompany = async () => {
+    try {
+      const companies = await getDriverAssociationsWithCompanies(user.id);
+      // Drivers should only have one active company at a time
+      // Get the first (and should be only) active company
+      if (companies.length > 0) {
+        setCurrentCompany(companies[0]);
+      } else {
+        setCurrentCompany(null);
+      }
+    } catch (error) {
+      console.error('Error checking driver company:', error);
+      setCurrentCompany(null);
+    }
+  };
+
   // Filter logic: In a real app, this would be server-side. 
   // Here we simulate "My Loads" by just showing all or random ones if we don't have driver assignment data structure.
   // We'll show all loads for now as the data model doesn't explicitly link 'Driver User ID' to 'Load'.
-  const myLoads = loads; 
+  const myLoads = loads;
+
+  // Pagination logic
+  const totalPages = Math.ceil(myLoads.length / itemsPerPage);
+  const paginatedLoads = useMemo(() => {
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    const endIndex = startIndex + itemsPerPage;
+    return myLoads.slice(startIndex, endIndex);
+  }, [myLoads, currentPage, itemsPerPage]);
+
+  // Reset to page 1 when loads change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [loads.length]); 
 
   return (
     <div className="min-h-screen bg-slate-100 pb-20">
@@ -26,6 +66,12 @@ export const DriverDashboard: React.FC<DriverDashboardProps> = ({ user, loads, o
              <div>
                <h1 className="font-bold text-lg">Hello, {user.name}</h1>
                <p className="text-slate-400 text-xs">Drive safe!</p>
+               {currentCompany && (
+                 <div className="flex items-center gap-1.5 mt-1">
+                   <Building2 size={12} className="text-slate-400" />
+                   <p className="text-slate-300 text-xs">{currentCompany.name}</p>
+                 </div>
+               )}
              </div>
           </div>
           <button onClick={onSignOut} className="bg-slate-800 p-2 rounded-full hover:bg-slate-700">
@@ -48,11 +94,59 @@ export const DriverDashboard: React.FC<DriverDashboardProps> = ({ user, loads, o
         </div>
       </div>
 
+      {/* Join Company Section - Show only if driver doesn't have a company */}
+      {!currentCompany && (
+        <div className="px-4 py-4">
+          <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6 mb-4">
+            <div className="flex items-center gap-2 mb-4">
+              <Key size={20} className="text-blue-600" />
+              <h2 className="text-slate-800 font-bold text-lg">Join Company</h2>
+            </div>
+            <DriverInvitationManagement
+              user={user}
+              companyId={currentCompany?.id}
+              onUpdate={checkDriverCompany}
+            />
+          </div>
+        </div>
+      )}
+
+      {/* Company Info Card - Show when driver has a company */}
+      {currentCompany && (
+        <div className="px-4 py-4">
+          <div className="bg-gradient-to-r from-blue-600 to-indigo-600 rounded-xl shadow-sm border border-blue-500 p-6 mb-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="bg-white/20 p-2 rounded-lg">
+                  <Building2 size={20} className="text-white" />
+                </div>
+                <div>
+                  <p className="text-white/80 text-xs mb-1">Current Company</p>
+                  <p className="text-white font-bold text-lg">{currentCompany.name}</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Load Feed */}
       <div className="px-4 py-6 space-y-4">
         <h2 className="text-slate-800 font-bold text-sm uppercase tracking-wider ml-1">Assigned Loads</h2>
         
-        {myLoads.map((load) => (
+        {myLoads.length === 0 ? (
+          <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-8 text-center">
+            <Truck size={48} className="mx-auto text-slate-300 mb-4" />
+            <p className="text-slate-600 font-medium mb-2">No loads assigned yet</p>
+            <p className="text-slate-400 text-sm">
+              {!currentCompany 
+                ? "Join a company using an invite code to start receiving loads."
+                : "Your assigned loads will appear here."}
+            </p>
+          </div>
+        ) : (
+          <>
+            {paginatedLoads.map((load) => (
           <div key={load.id} className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden active:scale-[0.98] transition-transform">
              {/* Status Bar */}
              <div className={`h-1.5 w-full ${load.status === 'Factored' ? 'bg-emerald-500' : 'bg-amber-500'}`} />
@@ -101,7 +195,66 @@ export const DriverDashboard: React.FC<DriverDashboardProps> = ({ user, loads, o
                 </div>
              </div>
           </div>
-        ))}
+          ))}
+
+          {/* Pagination Controls */}
+          {myLoads.length > itemsPerPage && (
+            <div className="flex items-center justify-between mt-6 pt-4 border-t border-slate-200">
+              <div className="text-sm text-slate-600">
+                Showing {(currentPage - 1) * itemsPerPage + 1} to {Math.min(currentPage * itemsPerPage, myLoads.length)} of {myLoads.length} loads
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                  disabled={currentPage === 1}
+                  className="p-2 rounded-lg border border-slate-300 hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  aria-label="Previous page"
+                >
+                  <ChevronLeft size={18} />
+                </button>
+                <div className="flex items-center gap-1">
+                  {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => {
+                    // Show first page, last page, current page, and pages around current
+                    if (
+                      page === 1 ||
+                      page === totalPages ||
+                      (page >= currentPage - 1 && page <= currentPage + 1)
+                    ) {
+                      return (
+                        <button
+                          key={page}
+                          onClick={() => setCurrentPage(page)}
+                          className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+                            currentPage === page
+                              ? 'bg-blue-600 text-white'
+                              : 'bg-white text-slate-700 border border-slate-300 hover:bg-slate-50'
+                          }`}
+                        >
+                          {page}
+                        </button>
+                      );
+                    } else if (
+                      page === currentPage - 2 ||
+                      page === currentPage + 2
+                    ) {
+                      return <span key={page} className="px-2 text-slate-400">...</span>;
+                    }
+                    return null;
+                  })}
+                </div>
+                <button
+                  onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                  disabled={currentPage === totalPages}
+                  className="p-2 rounded-lg border border-slate-300 hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  aria-label="Next page"
+                >
+                  <ChevronRight size={18} />
+                </button>
+              </div>
+            </div>
+          )}
+          </>
+        )}
       </div>
     </div>
   );

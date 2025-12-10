@@ -37,22 +37,36 @@ export const generateUniqueInviteCode = async (
   while (attempts < maxRetries) {
     const code = generateRandomCode(length);
     
-    // Check if code already exists
-    const { data, error } = await supabase
+    // Check if code already exists in dispatcher associations
+    const { data: dispatcherData, error: dispatcherError } = await supabase
       .from('dispatcher_company_associations')
       .select('id')
       .eq('invite_code', code)
       .limit(1)
       .maybeSingle();
     
-    if (error) {
-      console.error('Error checking code uniqueness:', error);
+    if (dispatcherError) {
+      console.error('Error checking dispatcher code uniqueness:', dispatcherError);
       // If there's an error, return the code anyway (collision is unlikely)
       return code;
     }
     
-    // If code doesn't exist, return it
-    if (!data) {
+    // Check if code already exists in driver associations
+    const { data: driverData, error: driverError } = await supabase
+      .from('driver_company_associations')
+      .select('id')
+      .eq('invite_code', code)
+      .limit(1)
+      .maybeSingle();
+    
+    if (driverError) {
+      console.error('Error checking driver code uniqueness:', driverError);
+      // If there's an error, return the code anyway (collision is unlikely)
+      return code;
+    }
+    
+    // If code doesn't exist in either table, return it
+    if (!dispatcherData && !driverData) {
       return code;
     }
     

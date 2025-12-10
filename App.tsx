@@ -545,17 +545,30 @@ function App() {
   }, [filteredLoads]);
 
   // Chart Data Preparation
+  // For dispatchers: group by driver; For owners: group by dispatcher
   const chartData = useMemo(() => {
     const grouped: Record<string, { name: string, gross: number, loads: number }> = {};
     processedLoads.forEach(load => {
-      if (!grouped[load.dispatcher]) {
-        grouped[load.dispatcher] = { name: load.dispatcher, gross: 0, loads: 0 };
+      if (user?.role === 'dispatcher') {
+        // For dispatchers, group by driver
+        const driverName = load.driverId ? driverMap.get(load.driverId) : 'Unassigned';
+        const key = driverName || 'Unassigned';
+        if (!grouped[key]) {
+          grouped[key] = { name: key, gross: 0, loads: 0 };
+        }
+        grouped[key].gross += load.gross;
+        grouped[key].loads += 1;
+      } else {
+        // For owners, group by dispatcher
+        if (!grouped[load.dispatcher]) {
+          grouped[load.dispatcher] = { name: load.dispatcher, gross: 0, loads: 0 };
+        }
+        grouped[load.dispatcher].gross += load.gross;
+        grouped[load.dispatcher].loads += 1;
       }
-      grouped[load.dispatcher].gross += load.gross;
-      grouped[load.dispatcher].loads += 1;
     });
     return Object.values(grouped);
-  }, [processedLoads]);
+  }, [processedLoads, driverMap, user?.role]);
 
   const handleAddLoad = async (newLoadData: Omit<Load, 'id'>) => {
     try {
@@ -1005,7 +1018,9 @@ function App() {
                   
                   {/* Chart Section */}
                   <div className="lg:col-span-2 bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
-                    <h3 className="text-lg font-bold text-slate-800 mb-6">Revenue by Dispatcher</h3>
+                    <h3 className="text-lg font-bold text-slate-800 mb-6">
+                      {user.role === 'dispatcher' ? 'Revenue by Driver' : 'Revenue by Dispatcher'}
+                    </h3>
                     <div className="h-72">
                       <ResponsiveContainer width="100%" height="100%">
                         <BarChart data={chartData}>

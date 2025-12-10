@@ -1,12 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { Load, Driver, UserProfile, Dispatcher } from '../types';
 import { X, Calculator, Upload, FileText, AlertCircle } from 'lucide-react';
-import { getDrivers } from '../services/loadService';
 import { getCompany } from '../services/companyService';
 import { getCompanyDispatchers } from '../services/dispatcherAssociationService';
+import { getCompanyDrivers } from '../services/driverAssociationService';
 import { uploadRateConfirmationPdf } from '../services/storageService';
 import { PlacesAutocomplete } from './PlacesAutocomplete';
 import { calculateDistance } from '../services/distanceService';
+import { supabase } from '../services/supabaseClient';
 
 interface LoadFormProps {
   onClose: () => void;
@@ -59,17 +60,14 @@ export const LoadForm: React.FC<LoadFormProps> = ({ onClose, onSave, currentUser
         
         const targetCompanyId = companyId || companyData?.id;
         
-        // Fetch drivers filtered by company (transporters no longer needed for UI)
-        const driversData = await getDrivers(targetCompanyId);
-        setDrivers(driversData);
-        
-        // Fetch dispatchers only if we have companyData
-        // Use getCompanyDispatchers directly (like InvitationManagement does) to avoid RLS issues
+        // Fetch dispatchers and drivers only if we have companyData
+        // Use getCompanyDispatchers and getCompanyDrivers directly (like InvitationManagement does) to avoid RLS issues
         if (companyData) {
-          const associations = await getCompanyDispatchers(companyData.id);
+          // Fetch dispatchers from associations
+          const dispatcherAssociations = await getCompanyDispatchers(companyData.id);
           // Filter to only active dispatchers with dispatcherId set, then map to Dispatcher format
-          const activeAssociations = associations.filter(a => a.status === 'active' && a.dispatcherId && a.dispatcher);
-          const dispatchersData: Dispatcher[] = activeAssociations.map(association => ({
+          const activeDispatcherAssociations = dispatcherAssociations.filter(a => a.status === 'active' && a.dispatcherId && a.dispatcher);
+          const dispatchersData: Dispatcher[] = activeDispatcherAssociations.map(association => ({
             id: association.dispatcherId!,
             name: association.dispatcher?.name || association.dispatcher?.email || 'Unknown',
             email: association.dispatcher?.email || '',
@@ -79,6 +77,116 @@ export const LoadForm: React.FC<LoadFormProps> = ({ onClose, onSave, currentUser
           }));
           
           setDispatchers(dispatchersData);
+          
+          // Fetch drivers from associations
+          const driverAssociations = await getCompanyDrivers(companyData.id);
+          // Filter to only active drivers with driverId set
+          const activeDriverAssociations = driverAssociations.filter(a => a.status === 'active' && a.driverId && a.driver);
+          
+          // For each association, ensure a driver record exists in the drivers table
+          // The loads table references drivers.id, not profiles.id
+          const driversData: Driver[] = await Promise.all(
+            activeDriverAssociations.map(async (association) => {
+              const profileId = association.driverId!;
+              const driverProfile = association.driver;
+              
+              if (!driverProfile) {
+                return null;
+              }
+              
+              // Check if driver record exists for this profile
+              const { data: existingDriver } = await supabase
+                .from('drivers')
+                .select('id, name, phone, email, transporter_id, company_id')
+                .eq('profile_id', profileId)
+                .eq('company_id', companyData.id)
+                .maybeSingle();
+              
+              if (existingDriver) {
+                // Use existing driver record
+                return {
+                  id: existingDriver.id,
+                  name: existingDriver.name,
+                  email: existingDriver.email || driverProfile.email || '',
+                  phone: existingDriver.phone || driverProfile.phone || '',
+                  transporterId: existingDriver.transporter_id || '',
+                  companyId: existingDriver.company_id
+                };
+              } else {
+                // Create driver record for this profile
+                const { data: newDriver, error: createError } = await supabase
+                  .from('drivers')
+                  .insert([{
+                    name: driverProfile.name || driverProfile.email || 'Unknown',
+                    phone: driverProfile.phone || null,
+                    email: driverProfile.email || null,
+                    profile_id: profileId,
+                    company_id: companyData.id,
+                    transporter_id: null
+                  }])
+                  .select('id, name, phone, email, transporter_id, company_id')
+                  .single();
+                
+                if (createError || !newDriver) {
+                  console.error('Error creating driver record:', createError);
+                  // Fallback: return driver with profile ID (may cause issues with loads table)
+                  return {
+                    id: profileId, // This might not work if loads table expects drivers.id
+                    name: driverProfile.name || driverProfile.email || 'Unknown',
+                    email: driverProfile.email || '',
+                    phone: driverProfile.phone || '',
+                    transporterId: '',
+                    companyId: association.companyId
+                  };
+                }
+                
+                return {
+                  id: newDriver.id,
+                  name: newDriver.name,
+                  email: newDriver.email || driverProfile.email || '',
+                  phone: newDriver.phone || driverProfile.phone || '',
+                  transporterId: newDriver.transporter_id || '',
+                  companyId: newDriver.company_id
+                };
+              }
+            })
+          );
+          
+          // Filter out any null values
+          let finalDriversData = driversData.filter((d): d is Driver => d !== null);
+          
+          // If in edit mode and loadToEdit has a driverId, ensure that driver is in the list
+          if (isEditMode && loadToEdit?.driverId) {
+            const existingDriverInList = finalDriversData.find(d => d.id === loadToEdit.driverId);
+            
+            // If the driver from loadToEdit is not in the list, fetch it
+            if (!existingDriverInList) {
+              try {
+                const { data: loadDriver, error: driverError } = await supabase
+                  .from('drivers')
+                  .select('id, name, phone, email, transporter_id, company_id, profile_id')
+                  .eq('id', loadToEdit.driverId)
+                  .maybeSingle();
+                
+                if (!driverError && loadDriver) {
+                  // Add the driver to the list
+                  finalDriversData.push({
+                    id: loadDriver.id,
+                    name: loadDriver.name,
+                    email: loadDriver.email || '',
+                    phone: loadDriver.phone || '',
+                    transporterId: loadDriver.transporter_id || '',
+                    companyId: loadDriver.company_id
+                  });
+                }
+              } catch (error) {
+                console.error('Error fetching driver for edit mode:', error);
+                // Continue without adding the driver - the dropdown will show "Select Driver..." but that's better than crashing
+              }
+            }
+          }
+          
+          setDrivers(finalDriversData);
           
           // Auto-select dispatcher only if not in edit mode
           if (!isEditMode) {
@@ -93,9 +201,12 @@ export const LoadForm: React.FC<LoadFormProps> = ({ onClose, onSave, currentUser
           
         } else {
           setDispatchers([]); // No dispatchers without company
+          setDrivers([]); // No drivers without company
+          console.warn('LoadForm: No company data found, cannot fetch drivers/dispatchers');
         }
       } catch (e) {
         console.error("Failed to load options", e);
+        setErrorModal({ isOpen: true, message: `Failed to load drivers and dispatchers: ${e instanceof Error ? e.message : 'Unknown error'}` });
       } finally {
         setLoadingOptions(false);
       }
@@ -247,7 +358,7 @@ export const LoadForm: React.FC<LoadFormProps> = ({ onClose, onSave, currentUser
 
   return (
     <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-2xl shadow-xl w-full max-w-2xl overflow-hidden flex flex-col max-h-[90vh]">
+      <div className="bg-white rounded-2xl shadow-xl w-full max-w-5xl overflow-hidden flex flex-col max-h-[90vh]">
         <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50">
           <h2 className="text-lg font-bold text-slate-800">{isEditMode ? 'Edit Load' : 'Add New Load'}</h2>
           <button onClick={onClose} className="p-2 hover:bg-slate-200 rounded-full transition-colors">

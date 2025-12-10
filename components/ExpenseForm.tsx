@@ -2,7 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { Expense, ExpenseCategory, UserProfile, Transporter, Driver, Load, PaymentMethod, PaymentStatus, RecurringFrequency } from '../types';
 import { X, Upload, FileText, AlertCircle, Receipt } from 'lucide-react';
 import { getExpenseCategories } from '../services/expenseService';
-import { getTransporters, getDrivers, getLoads } from '../services/loadService';
+import { getTransporters, getLoads } from '../services/loadService';
+import { getCompanyDrivers } from '../services/driverAssociationService';
+import { supabase } from '../services/supabaseClient';
 import { uploadExpenseReceipt } from '../services/storageService';
 
 interface ExpenseFormProps {
@@ -45,15 +47,86 @@ export const ExpenseForm: React.FC<ExpenseFormProps> = ({ onClose, onSave, curre
         // For dispatchers, filter loads by their name and company
         // For owners, filter by company only
         const dispatcherName = currentUser?.role === 'dispatcher' ? currentUser.name : undefined;
-        const [cats, trans, drivs, lds] = await Promise.all([
+        const [cats, trans, lds] = await Promise.all([
           getExpenseCategories(),
           getTransporters(),
-          getDrivers(),
           getLoads(companyId, dispatcherName)
         ]);
+        
+        // Fetch drivers from associations to avoid duplicates
+        const driverAssociations = await getCompanyDrivers(companyId);
+        const activeDriverAssociations = driverAssociations.filter(a => a.status === 'active' && a.driverId && a.driver);
+        
+        // Get unique drivers by profile_id and fetch/create driver records
+        const profileIdSet = new Set<string>();
+        const driversData: Driver[] = [];
+        
+        for (const association of activeDriverAssociations) {
+          if (!association.driverId || !association.driver) continue;
+          
+          const profileId = association.driverId;
+          // Skip if we've already processed this profile
+          if (profileIdSet.has(profileId)) continue;
+          profileIdSet.add(profileId);
+          
+          // Check if driver record exists
+          const { data: existingDriver } = await supabase
+            .from('drivers')
+            .select('id, name, phone, email, transporter_id, company_id')
+            .eq('profile_id', profileId)
+            .eq('company_id', companyId)
+            .maybeSingle();
+          
+          if (existingDriver) {
+            driversData.push({
+              id: existingDriver.id,
+              name: existingDriver.name,
+              email: existingDriver.email || association.driver.email || '',
+              phone: existingDriver.phone || association.driver.phone || '',
+              transporterId: existingDriver.transporter_id || '',
+              companyId: existingDriver.company_id
+            });
+          } else {
+            // Create driver record if it doesn't exist
+            const { data: newDriver } = await supabase
+              .from('drivers')
+              .insert([{
+                name: association.driver.name || association.driver.email || 'Unknown',
+                phone: association.driver.phone || null,
+                email: association.driver.email || null,
+                profile_id: profileId,
+                company_id: companyId,
+                transporter_id: null
+              }])
+              .select('id, name, phone, email, transporter_id, company_id')
+              .single();
+            
+            if (newDriver) {
+              driversData.push({
+                id: newDriver.id,
+                name: newDriver.name,
+                email: newDriver.email || association.driver.email || '',
+                phone: newDriver.phone || association.driver.phone || '',
+                transporterId: newDriver.transporter_id || '',
+                companyId: newDriver.company_id
+              });
+            }
+          }
+        }
+        
+        // Deduplicate by name as well (in case of any remaining duplicates)
+        const driversByName = new Map<string, Driver>();
+        driversData.forEach(driver => {
+          const key = driver.name.toLowerCase().trim();
+          if (!driversByName.has(key)) {
+            driversByName.set(key, driver);
+          }
+        });
+        const finalDrivers = Array.from(driversByName.values());
+        
         setCategories(cats);
         setTransporters(trans);
-        setDrivers(drivs);
+        setDrivers(finalDrivers);
         setLoads(lds);
       } catch (error) {
         console.error('Error fetching form data:', error);

@@ -1,6 +1,9 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { UserProfile, CalculatedLoad, Driver, Dispatcher } from '../../types';
-import { getLoads, getDrivers, getDispatchers } from '../../services/loadService';
+import { getLoads } from '../../services/loadService';
+import { getCompanyDrivers } from '../../services/driverAssociationService';
+import { getCompanyDispatchers } from '../../services/dispatcherAssociationService';
+import { supabase } from '../../services/supabaseClient';
 import { DriverReports } from './DriverReports';
 import { DispatcherReports } from './DispatcherReports';
 import { generateDriverReports } from '../../services/reports/driverReportService';
@@ -16,7 +19,8 @@ interface ReportsProps {
 export const Reports: React.FC<ReportsProps> = ({ user, companyId }) => {
   const [activeTab, setActiveTab] = useState<'drivers' | 'dispatchers'>('drivers');
   const [loads, setLoads] = useState<CalculatedLoad[]>([]);
-  const [drivers, setDrivers] = useState<Driver[]>([]);
+  const [drivers, setDrivers] = useState<Driver[]>([]); // Deduplicated for dropdown
+  const [allDrivers, setAllDrivers] = useState<Driver[]>([]); // All drivers for report generation
   const [dispatchers, setDispatchers] = useState<Dispatcher[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -38,14 +42,175 @@ export const Reports: React.FC<ReportsProps> = ({ user, companyId }) => {
       // For dispatchers, filter loads by their name and selected company
       // For owners, filter by company only
       const dispatcherName = user?.role === 'dispatcher' ? user.name : undefined;
-      const [loadsData, driversData, dispatchersData] = await Promise.all([
-        getLoads(companyId, dispatcherName),
-        getDrivers(),
-        getDispatchers(companyId)
+      
+      if (!companyId) {
+        setError('Company ID is required');
+        setLoading(false);
+        return;
+      }
+      
+      const [loadsData] = await Promise.all([
+        getLoads(companyId, dispatcherName)
       ]);
+      
+      // Fetch dispatchers from associations
+      const dispatcherAssociations = await getCompanyDispatchers(companyId);
+      const activeDispatcherAssociations = dispatcherAssociations.filter(a => a.status === 'active' && a.dispatcherId && a.dispatcher);
+      
+      // Map to Dispatcher format and deduplicate by name
+      const dispatchersByName = new Map<string, Dispatcher>();
+      activeDispatcherAssociations.forEach(association => {
+        if (association.dispatcherId && association.dispatcher) {
+          const dispatcherName = association.dispatcher.name || association.dispatcher.email || 'Unknown';
+          const key = dispatcherName.toLowerCase().trim();
+          
+          // Only keep the first occurrence of each name
+          if (!dispatchersByName.has(key)) {
+            dispatchersByName.set(key, {
+              id: association.dispatcherId,
+              name: dispatcherName,
+              email: association.dispatcher.email || '',
+              phone: association.dispatcher.phone || '',
+              feePercentage: association.feePercentage || 12,
+              companyId: association.companyId
+            });
+          }
+        }
+      });
+      
+      const dispatchersData = Array.from(dispatchersByName.values());
 
+      // Fetch ALL driver records for the company (to match loads that might reference old driver IDs)
+      // This ensures we can resolve driver names for all loads, even if they reference older driver records
+      let allCompanyDrivers = null;
+      try {
+        const { data, error: driversError } = await supabase
+          .from('drivers')
+          .select('id, name, phone, email, transporter_id, company_id, profile_id')
+          .eq('company_id', companyId);
+        
+        if (driversError) {
+          console.error('Error fetching company drivers:', driversError);
+        } else {
+          allCompanyDrivers = data;
+        }
+      } catch (err) {
+        console.error('Error in driver fetch:', err);
+        // Continue with empty array if fetch fails
+        allCompanyDrivers = [];
+      }
+      
+      // Also fetch drivers from associations to get the latest data and ensure we have all active drivers
+      const driverAssociations = await getCompanyDrivers(companyId);
+      const activeDriverAssociations = driverAssociations.filter(a => a.status === 'active' && a.driverId && a.driver);
+      
+      // Create maps for deduplication
+      const driversById = new Map<string, Driver>(); // All drivers by ID (for report generation)
+      const driversByProfileId = new Map<string, Driver>(); // One driver per profile_id
+      const driversByName = new Map<string, Driver>(); // One driver per unique name (for dropdown)
+      
+      // First, add all existing driver records from the drivers table
+      if (allCompanyDrivers) {
+        allCompanyDrivers.forEach(driver => {
+          const driverObj: Driver = {
+            id: driver.id,
+            name: driver.name,
+            email: driver.email || '',
+            phone: driver.phone || '',
+            transporterId: driver.transporter_id || '',
+            companyId: driver.company_id
+          };
+          
+          driversById.set(driver.id, driverObj);
+          
+          // Group by profile_id (one driver per profile)
+          if (driver.profile_id) {
+            if (!driversByProfileId.has(driver.profile_id)) {
+              driversByProfileId.set(driver.profile_id, driverObj);
+            }
+          }
+        });
+      }
+      
+      // Then, update/create driver records from associations (this ensures we have the latest data)
+      for (const association of activeDriverAssociations) {
+        if (!association.driverId || !association.driver) continue;
+        
+        const profileId = association.driverId;
+        
+        // Check if driver record exists for this profile
+        const existingDriver = allCompanyDrivers?.find(d => d.profile_id === profileId && d.company_id === companyId);
+        
+        if (existingDriver) {
+          // Update the existing driver record with latest data from profile
+          const updatedDriver: Driver = {
+            id: existingDriver.id,
+            name: association.driver.name || existingDriver.name || 'Unknown',
+            email: association.driver.email || existingDriver.email || '',
+            phone: association.driver.phone || existingDriver.phone || '',
+            transporterId: existingDriver.transporter_id || '',
+            companyId: existingDriver.company_id
+          };
+          
+          driversById.set(existingDriver.id, updatedDriver);
+          driversByProfileId.set(profileId, updatedDriver);
+        } else {
+          // Create driver record if it doesn't exist
+          const { data: newDriver } = await supabase
+            .from('drivers')
+            .insert([{
+              name: association.driver.name || association.driver.email || 'Unknown',
+              phone: association.driver.phone || null,
+              email: association.driver.email || null,
+              profile_id: profileId,
+              company_id: companyId,
+              transporter_id: null
+            }])
+            .select('id, name, phone, email, transporter_id, company_id')
+            .single();
+          
+          if (newDriver) {
+            const newDriverObj: Driver = {
+              id: newDriver.id,
+              name: newDriver.name,
+              email: newDriver.email || association.driver.email || '',
+              phone: newDriver.phone || association.driver.phone || '',
+              transporterId: newDriver.transporter_id || '',
+              companyId: newDriver.company_id
+            };
+            
+            driversById.set(newDriver.id, newDriverObj);
+            driversByProfileId.set(profileId, newDriverObj);
+          }
+        }
+      }
+      
+      // Final deduplication: use profile-based drivers first, then others, deduplicated by name
+      driversByProfileId.forEach(driver => {
+        const key = driver.name.toLowerCase().trim();
+        if (!driversByName.has(key)) {
+          driversByName.set(key, driver);
+        }
+      });
+      
+      // Add any remaining drivers that don't have a profile_id (for backward compatibility)
+      driversById.forEach(driver => {
+        const key = driver.name.toLowerCase().trim();
+        if (!driversByName.has(key)) {
+          driversByName.set(key, driver);
+        }
+      });
+      
+      // Use deduplicated drivers for the dropdown (unique names only)
+      const finalDrivers = Array.from(driversByName.values());
+      
+      // Store all drivers by ID for report generation (to match loads with any driver ID)
+      // This ensures we can resolve driver names even if loads reference old driver IDs
+      const allDriversById = Array.from(driversById.values());
+      
       setLoads(loadsData || []);
-      setDrivers(driversData || []);
+      setDrivers(finalDrivers); // Use deduplicated drivers for dropdown (unique names only)
+      setAllDrivers(allDriversById); // Store all drivers for report generation
       setDispatchers(dispatchersData || []);
     } catch (error) {
       console.error('Error fetching reports data:', error);
@@ -90,12 +255,16 @@ export const Reports: React.FC<ReportsProps> = ({ user, companyId }) => {
   // Generate driver reports
   const driverReports = useMemo(() => {
     try {
-      return generateDriverReports(processedLoads, drivers, dateFilter);
+      // Use allDrivers for report generation (includes all driver IDs to match loads)
+      // Use drivers (deduplicated) only for the dropdown
+      // Fallback to drivers if allDrivers is not yet loaded
+      const driversForReports = (allDrivers && allDrivers.length > 0) ? allDrivers : drivers;
+      return generateDriverReports(processedLoads, driversForReports, dateFilter);
     } catch (error) {
       console.error('Error generating driver reports:', error);
       return [];
     }
-  }, [processedLoads, drivers, dateFilter]);
+  }, [processedLoads, allDrivers, drivers, dateFilter]);
 
   // Generate dispatcher reports
   const dispatcherReports = useMemo(() => {
@@ -271,4 +440,5 @@ export const Reports: React.FC<ReportsProps> = ({ user, companyId }) => {
     </div>
   );
 };
+
 

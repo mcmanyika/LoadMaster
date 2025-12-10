@@ -30,16 +30,38 @@ export const generateDriverReports = (
     });
   }
 
-  // Filter by specific driver if provided
-  if (filters.driverId) {
-    filteredLoads = filteredLoads.filter(load => load.driverId === filters.driverId);
-  }
-
-  // Create a map of driverId to driver name
+  // Create a map of driverId to driver name (and reverse map for filtering)
   const driverMap = new Map<string, string>();
+  const driverNameToIds = new Map<string, string[]>(); // Map driver name to all their IDs
+  
   drivers.forEach(driver => {
     driverMap.set(driver.id, driver.name);
+    
+    // Group driver IDs by name (for filtering by name)
+    const nameKey = driver.name.toLowerCase().trim();
+    if (!driverNameToIds.has(nameKey)) {
+      driverNameToIds.set(nameKey, []);
+    }
+    driverNameToIds.get(nameKey)!.push(driver.id);
   });
+
+  // Filter by specific driver if provided
+  // If driverId is provided, also include loads for other driver IDs with the same name
+  if (filters.driverId) {
+    const selectedDriver = drivers.find(d => d.id === filters.driverId);
+    if (selectedDriver) {
+      const driverName = selectedDriver.name.toLowerCase().trim();
+      const allDriverIdsForName = driverNameToIds.get(driverName) || [filters.driverId];
+      
+      // Filter loads that match any of the driver IDs for this driver name
+      filteredLoads = filteredLoads.filter(load => 
+        load.driverId && allDriverIdsForName.includes(load.driverId)
+      );
+    } else {
+      // Fallback: filter by exact driverId if driver not found
+      filteredLoads = filteredLoads.filter(load => load.driverId === filters.driverId);
+    }
+  }
 
   // Group loads by driverId
   const loadsByDriver = new Map<string, CalculatedLoad[]>();

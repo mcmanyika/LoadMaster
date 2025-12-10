@@ -5,6 +5,7 @@ import { getCompany } from '../services/companyService';
 import { Truck, User, Plus, Search, Building2, Phone, Mail, FileBadge, Users as UsersIcon, AlertCircle, DollarSign, Edit2, X, Check } from 'lucide-react';
 import { ErrorModal } from './ErrorModal';
 import { InvitationManagement } from './InvitationManagement';
+import { DriverInvitationManagement } from './DriverInvitationManagement';
 
 interface FleetManagementProps {
   user: UserProfile;
@@ -12,7 +13,7 @@ interface FleetManagementProps {
 
 export const FleetManagement: React.FC<FleetManagementProps> = ({ user }) => {
   const isOwner = user.role === 'owner';
-  const [activeTab, setActiveTab] = useState<'transporters' | 'drivers' | 'dispatchers' | 'vehicles'>(isOwner ? 'dispatchers' : 'dispatchers');
+  const [activeTab, setActiveTab] = useState<'drivers' | 'dispatchers' | 'vehicles'>(isOwner ? 'dispatchers' : 'dispatchers');
   const [transporters, setTransporters] = useState<Transporter[]>([]);
   const [drivers, setDrivers] = useState<Driver[]>([]);
   const [dispatchers, setDispatchers] = useState<Dispatcher[]>([]);
@@ -243,17 +244,15 @@ export const FleetManagement: React.FC<FleetManagementProps> = ({ user }) => {
               {isOwner ? 'Manage your drivers and dispatchers' : 'Manage your carriers and drivers'}
             </p>
           </div>
-          {/* Add button - only show for owners, and not for dispatchers tab */}
-          {isOwner && activeTab !== 'dispatchers' && (
+          {/* Add button - only show for owners, and not for dispatchers or drivers tabs (they use invite codes) */}
+          {isOwner && activeTab !== 'dispatchers' && activeTab !== 'drivers' && (
             <button 
               onClick={() => setShowAddForm(true)}
               className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium shadow-sm transition-colors"
             >
               <Plus size={18} />
               Add {
-                activeTab === 'vehicles' ? 'Vehicle' :
-                activeTab === 'transporters' ? 'Carrier' : 
-                activeTab === 'drivers' ? 'Driver' : 
+                activeTab === 'vehicles' ? 'Vehicle' : 
                 'Dispatcher'
               }
             </button>
@@ -271,28 +270,17 @@ export const FleetManagement: React.FC<FleetManagementProps> = ({ user }) => {
             {isOwner ? 'Dispatchers' : 'Join Company'}
             {activeTab === 'dispatchers' && <div className="absolute bottom-0 left-0 w-full h-0.5 bg-blue-600 rounded-t-full"></div>}
           </button>
-          {/* Transporters / Carriers tab - only for owners */}
+          {/* Drivers tab - only for owners */}
           {isOwner && (
-            <>
-              <button 
-                onClick={() => setActiveTab('transporters')}
-                className={`pb-4 text-sm font-medium transition-colors relative ${
-                  activeTab === 'transporters' ? 'text-blue-600' : 'text-slate-500 hover:text-slate-700'
-                }`}
-              >
-                Transporters / Carriers
-                {activeTab === 'transporters' && <div className="absolute bottom-0 left-0 w-full h-0.5 bg-blue-600 rounded-t-full"></div>}
-              </button>
-              <button 
-                onClick={() => setActiveTab('drivers')}
-                className={`pb-4 text-sm font-medium transition-colors relative ${
-                  activeTab === 'drivers' ? 'text-blue-600' : 'text-slate-500 hover:text-slate-700'
-                }`}
-              >
-                Drivers
-                {activeTab === 'drivers' && <div className="absolute bottom-0 left-0 w-full h-0.5 bg-blue-600 rounded-t-full"></div>}
-              </button>
-            </>
+            <button 
+              onClick={() => setActiveTab('drivers')}
+              className={`pb-4 text-sm font-medium transition-colors relative ${
+                activeTab === 'drivers' ? 'text-blue-600' : 'text-slate-500 hover:text-slate-700'
+              }`}
+            >
+              Drivers
+              {activeTab === 'drivers' && <div className="absolute bottom-0 left-0 w-full h-0.5 bg-blue-600 rounded-t-full"></div>}
+            </button>
           )}
           {isOwner && (
             <button 
@@ -319,43 +307,23 @@ export const FleetManagement: React.FC<FleetManagementProps> = ({ user }) => {
                  <div className="flex justify-between items-center mb-4">
                     <h3 className="font-bold text-slate-800">Add New {
                       activeTab === 'vehicles' ? 'Vehicle' :
-                      activeTab === 'transporters' ? 'Carrier' : 
                       activeTab === 'drivers' ? 'Driver' : 
                       'Dispatcher'
                     }</h3>
                     <button onClick={() => setShowAddForm(false)} className="text-sm text-slate-500 hover:text-slate-800">Cancel</button>
                  </div>
                  
-                 {(activeTab === 'transporters' || activeTab === 'vehicles') ? (
+                 {activeTab === 'vehicles' ? (
                    <form onSubmit={handleAddTransporter} className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      {activeTab === 'vehicles' ? (
-                        <>
-                          <input required placeholder="Vehicle Name" className="p-2 border rounded-lg" value={tForm.name} onChange={e => setTForm({...tForm, name: e.target.value})} />
-                          <input required placeholder="Registration Number" className="p-2 border rounded-lg" value={tForm.registrationNumber} onChange={e => setTForm({...tForm, registrationNumber: e.target.value})} />
-                        </>
-                      ) : (
-                        <>
-                          <input required placeholder="Company Name" className="p-2 border rounded-lg" value={tForm.name} onChange={e => setTForm({...tForm, name: e.target.value})} />
-                          <input required placeholder="MC Number" className="p-2 border rounded-lg" value={tForm.mcNumber} onChange={e => setTForm({...tForm, mcNumber: e.target.value})} />
-                          <input placeholder="Phone" className="p-2 border rounded-lg" value={tForm.contactPhone} onChange={e => setTForm({...tForm, contactPhone: e.target.value})} />
-                          <input placeholder="Email" className="p-2 border rounded-lg" value={tForm.contactEmail} onChange={e => setTForm({...tForm, contactEmail: e.target.value})} />
-                        </>
-                      )}
-                      <button type="submit" className="md:col-span-2 bg-blue-600 text-white py-2 rounded-lg font-medium hover:bg-blue-700">Register {activeTab === 'vehicles' ? 'Vehicle' : 'Carrier'}</button>
+                      <input required placeholder="Vehicle Name" className="p-2 border rounded-lg" value={tForm.name} onChange={e => setTForm({...tForm, name: e.target.value})} />
+                      <input required placeholder="Registration Number" className="p-2 border rounded-lg" value={tForm.registrationNumber} onChange={e => setTForm({...tForm, registrationNumber: e.target.value})} />
+                      <button type="submit" className="md:col-span-2 bg-blue-600 text-white py-2 rounded-lg font-medium hover:bg-blue-700">Register Vehicle</button>
                    </form>
                  ) : activeTab === 'drivers' ? (
-                   <form onSubmit={handleAddDriver} className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <input required placeholder="Driver Name" className="p-2 border rounded-lg" value={dForm.name} onChange={e => setDForm({...dForm, name: e.target.value})} />
-                      <input 
-                        disabled 
-                        placeholder="Carrier" 
-                        className="p-2 border rounded-lg bg-slate-100 text-slate-600 cursor-not-allowed" 
-                        value={companyName || 'Company Name'} 
-                      />
-                      <input placeholder="Phone" className="p-2 border rounded-lg" value={dForm.phone} onChange={e => setDForm({...dForm, phone: e.target.value})} />
-                      <input placeholder="Email" className="p-2 border rounded-lg" value={dForm.email} onChange={e => setDForm({...dForm, email: e.target.value})} />
-                      <button type="submit" className="md:col-span-2 bg-blue-600 text-white py-2 rounded-lg font-medium hover:bg-blue-700">Register Driver</button>
-                   </form>
+                   // Driver form removed - now using invite code system
+                   <div className="text-slate-500 text-sm">
+                     Drivers are now managed through invite codes. Use the "Generate Invite Code" section above.
+                   </div>
                  ) : (
                    <form onSubmit={handleAddDispatcher} className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       {error && (
@@ -401,7 +369,7 @@ export const FleetManagement: React.FC<FleetManagementProps> = ({ user }) => {
             )}
 
             {/* LISTS */}
-            {((!isOwner && activeTab === 'transporters') || (isOwner && activeTab === 'vehicles')) && (
+            {isOwner && activeTab === 'vehicles' && (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {transporters.map(t => {
                   const isEditing = editingVehicleId === t.id;
@@ -488,108 +456,22 @@ export const FleetManagement: React.FC<FleetManagementProps> = ({ user }) => {
                     </div>
                   );
                 })}
-                {transporters.length === 0 && <div className="col-span-3 text-center text-slate-400 py-10">No {activeTab === 'vehicles' ? 'vehicles' : 'carriers'} registered yet.</div>}
+                {transporters.length === 0 && <div className="col-span-3 text-center text-slate-400 py-10">No vehicles registered yet.</div>}
               </div>
             )}
 
             {activeTab === 'drivers' && (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {drivers.map(d => {
-                  const carrier = transporters.find(t => t.id === d.transporterId);
-                  // For owners, show company name instead of carrier
-                  const displayCarrier = isOwner 
-                    ? (companyName || 'Company')
-                    : (carrier ? carrier.name : 'Unknown Carrier');
-                  const isEditing = editingDriverId === d.id;
-                  
-                  return (
-                    <div key={d.id} className="p-4 border border-slate-200 rounded-xl hover:shadow-md transition-shadow bg-white">
-                      <div className="flex items-start justify-between mb-3">
-                        <div className="flex items-center gap-3 flex-1">
-                          <div className="p-2 bg-emerald-100 rounded-lg text-emerald-600">
-                            <User size={20} />
-                          </div>
-                          <div className="flex-1">
-                            {isEditing ? (
-                              <input
-                                type="text"
-                                value={editDriverForm.name}
-                                onChange={(e) => setEditDriverForm({...editDriverForm, name: e.target.value})}
-                                className="w-full px-2 py-1 border border-slate-300 rounded text-sm font-bold text-slate-800"
-                                placeholder="Driver Name"
-                              />
-                            ) : (
-                              <h4 className="font-bold text-slate-800">{d.name}</h4>
-                            )}
-                            <div className="text-xs text-slate-500 mt-1">
-                              {displayCarrier}
-                            </div>
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-1">
-                          {isEditing ? (
-                            <>
-                              <button
-                                onClick={() => handleSaveDriver(d.id)}
-                                className="p-1.5 text-green-600 hover:bg-green-50 rounded transition-colors"
-                                title="Save"
-                              >
-                                <Check size={16} />
-                              </button>
-                              <button
-                                onClick={handleCancelEditDriver}
-                                className="p-1.5 text-red-600 hover:bg-red-50 rounded transition-colors"
-                                title="Cancel"
-                              >
-                                <X size={16} />
-                              </button>
-                            </>
-                          ) : (
-                            <button
-                              onClick={() => handleEditDriver(d)}
-                              className="p-1.5 text-slate-400 hover:text-slate-600 hover:bg-slate-50 rounded transition-colors"
-                              title="Edit"
-                            >
-                              <Edit2 size={16} />
-                            </button>
-                          )}
-                        </div>
-                      </div>
-                      <div className="space-y-2 text-sm text-slate-600 mt-4 pt-4 border-t border-slate-50">
-                        {isEditing ? (
-                          <>
-                            <div className="flex items-center gap-2">
-                              <Phone size={14} className="text-slate-400"/>
-                              <input
-                                type="text"
-                                value={editDriverForm.phone}
-                                onChange={(e) => setEditDriverForm({...editDriverForm, phone: e.target.value})}
-                                className="flex-1 px-2 py-1 border border-slate-300 rounded text-sm"
-                                placeholder="Phone"
-                              />
-                            </div>
-                            <div className="flex items-center gap-2">
-                              <Mail size={14} className="text-slate-400"/>
-                              <input
-                                type="email"
-                                value={editDriverForm.email}
-                                onChange={(e) => setEditDriverForm({...editDriverForm, email: e.target.value})}
-                                className="flex-1 px-2 py-1 border border-slate-300 rounded text-sm"
-                                placeholder="Email"
-                              />
-                            </div>
-                          </>
-                        ) : (
-                          <>
-                            {d.phone && <div className="flex items-center gap-2"><Phone size={14} className="text-slate-400"/> {d.phone}</div>}
-                            {d.email && <div className="flex items-center gap-2"><Mail size={14} className="text-slate-400"/> {d.email}</div>}
-                          </>
-                        )}
-                      </div>
-                    </div>
-                  );
-                })}
-                {drivers.length === 0 && <div className="col-span-3 text-center text-slate-400 py-10">No drivers registered yet.</div>}
+              <div className="space-y-6">
+                {/* Invitation Management Section - Show for both owners and drivers */}
+                <div className="border-b border-slate-200 pb-6">
+                  <DriverInvitationManagement
+                    user={user}
+                    companyId={companyId}
+                    onUpdate={fetchData}
+                  />
+                </div>
+                
+                {/* Drivers List is now handled by DriverInvitationManagement component above */}
               </div>
             )}
 
@@ -604,124 +486,7 @@ export const FleetManagement: React.FC<FleetManagementProps> = ({ user }) => {
                   />
                 </div>
                 
-                {/* Dispatchers List - Only show for owners */}
-                {isOwner && (
-                <div>
-                  <h3 className="text-lg font-semibold text-slate-800 mb-4">Active Dispatchers</h3>
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {dispatchers.map(d => {
-                  const isEditing = editingDispatcherId === d.id;
-                  
-                  return (
-                    <div key={d.id} className="p-4 border border-slate-200 rounded-xl hover:shadow-md transition-shadow bg-white">
-                      <div className="flex items-start justify-between mb-3">
-                        <div className="flex items-center gap-3 flex-1">
-                          <div className="p-2 bg-blue-100 rounded-lg text-blue-600">
-                            <UsersIcon size={20} />
-                          </div>
-                          <div className="flex-1">
-                            {isEditing ? (
-                              <input
-                                type="text"
-                                value={editDispatcherForm.name}
-                                onChange={(e) => setEditDispatcherForm({...editDispatcherForm, name: e.target.value})}
-                                className="w-full px-2 py-1 border border-slate-300 rounded text-sm font-bold text-slate-800"
-                                placeholder="Full Name"
-                              />
-                            ) : (
-                              <h4 className="font-bold text-slate-800">{d.name}</h4>
-                            )}
-                            <div className="text-xs text-slate-500 mt-1">
-                              Dispatcher
-                            </div>
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-1">
-                          {isEditing ? (
-                            <>
-                              <button
-                                onClick={() => handleSaveDispatcher(d.id)}
-                                className="p-1.5 text-green-600 hover:bg-green-50 rounded transition-colors"
-                                title="Save"
-                              >
-                                <Check size={16} />
-                              </button>
-                              <button
-                                onClick={handleCancelEditDispatcher}
-                                className="p-1.5 text-red-600 hover:bg-red-50 rounded transition-colors"
-                                title="Cancel"
-                              >
-                                <X size={16} />
-                              </button>
-                            </>
-                          ) : (
-                            <button
-                              onClick={() => handleEditDispatcher(d)}
-                              className="p-1.5 text-slate-400 hover:text-slate-600 hover:bg-slate-50 rounded transition-colors"
-                              title="Edit"
-                            >
-                              <Edit2 size={16} />
-                            </button>
-                          )}
-                        </div>
-                      </div>
-                      <div className="space-y-2 text-sm text-slate-600 mt-4 pt-4 border-t border-slate-50">
-                        {isEditing ? (
-                          <>
-                            <div className="flex items-center gap-2">
-                              <Mail size={14} className="text-slate-400"/>
-                              <input
-                                type="email"
-                                value={editDispatcherForm.email}
-                                onChange={(e) => setEditDispatcherForm({...editDispatcherForm, email: e.target.value})}
-                                className="flex-1 px-2 py-1 border border-slate-300 rounded text-sm"
-                                placeholder="Email"
-                              />
-                            </div>
-                            <div className="flex items-center gap-2">
-                              <Phone size={14} className="text-slate-400"/>
-                              <input
-                                type="tel"
-                                value={editDispatcherForm.phone}
-                                onChange={(e) => setEditDispatcherForm({...editDispatcherForm, phone: e.target.value})}
-                                className="flex-1 px-2 py-1 border border-slate-300 rounded text-sm"
-                                placeholder="Phone"
-                              />
-                            </div>
-                            <div className="flex items-center gap-2">
-                              <DollarSign size={14} className="text-slate-400"/>
-                              <input
-                                type="number"
-                                min="0"
-                                max="100"
-                                step="0.1"
-                                value={editDispatcherForm.feePercentage}
-                                onChange={(e) => setEditDispatcherForm({...editDispatcherForm, feePercentage: e.target.value})}
-                                className="flex-1 px-2 py-1 border border-slate-300 rounded text-sm"
-                                placeholder="Fee %"
-                              />
-                            </div>
-                          </>
-                        ) : (
-                          <>
-                            {d.email && <div className="flex items-center gap-2"><Mail size={14} className="text-slate-400"/> {d.email}</div>}
-                            {d.phone && <div className="flex items-center gap-2"><Phone size={14} className="text-slate-400"/> {d.phone}</div>}
-                            {d.feePercentage !== undefined && (
-                              <div className="flex items-center gap-2">
-                                <DollarSign size={14} className="text-slate-400"/>
-                                <span>Fee: {d.feePercentage}%</span>
-                              </div>
-                            )}
-                          </>
-                        )}
-                      </div>
-                    </div>
-                  );
-                    })}
-                    {dispatchers.length === 0 && <div className="col-span-3 text-center text-slate-400 py-10">No dispatchers registered yet.</div>}
-                  </div>
-                </div>
-                )}
+                {/* Dispatchers List is now handled by InvitationManagement component above */}
               </div>
             )}
           </>

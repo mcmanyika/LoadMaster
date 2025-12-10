@@ -52,6 +52,21 @@ export interface DispatcherCompanyAssociation {
   dispatcher?: UserProfile;
 }
 
+export interface DriverCompanyAssociation {
+  id: string;
+  driverId?: string; // Optional: NULL for unused invite codes
+  companyId: string;
+  status: 'active' | 'inactive' | 'pending' | 'suspended';
+  inviteCode?: string;
+  expiresAt?: string;
+  joinedAt?: string;
+  invitedBy?: string;
+  createdAt: string;
+  updatedAt: string;
+  driver?: UserProfile;
+  company?: Company;
+}
+
 export interface CompanyInvitation {
   id: string;
   associationId: string;
@@ -122,6 +137,7 @@ export interface UserProfile {
   subscriptionStatus?: 'active' | 'trialing' | 'past_due' | 'canceled' | 'incomplete' | null;
   stripeCustomerId?: string;
   companyId?: string; // Reference to the company this user belongs to
+  associations?: DriverCompanyAssociation[]; // Multi-company associations for drivers
 }
 
 export interface MarketingAd {
