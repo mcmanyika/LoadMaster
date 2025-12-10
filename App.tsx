@@ -483,8 +483,13 @@ function App() {
     return loads.map(load => {
       const feePercentage = dispatcherFeeMap.get(load.dispatcher) || 12; // Default to 12% if dispatcher not found
       const dispatchFee = load.gross * (feePercentage / 100);
-      const driverPay = (load.gross - dispatchFee - load.gasAmount) * 0.5;
-      const netProfit = load.gross - driverPay - load.gasAmount;
+      // Gas expenses are shared 50-50 between driver and company
+      const driverGasShare = load.gasAmount * 0.5;
+      const companyGasShare = load.gasAmount * 0.5;
+      // Driver pay: 50% of (Gross - Dispatch Fee) minus driver's share of gas
+      const driverPay = (load.gross - dispatchFee) * 0.5 - driverGasShare;
+      // Net profit: 50% of (Gross - Dispatch Fee) minus company's share of gas
+      const netProfit = (load.gross - dispatchFee) * 0.5 - companyGasShare;
       const driverName = load.driverId ? driverMap.get(load.driverId) : undefined;
       return {
         ...load,

@@ -264,7 +264,10 @@ export const LoadForm: React.FC<LoadFormProps> = ({ onClose, onSave, currentUser
   const selectedDispatcher = dispatchers.find(d => d.name === formData.dispatcher);
   const feePercentage = selectedDispatcher?.feePercentage || 12; // Default to 12% if not set
   const dispatchFee = gross * (feePercentage / 100);
-  const driverPay = (gross - dispatchFee - gas) * 0.5;
+  // Gas expenses are shared 50-50 between driver and company
+  const driverGasShare = gas * 0.5;
+  // Driver pay: 50% of (Gross - Dispatch Fee) minus driver's share of gas
+  const driverPay = (gross - dispatchFee) * 0.5 - driverGasShare;
 
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
