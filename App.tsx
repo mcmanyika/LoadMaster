@@ -459,6 +459,29 @@ function App() {
     }
   }, [user, view, currentCompanyId]);
 
+  // Redirect owners without a company to Settings page
+  useEffect(() => {
+    if (user && user.role === 'owner' && !authLoading) {
+      const checkCompanyAndRedirect = async () => {
+        try {
+          const companyData = await getCompany();
+          // If no company exists and we're not already on the company settings page, redirect
+          if (!companyData && view !== 'company') {
+            setView('company');
+          }
+        } catch (error) {
+          console.error('Error checking company:', error);
+          // If there's an error, still redirect to settings to be safe
+          if (view !== 'company') {
+            setView('company');
+          }
+        }
+      };
+      
+      checkCompanyAndRedirect();
+    }
+  }, [user, authLoading, view]);
+
   const checkAuth = async () => {
     const currentUser = await getCurrentUser();
     setUser(currentUser);
@@ -827,7 +850,7 @@ function App() {
     <div className="h-screen bg-slate-50 dark:bg-slate-900 flex font-sans overflow-hidden">
       
       {/* Sidebar Navigation */}
-      <aside className="group w-20 hover:w-64 bg-slate-900 dark:bg-slate-900 text-slate-700 dark:text-slate-300 flex-shrink-0 hidden md:flex flex-col h-full overflow-y-auto transition-all duration-300 ease-in-out">
+      <aside className="group w-20 hover:w-64 bg-slate-900 dark:bg-slate-900 text-slate-300 dark:text-slate-300 flex-shrink-0 hidden md:flex flex-col h-full overflow-y-auto transition-all duration-300 ease-in-out">
         <div className="p-4 group-hover:p-6 transition-all duration-300">
           <div className="flex items-center gap-3 text-white mb-8 justify-center group-hover:justify-start">
             <div className="bg-blue-600 p-2 rounded-lg flex-shrink-0">
@@ -839,86 +862,86 @@ function App() {
           <nav className="space-y-2">
             <button 
               onClick={() => setView('dashboard')}
-              className={`w-full flex items-center justify-center group-hover:justify-start gap-3 px-4 py-3 rounded-xl transition-colors ${view === 'dashboard' ? 'bg-blue-600/10 text-blue-400 font-medium' : 'hover:bg-slate-100 dark:hover:bg-slate-800'}`}
+              className={`w-full flex items-center justify-center group-hover:justify-start gap-3 px-4 py-3 rounded-xl transition-colors ${view === 'dashboard' ? 'bg-blue-600/10 text-blue-400 font-medium' : 'text-slate-300 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'}`}
               title="Dashboard"
             >
               <LayoutDashboard size={20} className="flex-shrink-0" />
-              <span className="opacity-0 group-hover:opacity-100 transition-opacity duration-300 whitespace-nowrap overflow-hidden">Dashboard</span>
+              <span className="opacity-0 group-hover:opacity-100 transition-opacity duration-300 whitespace-nowrap overflow-hidden text-slate-300 dark:text-slate-300">Dashboard</span>
             </button>
             <button 
               onClick={() => setView('loads')}
-              className={`w-full flex items-center justify-center group-hover:justify-start gap-3 px-4 py-3 rounded-xl transition-colors ${view === 'loads' ? 'bg-blue-600/10 text-blue-400 font-medium' : 'hover:bg-slate-100 dark:hover:bg-slate-800'}`}
+              className={`w-full flex items-center justify-center group-hover:justify-start gap-3 px-4 py-3 rounded-xl transition-colors ${view === 'loads' ? 'bg-blue-600/10 text-blue-400 font-medium' : 'text-slate-300 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'}`}
               title="All Loads"
             >
               <FileText size={20} className="flex-shrink-0" />
-              <span className="opacity-0 group-hover:opacity-100 transition-opacity duration-300 whitespace-nowrap overflow-hidden">All Loads</span>
+              <span className="opacity-0 group-hover:opacity-100 transition-opacity duration-300 whitespace-nowrap overflow-hidden text-slate-300 dark:text-slate-300">All Loads</span>
             </button>
             <button 
               onClick={() => setView('fleet')}
-              className={`w-full flex items-center justify-center group-hover:justify-start gap-3 px-4 py-3 rounded-xl transition-colors ${view === 'fleet' ? 'bg-blue-600/10 text-blue-400 font-medium' : 'hover:bg-slate-100 dark:hover:bg-slate-800'}`}
+              className={`w-full flex items-center justify-center group-hover:justify-start gap-3 px-4 py-3 rounded-xl transition-colors ${view === 'fleet' ? 'bg-blue-600/10 text-blue-400 font-medium' : 'text-slate-300 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'}`}
               title="Fleet & Drivers"
             >
               <Users size={20} className="flex-shrink-0" />
-              <span className="opacity-0 group-hover:opacity-100 transition-opacity duration-300 whitespace-nowrap overflow-hidden">Fleet & Drivers</span>
+              <span className="opacity-0 group-hover:opacity-100 transition-opacity duration-300 whitespace-nowrap overflow-hidden text-slate-300 dark:text-slate-300">Fleet & Drivers</span>
             </button>
             {user.role === 'owner' && (
               <button 
                 onClick={() => setView('reports')}
-                className={`w-full flex items-center justify-center group-hover:justify-start gap-3 px-4 py-3 rounded-xl transition-colors ${view === 'reports' ? 'bg-blue-600/10 text-blue-400 font-medium' : 'hover:bg-slate-100 dark:hover:bg-slate-800'}`}
+                className={`w-full flex items-center justify-center group-hover:justify-start gap-3 px-4 py-3 rounded-xl transition-colors ${view === 'reports' ? 'bg-blue-600/10 text-blue-400 font-medium' : 'text-slate-300 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'}`}
                 title="Reports"
               >
                 <FileBarChart size={20} className="flex-shrink-0" />
-                <span className="opacity-0 group-hover:opacity-100 transition-opacity duration-300 whitespace-nowrap overflow-hidden">Reports</span>
+                <span className="opacity-0 group-hover:opacity-100 transition-opacity duration-300 whitespace-nowrap overflow-hidden text-slate-300 dark:text-slate-300">Reports</span>
               </button>
             )}
             {user.role === 'owner' && (
               <button 
                 onClick={() => setView('expenses')}
-                className={`w-full flex items-center justify-center group-hover:justify-start gap-3 px-4 py-3 rounded-xl transition-colors ${view === 'expenses' ? 'bg-blue-600/10 text-blue-400 font-medium' : 'hover:bg-slate-800'}`}
+                className={`w-full flex items-center justify-center group-hover:justify-start gap-3 px-4 py-3 rounded-xl transition-colors ${view === 'expenses' ? 'bg-blue-600/10 text-blue-400 font-medium' : 'text-slate-300 dark:text-slate-300 hover:bg-slate-800'}`}
                 title="Expenses"
               >
                 <Receipt size={20} className="flex-shrink-0" />
-                <span className="opacity-0 group-hover:opacity-100 transition-opacity duration-300 whitespace-nowrap overflow-hidden">Expenses</span>
+                <span className="opacity-0 group-hover:opacity-100 transition-opacity duration-300 whitespace-nowrap overflow-hidden text-slate-300 dark:text-slate-300">Expenses</span>
               </button>
             )}
             {user.email === 'partsonmanyika@gmail.com' && (
               <button 
                 onClick={() => setView('marketing')}
-                className={`w-full flex items-center justify-center group-hover:justify-start gap-3 px-4 py-3 rounded-xl transition-colors ${view === 'marketing' ? 'bg-blue-600/10 text-blue-400 font-medium' : 'hover:bg-slate-800'}`}
+                className={`w-full flex items-center justify-center group-hover:justify-start gap-3 px-4 py-3 rounded-xl transition-colors ${view === 'marketing' ? 'bg-blue-600/10 text-blue-400 font-medium' : 'text-slate-300 dark:text-slate-300 hover:bg-slate-800'}`}
                 title="Marketing"
               >
                 <Megaphone size={20} className="flex-shrink-0" />
-                <span className="opacity-0 group-hover:opacity-100 transition-opacity duration-300 whitespace-nowrap overflow-hidden">Marketing</span>
+                <span className="opacity-0 group-hover:opacity-100 transition-opacity duration-300 whitespace-nowrap overflow-hidden text-slate-300 dark:text-slate-300">Marketing</span>
               </button>
             )}
             {user.role === 'owner' && (
               <button 
                 onClick={() => setView('pricing')}
-                className={`w-full flex items-center justify-center group-hover:justify-start gap-3 px-4 py-3 rounded-xl transition-colors ${view === 'pricing' ? 'bg-blue-600/10 text-blue-400 font-medium' : 'hover:bg-slate-800'}`}
+                className={`w-full flex items-center justify-center group-hover:justify-start gap-3 px-4 py-3 rounded-xl transition-colors ${view === 'pricing' ? 'bg-blue-600/10 text-blue-400 font-medium' : 'text-slate-300 dark:text-slate-300 hover:bg-slate-800'}`}
                 title="Pricing"
               >
                 <CreditCard size={20} className="flex-shrink-0" />
-                <span className="opacity-0 group-hover:opacity-100 transition-opacity duration-300 whitespace-nowrap overflow-hidden">Pricing</span>
+                <span className="opacity-0 group-hover:opacity-100 transition-opacity duration-300 whitespace-nowrap overflow-hidden text-slate-300 dark:text-slate-300">Pricing</span>
               </button>
             )}
             {user.role === 'owner' && (
               <button 
                 onClick={() => setView('subscriptions')}
-                className={`w-full flex items-center justify-center group-hover:justify-start gap-3 px-4 py-3 rounded-xl transition-colors ${view === 'subscriptions' ? 'bg-blue-600/10 text-blue-400 font-medium' : 'hover:bg-slate-800'}`}
+                className={`w-full flex items-center justify-center group-hover:justify-start gap-3 px-4 py-3 rounded-xl transition-colors ${view === 'subscriptions' ? 'bg-blue-600/10 text-blue-400 font-medium' : 'text-slate-300 dark:text-slate-300 hover:bg-slate-800'}`}
                 title="My Subscriptions"
               >
                 <FileText size={20} className="flex-shrink-0" />
-                <span className="opacity-0 group-hover:opacity-100 transition-opacity duration-300 whitespace-nowrap overflow-hidden">My Subscriptions</span>
+                <span className="opacity-0 group-hover:opacity-100 transition-opacity duration-300 whitespace-nowrap overflow-hidden text-slate-300 dark:text-slate-300">My Subscriptions</span>
               </button>
             )}
             {user.role === 'owner' && (
               <button 
                 onClick={() => setView('company')}
-                className={`w-full flex items-center justify-center group-hover:justify-start gap-3 px-4 py-3 rounded-xl transition-colors ${view === 'company' ? 'bg-blue-600/10 text-blue-400 font-medium' : 'hover:bg-slate-800'}`}
+                className={`w-full flex items-center justify-center group-hover:justify-start gap-3 px-4 py-3 rounded-xl transition-colors ${view === 'company' ? 'bg-blue-600/10 text-blue-400 font-medium' : 'text-slate-300 dark:text-slate-300 hover:bg-slate-800'}`}
                 title="Company Settings"
               >
                 <Building2 size={20} className="flex-shrink-0" />
-                <span className="opacity-0 group-hover:opacity-100 transition-opacity duration-300 whitespace-nowrap overflow-hidden">Settings</span>
+                <span className="opacity-0 group-hover:opacity-100 transition-opacity duration-300 whitespace-nowrap overflow-hidden text-slate-300 dark:text-slate-300">Settings</span>
               </button>
             )}
           </nav>
