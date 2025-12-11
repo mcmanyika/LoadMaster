@@ -501,11 +501,22 @@ function App() {
       
       const [loadsData, driversData, dispatchersData] = await Promise.all([
         getLoads(companyIdForLoads, dispatcherName), // Filter by company and dispatcher if applicable
-        getDrivers(),
+        getDrivers(companyIdForLoads), // Filter drivers by company
         getDispatchers(companyData?.id) // Filter dispatchers by company
       ]);
+      
+      // Deduplicate drivers by name for the dropdown (keep unique names only)
+      const driversByName = new Map<string, Driver>();
+      driversData.forEach(driver => {
+        const key = driver.name.toLowerCase().trim();
+        if (!driversByName.has(key)) {
+          driversByName.set(key, driver);
+        }
+      });
+      const uniqueDrivers = Array.from(driversByName.values());
+      
       setLoads(loadsData);
-      setDrivers(driversData);
+      setDrivers(uniqueDrivers);
       setDispatchers(dispatchersData);
       if (companyData) {
         setCompanyName(companyData.name);
