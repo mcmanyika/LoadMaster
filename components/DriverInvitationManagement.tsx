@@ -346,17 +346,17 @@ export const DriverInvitationManagement: React.FC<DriverInvitationManagementProp
                 {activeDrivers.map((association) => (
                   <div
                     key={association.id}
-                    className="flex items-center justify-between p-4 bg-slate-800 dark:bg-slate-800 border border-slate-700 dark:border-slate-700 rounded-lg"
+                    className="flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg"
                   >
                     <div className="flex-1">
-                      <p className="font-medium text-white dark:text-slate-100">
+                      <p className="font-medium text-slate-900 dark:text-slate-100">
                         {association.driver?.name || association.driver?.email || 'Unknown'}
                       </p>
-                      <p className="text-sm text-slate-300 dark:text-slate-400">
+                      <p className="text-sm text-slate-600 dark:text-slate-400">
                         {association.driver?.email}
                       </p>
                       {association.driver?.phone && (
-                        <p className="text-sm text-slate-300 dark:text-slate-400">
+                        <p className="text-sm text-slate-600 dark:text-slate-400">
                           {association.driver.phone}
                         </p>
                       )}
@@ -364,7 +364,7 @@ export const DriverInvitationManagement: React.FC<DriverInvitationManagementProp
                     <div className="flex items-center gap-4">
                       <button
                         onClick={() => handleRemove(association.id)}
-                        className="p-2 text-red-400 dark:text-red-400 hover:bg-red-700/30 dark:hover:bg-red-900/30 rounded transition-colors"
+                        className="p-2 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/30 rounded transition-colors"
                         title="Remove driver"
                       >
                         <Trash2 size={16} />

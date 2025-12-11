@@ -390,13 +390,13 @@ export const InvitationManagement: React.FC<InvitationManagementProps> = ({
                 {activeDispatchers.map((association) => (
                   <div
                     key={association.id}
-                    className="flex items-center justify-between p-4 bg-slate-800 dark:bg-slate-800 border border-slate-700 dark:border-slate-700 rounded-lg"
+                    className="flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg"
                   >
                     <div className="flex-1">
-                      <p className="font-medium text-white dark:text-slate-100">
+                      <p className="font-medium text-slate-900 dark:text-slate-100">
                         {association.dispatcher?.name || association.dispatcher?.email || 'Unknown'}
                       </p>
-                      <p className="text-sm text-slate-300 dark:text-slate-400">
+                      <p className="text-sm text-slate-600 dark:text-slate-400">
                         {association.dispatcher?.email}
                       </p>
                     </div>
@@ -410,13 +410,13 @@ export const InvitationManagement: React.FC<InvitationManagementProps> = ({
                             step="0.01"
                             value={editFeeValue}
                             onChange={(e) => setEditFeeValue(e.target.value)}
-                            className="w-20 px-2 py-1 border border-slate-600 dark:border-slate-600 rounded text-sm bg-slate-700 dark:bg-slate-700 text-white dark:text-white"
+                            className="w-20 px-2 py-1 border border-slate-300 dark:border-slate-600 rounded text-sm bg-white dark:bg-slate-700 text-slate-900 dark:text-white"
                             placeholder="12.00"
                           />
                           <button
                             onClick={() => handleUpdateFee(association.id)}
                             disabled={loading}
-                            className="p-1 text-green-400 dark:text-green-400 hover:bg-green-700/30 dark:hover:bg-green-900/30 rounded"
+                            className="p-1 text-green-600 dark:text-green-400 hover:bg-green-50 dark:hover:bg-green-900/30 rounded"
                           >
                             <Check size={16} />
                           </button>
@@ -425,7 +425,7 @@ export const InvitationManagement: React.FC<InvitationManagementProps> = ({
                               setEditingFee(null);
                               setEditFeeValue('');
                             }}
-                            className="p-1 text-red-400 dark:text-red-400 hover:bg-red-700/30 dark:hover:bg-red-900/30 rounded"
+                            className="p-1 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/30 rounded"
                           >
                             <X size={16} />
                           </button>
@@ -433,24 +433,24 @@ export const InvitationManagement: React.FC<InvitationManagementProps> = ({
                       ) : (
                         <>
                           <div className="text-right">
-                            <p className="text-sm font-medium text-white dark:text-slate-100">
+                            <p className="text-sm font-medium text-slate-900 dark:text-slate-100">
                               {association.feePercentage}%
                             </p>
-                            <p className="text-xs text-slate-300 dark:text-slate-400">Fee</p>
+                            <p className="text-xs text-slate-600 dark:text-slate-400">Fee</p>
                           </div>
                           <button
                             onClick={() => {
                               setEditingFee(association.id);
                               setEditFeeValue(association.feePercentage.toString());
                             }}
-                            className="p-2 text-blue-400 dark:text-blue-400 hover:bg-blue-700/30 dark:hover:bg-blue-900/30 rounded transition-colors"
+                            className="p-2 text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded transition-colors"
                             title="Edit fee"
                           >
                             <Edit2 size={16} />
                           </button>
                           <button
                             onClick={() => handleRemove(association.id)}
-                            className="p-2 text-red-400 dark:text-red-400 hover:bg-red-700/30 dark:hover:bg-red-900/30 rounded transition-colors"
+                            className="p-2 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/30 rounded transition-colors"
                             title="Remove dispatcher"
                           >
                             <Trash2 size={16} />

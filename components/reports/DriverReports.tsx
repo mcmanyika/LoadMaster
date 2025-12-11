@@ -127,28 +127,28 @@ export const DriverReports: React.FC<DriverReportsProps> = ({
         <ReportCard
           title="Total Drivers"
           value={summary.totalDrivers}
-          icon={<Truck className="w-5 h-5 text-slate-300 dark:text-slate-400" />}
+          icon={<Truck className="w-5 h-5 text-slate-600 dark:text-slate-400" />}
         />
         <ReportCard
           title="Total Loads"
           value={summary.totalLoads}
-          icon={<FileText className="w-5 h-5 text-slate-300 dark:text-slate-400" />}
+          icon={<FileText className="w-5 h-5 text-slate-600 dark:text-slate-400" />}
         />
         <ReportCard
           title="Total Driver Pay"
           value={`$${summary.totalPay.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
-          icon={<DollarSign className="w-5 h-5 text-slate-300 dark:text-slate-400" />}
+          icon={<DollarSign className="w-5 h-5 text-slate-600 dark:text-slate-400" />}
         />
         <ReportCard
           title="Total Miles"
           value={summary.totalMiles.toLocaleString()}
-          icon={<MapPin className="w-5 h-5 text-slate-300 dark:text-slate-400" />}
+          icon={<MapPin className="w-5 h-5 text-slate-600 dark:text-slate-400" />}
         />
         <ReportCard
           title="Avg Rate/Mile"
           value={`$${summary.avgRPM.toFixed(2)}`}
           subValue="Across all drivers"
-          icon={<DollarSign className="w-5 h-5 text-slate-300 dark:text-slate-400" />}
+          icon={<DollarSign className="w-5 h-5 text-slate-600 dark:text-slate-400" />}
         />
       </div>
 

@@ -122,23 +122,23 @@ export const DispatcherReports: React.FC<DispatcherReportsProps> = ({
         <ReportCard
           title="Total Dispatchers"
           value={summary.totalDispatchers}
-          icon={<Users className="w-5 h-5 text-slate-300 dark:text-slate-400" />}
+          icon={<Users className="w-5 h-5 text-slate-600 dark:text-slate-400" />}
         />
         <ReportCard
           title="Total Loads"
           value={summary.totalLoads}
-          icon={<FileText className="w-5 h-5 text-slate-300 dark:text-slate-400" />}
+          icon={<FileText className="w-5 h-5 text-slate-600 dark:text-slate-400" />}
         />
         <ReportCard
           title="Total Dispatch Fees"
           value={`$${summary.totalFees.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
-          icon={<DollarSign className="w-5 h-5 text-slate-300 dark:text-slate-400" />}
+          icon={<DollarSign className="w-5 h-5 text-slate-600 dark:text-slate-400" />}
         />
         <ReportCard
           title="Avg Fee/Load"
           value={`$${summary.avgFeePerLoad.toFixed(2)}`}
           subValue="Across all dispatchers"
-          icon={<DollarSign className="w-5 h-5 text-slate-300 dark:text-slate-400" />}
+          icon={<DollarSign className="w-5 h-5 text-slate-600 dark:text-slate-400" />}
         />
       </div>
 

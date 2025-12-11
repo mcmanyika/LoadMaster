@@ -939,9 +939,9 @@ function App() {
               </button>
            </div>
 
-          <div className="bg-slate-100/50 dark:bg-slate-800/50 rounded-xl p-4 hidden group-hover:block transition-opacity duration-300">
-            <h4 className="text-xs font-semibold uppercase tracking-wider text-slate-600 dark:text-slate-500 mb-2">Pro Tip</h4>
-            <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
+          <div className="bg-slate-800/50 rounded-xl p-4 hidden group-hover:block transition-opacity duration-300 border border-slate-700">
+            <h4 className="text-xs font-semibold uppercase tracking-wider text-slate-500 mb-2">Pro Tip</h4>
+            <p className="text-xs text-slate-400 leading-relaxed">
               Use the AI Analysis to identify your most profitable routes and dispatchers every week.
             </p>
           </div>
