@@ -35,8 +35,6 @@ export const LoadForm: React.FC<LoadFormProps> = ({ onClose, onSave, currentUser
     company: loadToEdit?.company || '',
     gross: loadToEdit?.gross.toString() || '',
     miles: loadToEdit?.miles.toString() || '',
-    gasAmount: loadToEdit?.gasAmount.toString() || '',
-    gasNotes: loadToEdit?.gasNotes || '',
     dropDate: loadToEdit?.dropDate || new Date().toISOString().split('T')[0],
     dispatcher: loadToEdit?.dispatcher || '',
     transporterId: loadToEdit?.transporterId || '',
@@ -260,14 +258,11 @@ export const LoadForm: React.FC<LoadFormProps> = ({ onClose, onSave, currentUser
 
   // Real-time preview calculations
   const gross = parseFloat(formData.gross) || 0;
-  const gas = parseFloat(formData.gasAmount) || 0;
   const selectedDispatcher = dispatchers.find(d => d.name === formData.dispatcher);
   const feePercentage = selectedDispatcher?.feePercentage || 12; // Default to 12% if not set
   const dispatchFee = gross * (feePercentage / 100);
-  // Gas expenses are shared 50-50 between driver and company
-  const driverGasShare = gas * 0.5;
-  // Driver pay: 50% of (Gross - Dispatch Fee) minus driver's share of gas
-  const driverPay = (gross - dispatchFee) * 0.5 - driverGasShare;
+  // Driver pay: 50% of (Gross - Dispatch Fee)
+  const driverPay = (gross - dispatchFee) * 0.5;
 
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
@@ -337,9 +332,8 @@ export const LoadForm: React.FC<LoadFormProps> = ({ onClose, onSave, currentUser
       company: formData.company,
       gross: gross,
       miles: parseFloat(formData.miles) || 0,
-      // For dispatchers, set gas fields to defaults since they can't edit them
-      gasAmount: currentUser.role === 'dispatcher' ? 0 : gas,
-      gasNotes: currentUser.role === 'dispatcher' ? '' : formData.gasNotes,
+      gasAmount: 0, // Gas expenses are now managed in the Expenses module
+      gasNotes: '', // Gas expenses are now managed in the Expenses module
       dropDate: formData.dropDate,
       dispatcher: formData.dispatcher,
       transporterId: formData.transporterId,
@@ -360,12 +354,12 @@ export const LoadForm: React.FC<LoadFormProps> = ({ onClose, onSave, currentUser
   };
 
   return (
-    <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-2xl shadow-xl w-full max-w-5xl overflow-hidden flex flex-col max-h-[90vh]">
-        <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50">
-          <h2 className="text-lg font-bold text-slate-800">{isEditMode ? 'Edit Load' : 'Add New Load'}</h2>
-          <button onClick={onClose} className="p-2 hover:bg-slate-200 rounded-full transition-colors">
-            <X className="w-5 h-5 text-slate-500" />
+    <div className="fixed inset-0 bg-slate-900/50 dark:bg-slate-900/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+      <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-xl w-full max-w-5xl overflow-hidden flex flex-col max-h-[90vh]">
+        <div className="px-6 py-4 border-b border-slate-200 dark:border-slate-700 flex justify-between items-center bg-slate-50 dark:bg-slate-800">
+          <h2 className="text-lg font-bold text-slate-800 dark:text-slate-100">{isEditMode ? 'Edit Load' : 'Add New Load'}</h2>
+          <button onClick={onClose} className="p-2 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-full transition-colors">
+            <X className="w-5 h-5 text-slate-600 dark:text-slate-400" />
           </button>
         </div>
 
@@ -378,141 +372,38 @@ export const LoadForm: React.FC<LoadFormProps> = ({ onClose, onSave, currentUser
             
             {/* Primary Details */}
             <div className="col-span-2 space-y-4">
-              <h3 className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Load Details</h3>
+              <h3 className="text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider">Load Details</h3>
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">Broker / Customer</label>
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Broker / Customer</label>
                   <input
                     required
                     name="company"
                     type="text"
                     value={formData.company}
                     onChange={handleChange}
-                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                    className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
                     placeholder="e.g. RXO"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">Drop Date</label>
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Drop Date</label>
                   <input
                     required
                     name="dropDate"
                     type="date"
                     value={formData.dropDate}
                     onChange={handleChange}
-                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                    className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none"
                   />
                 </div>
               </div>
             </div>
 
-            {/* Fleet & Dispatch */}
-            <div className="col-span-2 grid grid-cols-1 md:grid-cols-2 gap-4">
-               <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">Dispatcher</label>
-                  <select
-                    name="dispatcher"
-                    required
-                    value={formData.dispatcher}
-                    onChange={handleChange}
-                    // Disable changing dispatcher if you are a dispatcher
-                    disabled={currentUser.role === 'dispatcher'} 
-                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-white disabled:bg-slate-100 disabled:text-slate-500"
-                  >
-                    <option value="">Select...</option>
-                    {dispatchers.map(d => (
-                      <option key={d.id} value={d.name}>{d.name}</option>
-                    ))}
-                  </select>
-               </div>
-               <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">Driver</label>
-                  <select
-                    name="driverId"
-                    value={formData.driverId}
-                    onChange={handleChange}
-                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-white"
-                  >
-                    <option value="">Select Driver...</option>
-                    {availableDrivers.map(d => (
-                      <option key={d.id} value={d.id}>{d.name}</option>
-                    ))}
-                  </select>
-               </div>
-            </div>
-
-            {/* Financials */}
-            <div className="col-span-2 space-y-4">
-               <h3 className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Financials</h3>
-               <div className={`grid grid-cols-2 gap-4 ${currentUser.role === 'owner' ? 'md:grid-cols-4' : 'md:grid-cols-2'}`}>
-                <div className="col-span-2 md:col-span-1">
-                  <label className="block text-sm font-medium text-slate-700 mb-1">Gross ($)</label>
-                  <input
-                    required
-                    name="gross"
-                    type="number"
-                    step="0.01"
-                    value={formData.gross}
-                    onChange={handleChange}
-                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
-                    placeholder="0.00"
-                  />
-                </div>
-                <div className="col-span-2 md:col-span-1">
-                  <label className="block text-sm font-medium text-slate-700 mb-1">Miles</label>
-                  <div className="relative">
-                    <input
-                      required
-                      name="miles"
-                      type="number"
-                      min="0"
-                      value={formData.miles}
-                      onChange={handleChange}
-                      className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
-                      placeholder="0"
-                    />
-                    {calculatingDistance && (
-                      <div className="absolute right-3 top-1/2 -translate-y-1/2">
-                        <div className="w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
-                      </div>
-                    )}
-                  </div>
-                </div>
-                {/* Gas Advance and Gas Notes - only visible to owners */}
-                {currentUser.role === 'owner' && (
-                  <>
-                    <div className="col-span-2 md:col-span-1">
-                      <label className="block text-sm font-medium text-slate-700 mb-1">Gas Advance ($)</label>
-                      <input
-                        name="gasAmount"
-                        type="number"
-                        step="0.01"
-                        value={formData.gasAmount}
-                        onChange={handleChange}
-                        className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
-                        placeholder="0.00"
-                      />
-                    </div>
-                    <div className="col-span-2 md:col-span-1">
-                      <label className="block text-sm font-medium text-slate-700 mb-1">Gas Notes</label>
-                      <input
-                        name="gasNotes"
-                        type="text"
-                        value={formData.gasNotes}
-                        onChange={handleChange}
-                        className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
-                        placeholder="e.g. 500+100"
-                      />
-                    </div>
-                  </>
-                )}
-               </div>
-            </div>
-
             {/* Route */}
             <div className="col-span-2 grid grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">Origin (From)</label>
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Origin (From)</label>
                 <PlacesAutocomplete
                   value={formData.origin}
                   onChange={(value) => {
@@ -523,12 +414,12 @@ export const LoadForm: React.FC<LoadFormProps> = ({ onClose, onSave, currentUser
                     setOriginPlace(place);
                   }}
                   placeholder="City, ST"
-                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                  className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none"
                   required
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">Destination (To)</label>
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Destination (To)</label>
                 <PlacesAutocomplete
                   value={formData.destination}
                   onChange={(value) => {
@@ -539,29 +430,104 @@ export const LoadForm: React.FC<LoadFormProps> = ({ onClose, onSave, currentUser
                     setDestinationPlace(place);
                   }}
                   placeholder="City, ST"
-                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                  className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none"
                   required
                 />
               </div>
             </div>
 
+            {/* Financials */}
+            <div className="col-span-2 space-y-4">
+               <h3 className="text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider">Financials</h3>
+               <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Gross ($)</label>
+                  <input
+                    required
+                    name="gross"
+                    type="number"
+                    step="0.01"
+                    value={formData.gross}
+                    onChange={handleChange}
+                    className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none"
+                    placeholder="0.00"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Miles</label>
+                  <div className="relative">
+                    <input
+                      required
+                      name="miles"
+                      type="number"
+                      min="0"
+                      value={formData.miles}
+                      onChange={handleChange}
+                      className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none"
+                      placeholder="0"
+                    />
+                    {calculatingDistance && (
+                      <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                        <div className="w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+               </div>
+            </div>
+
+            {/* Fleet & Dispatch */}
+            <div className="col-span-2 grid grid-cols-1 md:grid-cols-2 gap-4">
+               <div>
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Dispatcher</label>
+                  <select
+                    name="dispatcher"
+                    required
+                    value={formData.dispatcher}
+                    onChange={handleChange}
+                    // Disable changing dispatcher if you are a dispatcher
+                    disabled={currentUser.role === 'dispatcher'} 
+                    className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none disabled:bg-slate-100 dark:disabled:bg-slate-600 disabled:text-slate-500"
+                  >
+                    <option value="">Select...</option>
+                    {dispatchers.map(d => (
+                      <option key={d.id} value={d.name}>{d.name}</option>
+                    ))}
+                  </select>
+               </div>
+               <div>
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Driver</label>
+                  <select
+                    name="driverId"
+                    value={formData.driverId}
+                    onChange={handleChange}
+                    className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none"
+                  >
+                    <option value="">Select Driver...</option>
+                    {availableDrivers.map(d => (
+                      <option key={d.id} value={d.id}>{d.name}</option>
+                    ))}
+                  </select>
+               </div>
+            </div>
+
             {/* Rate Confirmation PDF */}
             <div className="col-span-2 space-y-2">
-              <label className="block text-sm font-medium text-slate-700 mb-1">
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
                 Rate Confirmation PDF
               </label>
               {pdfPreview ? (
-                <div className="flex items-center gap-3 p-3 bg-slate-50 rounded-lg border border-slate-200">
-                  <FileText className="w-5 h-5 text-blue-600" />
+                <div className="flex items-center gap-3 p-3 bg-slate-50 dark:bg-slate-700 rounded-lg border border-slate-200 dark:border-slate-600">
+                  <FileText className="w-5 h-5 text-blue-600 dark:text-blue-400" />
                   <div className="flex-1">
-                    <p className="text-sm font-medium text-slate-700">
+                    <p className="text-sm font-medium text-slate-700 dark:text-slate-300">
                       {pdfFile?.name || 'Rate Confirmation PDF'}
                     </p>
                     <a
                       href={pdfPreview}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="text-xs text-blue-600 hover:underline"
+                      className="text-xs text-blue-600 dark:text-blue-400 hover:underline"
                     >
                       View PDF
                     </a>
@@ -569,20 +535,20 @@ export const LoadForm: React.FC<LoadFormProps> = ({ onClose, onSave, currentUser
                   <button
                     type="button"
                     onClick={handleRemovePdf}
-                    className="p-1 hover:bg-slate-200 rounded-full transition-colors"
+                    className="p-1 hover:bg-slate-200 dark:hover:bg-slate-600 rounded-full transition-colors"
                   >
-                    <X className="w-4 h-4 text-slate-500" />
+                    <X className="w-4 h-4 text-slate-500 dark:text-slate-400" />
                   </button>
                 </div>
               ) : (
                 <div className="flex items-center justify-center w-full">
-                  <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-slate-300 border-dashed rounded-lg cursor-pointer bg-slate-50 hover:bg-slate-100 transition-colors">
+                  <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-slate-300 dark:border-slate-600 border-dashed rounded-lg cursor-pointer bg-slate-50 dark:bg-slate-700 hover:bg-slate-100 dark:hover:bg-slate-600 transition-colors">
                     <div className="flex flex-col items-center justify-center pt-5 pb-6">
-                      <Upload className="w-8 h-8 mb-2 text-slate-400" />
-                      <p className="mb-2 text-sm text-slate-500">
+                      <Upload className="w-8 h-8 mb-2 text-slate-400 dark:text-slate-500" />
+                      <p className="mb-2 text-sm text-slate-500 dark:text-slate-400">
                         <span className="font-semibold">Click to upload</span> or drag and drop
                       </p>
-                      <p className="text-xs text-slate-500">PDF (MAX. 10MB)</p>
+                      <p className="text-xs text-slate-500 dark:text-slate-400">PDF (MAX. 10MB)</p>
                     </div>
                     <input
                       type="file"
@@ -594,19 +560,19 @@ export const LoadForm: React.FC<LoadFormProps> = ({ onClose, onSave, currentUser
                 </div>
               )}
               {uploadingPdf && (
-                <p className="text-xs text-blue-600 animate-pulse">Uploading PDF...</p>
+                <p className="text-xs text-blue-600 dark:text-blue-400 animate-pulse">Uploading PDF...</p>
               )}
             </div>
 
             {/* Status */}
             <div className="col-span-2">
-              <label className="block text-sm font-medium text-slate-700 mb-1">Status</label>
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Status</label>
               <select
                 name="status"
                 required
                 value={formData.status}
                 onChange={handleChange}
-                className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-white"
+                className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-white dark:bg-slate-700 text-slate-900 dark:text-white"
               >
                 <option value="Not yet Factored">Not yet Factored</option>
                 <option value="Factored">Factored</option>
@@ -616,12 +582,12 @@ export const LoadForm: React.FC<LoadFormProps> = ({ onClose, onSave, currentUser
             {/* Driver Payout Status - Only visible to owners */}
             {currentUser.role === 'owner' && (
               <div className="col-span-2">
-                <label className="block text-sm font-medium text-slate-700 mb-1">Driver Payout Status</label>
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Driver Payout Status</label>
                 <select
                   name="driverPayoutStatus"
                   value={formData.driverPayoutStatus}
                   onChange={handleChange}
-                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-white"
+                  className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-white dark:bg-slate-700 text-slate-900 dark:text-white"
                 >
                   <option value="pending">Pending</option>
                   <option value="partial">Partial</option>
@@ -632,21 +598,21 @@ export const LoadForm: React.FC<LoadFormProps> = ({ onClose, onSave, currentUser
             
             {/* Live Preview Card - Only visible to owners */}
             {currentUser.role === 'owner' && (
-              <div className="col-span-2 bg-blue-50 rounded-xl p-4 border border-blue-100 flex items-center justify-between">
+              <div className="col-span-2 bg-blue-50 dark:bg-blue-900/20 rounded-xl p-4 border border-blue-100 dark:border-blue-800/30 flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <div className="bg-blue-100 p-2 rounded-lg text-blue-600">
+                  <div className="bg-blue-100 dark:bg-blue-900/40 p-2 rounded-lg text-blue-600 dark:text-blue-400">
                     <Calculator size={20} />
                   </div>
                   <div>
-                    <p className="text-xs font-semibold text-blue-800 uppercase">Estimated Driver Pay</p>
-                    <p className="text-xs text-blue-600">50% of (Gross - Dispatch Fee - Gas)</p>
+                    <p className="text-xs font-semibold text-blue-800 dark:text-blue-300 uppercase">Estimated Driver Pay</p>
+                    <p className="text-xs text-blue-600 dark:text-blue-400">50% of (Gross - Dispatch Fee)</p>
                   </div>
                 </div>
                 <div className="text-right">
-                  <p className="text-2xl font-bold text-blue-900">
+                  <p className="text-2xl font-bold text-blue-900 dark:text-blue-300">
                     ${driverPay > 0 ? driverPay.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '0.00'}
                   </p>
-                  <p className="text-xs text-blue-600">Dispatch Fee: ${dispatchFee.toFixed(2)}</p>
+                  <p className="text-xs text-blue-600 dark:text-blue-400">Dispatch Fee: ${dispatchFee.toFixed(2)}</p>
                 </div>
               </div>
             )}
@@ -657,7 +623,7 @@ export const LoadForm: React.FC<LoadFormProps> = ({ onClose, onSave, currentUser
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100 rounded-lg transition-colors"
+              className="px-4 py-2 text-sm font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors"
             >
               Cancel
             </button>
@@ -674,21 +640,21 @@ export const LoadForm: React.FC<LoadFormProps> = ({ onClose, onSave, currentUser
       {/* Error Modal */}
       {errorModal.isOpen && (
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-[70] p-4">
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden">
-            <div className="bg-red-50 px-6 py-4 flex justify-between items-center border-b border-red-100">
-              <div className="flex items-center gap-2 text-red-800">
+            <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-xl w-full max-w-md overflow-hidden">
+            <div className="bg-red-50 dark:bg-red-900/20 px-6 py-4 flex justify-between items-center border-b border-red-100 dark:border-red-800/30">
+              <div className="flex items-center gap-2 text-red-800 dark:text-red-400">
                 <AlertCircle size={20} className="text-red-600" />
-                <h2 className="font-bold text-lg">Upload Error</h2>
+                <h2 className="font-bold text-lg dark:text-red-300">Upload Error</h2>
               </div>
               <button 
                 onClick={() => setErrorModal({ isOpen: false, message: '' })} 
-                className="text-red-400 hover:text-red-600 transition-colors"
+                className="text-red-400 dark:text-red-500 hover:text-red-600 dark:hover:text-red-400 transition-colors"
               >
                 <X size={20} />
               </button>
             </div>
             <div className="p-6">
-              <p className="text-slate-700 mb-6">{errorModal.message}</p>
+              <p className="text-slate-700 dark:text-slate-300 mb-6">{errorModal.message}</p>
               <div className="flex justify-end">
                 <button
                   onClick={() => setErrorModal({ isOpen: false, message: '' })}

@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { UserProfile, Company } from '../types';
 import { getCompany, createCompany, updateCompany, getOwnerEmail } from '../services/companyService';
 import { getCurrentUser } from '../services/authService';
-import { Building2, CheckCircle, AlertCircle, Loader, Mail } from 'lucide-react';
+import { Building2, CheckCircle, AlertCircle, Loader, Mail, Pencil } from 'lucide-react';
 
 interface CompanySettingsProps {
   user: UserProfile;
@@ -19,6 +19,12 @@ export const CompanySettings: React.FC<CompanySettingsProps> = ({ user, onCompan
   const [success, setSuccess] = useState<string | null>(null);
   const [isEditing, setIsEditing] = useState(false);
   const [companyName, setCompanyName] = useState('');
+  const [address, setAddress] = useState('');
+  const [website, setWebsite] = useState('');
+  const [phone, setPhone] = useState('');
+  const [email, setEmail] = useState('');
+  const [contactPerson, setContactPerson] = useState('');
+  const [numberOfTrucks, setNumberOfTrucks] = useState('');
 
   useEffect(() => {
     fetchCompany();
@@ -32,6 +38,12 @@ export const CompanySettings: React.FC<CompanySettingsProps> = ({ user, onCompan
       setCompany(companyData);
       if (companyData) {
         setCompanyName(companyData.name);
+        setAddress(companyData.address || '');
+        setWebsite(companyData.website || '');
+        setPhone(companyData.phone || '');
+        setEmail(companyData.email || '');
+        setContactPerson(companyData.contactPerson || '');
+        setNumberOfTrucks(companyData.numberOfTrucks?.toString() || '');
         setIsEditing(false);
         
         // Fetch owner email for dispatchers
@@ -71,9 +83,19 @@ export const CompanySettings: React.FC<CompanySettingsProps> = ({ user, onCompan
         throw new Error('Company name is required');
       }
 
+      const companyData = {
+        name: companyName.trim(),
+        address: address.trim() || undefined,
+        website: website.trim() || undefined,
+        phone: phone.trim() || undefined,
+        email: email.trim() || undefined,
+        contactPerson: contactPerson.trim() || undefined,
+        numberOfTrucks: numberOfTrucks ? parseInt(numberOfTrucks, 10) : undefined,
+      };
+
       if (company) {
         // Update existing company
-        const updated = await updateCompany(company.id, { name: companyName.trim() });
+        const updated = await updateCompany(company.id, companyData);
         setCompany(updated);
         setSuccess('Company updated successfully!');
         setIsEditing(false);
@@ -82,7 +104,7 @@ export const CompanySettings: React.FC<CompanySettingsProps> = ({ user, onCompan
         if (!user.id) {
           throw new Error('User ID is missing');
         }
-        const newCompany = await createCompany(companyName.trim(), user.id);
+        const newCompany = await createCompany(companyName.trim(), user.id, companyData);
         console.log('Created company:', newCompany);
         
         // Immediately set the company state to prevent showing "no company" message
@@ -125,7 +147,7 @@ export const CompanySettings: React.FC<CompanySettingsProps> = ({ user, onCompan
   if (loading) {
     return (
       <div className="max-w-4xl mx-auto px-6 py-8">
-        <div className="bg-slate-900 rounded-xl p-8 border border-slate-800">
+        <div className="bg-white dark:bg-slate-900 rounded-xl p-8 border border-slate-200 dark:border-slate-800">
           <div className="flex items-center justify-center py-12">
             <Loader className="animate-spin text-blue-400" size={32} />
           </div>
@@ -136,10 +158,10 @@ export const CompanySettings: React.FC<CompanySettingsProps> = ({ user, onCompan
 
   return (
     <div className="max-w-4xl mx-auto px-6 py-8">
-      <div className="bg-slate-900 rounded-xl p-8 border border-slate-800">
+      <div className="bg-white dark:bg-slate-900 rounded-xl p-8 border border-slate-200 dark:border-slate-800">
         <div className="flex items-center gap-3 mb-6">
           <Building2 className="text-blue-400" size={24} />
-          <h2 className="text-2xl font-bold text-white">
+          <h2 className="text-2xl font-bold text-slate-900 dark:text-white">
             {isOwner ? 'Company Settings' : 'Company Information'}
           </h2>
         </div>
@@ -176,31 +198,108 @@ export const CompanySettings: React.FC<CompanySettingsProps> = ({ user, onCompan
 
         {isOwner && (
           <form onSubmit={handleCreateOrUpdate} className="space-y-6">
-            <div>
-              <label className="block text-sm font-medium text-slate-300 mb-2">
-                Company Name
-              </label>
-              <div className="flex gap-3">
+            {/* Company Name - visible when editing or creating */}
+            {(isEditing || !company) && (
+              <div>
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+                  Company Name
+                </label>
                 <input
                   type="text"
                   value={companyName}
                   onChange={(e) => setCompanyName(e.target.value)}
                   placeholder="Enter your company name"
-                  className="flex-1 px-4 py-3 bg-slate-800 border border-slate-700 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  disabled={saving || (!isEditing && company !== null)}
+                  className="w-full px-4 py-3 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  disabled={saving}
                   required
                 />
-                {company && !isEditing && (
-                  <button
-                    type="button"
-                    onClick={() => setIsEditing(true)}
-                    className="px-6 py-3 bg-slate-800 border border-slate-700 rounded-lg text-slate-300 hover:bg-slate-700 transition-colors"
-                  >
-                    Edit
-                  </button>
-                )}
+              </div>
+            )}
+
+            {/* Additional Company Details - visible when editing or creating */}
+            {(isEditing || !company) && (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+                  Address
+                </label>
+                <input
+                  type="text"
+                  value={address}
+                  onChange={(e) => setAddress(e.target.value)}
+                  placeholder="Enter company address"
+                  className="w-full px-4 py-3 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  disabled={saving || (!isEditing && company !== null)}
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+                  Website
+                </label>
+                <input
+                  type="url"
+                  value={website}
+                  onChange={(e) => setWebsite(e.target.value)}
+                  placeholder="https://example.com"
+                  className="w-full px-4 py-3 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  disabled={saving || (!isEditing && company !== null)}
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+                  Phone
+                </label>
+                <input
+                  type="tel"
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                  placeholder="(555) 123-4567"
+                  className="w-full px-4 py-3 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  disabled={saving || (!isEditing && company !== null)}
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+                  Email
+                </label>
+                <input
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="company@example.com"
+                  className="w-full px-4 py-3 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  disabled={saving || (!isEditing && company !== null)}
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+                  Contact Person
+                </label>
+                <input
+                  type="text"
+                  value={contactPerson}
+                  onChange={(e) => setContactPerson(e.target.value)}
+                  placeholder="John Doe"
+                  className="w-full px-4 py-3 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  disabled={saving || (!isEditing && company !== null)}
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+                  Number of Trucks
+                </label>
+                <input
+                  type="number"
+                  min="0"
+                  value={numberOfTrucks}
+                  onChange={(e) => setNumberOfTrucks(e.target.value)}
+                  placeholder="0"
+                  className="w-full px-4 py-3 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  disabled={saving || (!isEditing && company !== null)}
+                />
               </div>
             </div>
+            )}
 
             {(isEditing || !company) && (
               <div className="flex gap-3">
@@ -224,10 +323,16 @@ export const CompanySettings: React.FC<CompanySettingsProps> = ({ user, onCompan
                     onClick={() => {
                       setIsEditing(false);
                       setCompanyName(company.name);
+                      setAddress(company.address || '');
+                      setWebsite(company.website || '');
+                      setPhone(company.phone || '');
+                      setEmail(company.email || '');
+                      setContactPerson(company.contactPerson || '');
+                      setNumberOfTrucks(company.numberOfTrucks?.toString() || '');
                       setError(null);
                       setSuccess(null);
                     }}
-                    className="px-6 py-3 bg-slate-800 border border-slate-700 rounded-lg text-slate-300 hover:bg-slate-700 transition-colors"
+                    className="px-6 py-3 bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors"
                   >
                     Cancel
                   </button>
@@ -237,40 +342,104 @@ export const CompanySettings: React.FC<CompanySettingsProps> = ({ user, onCompan
           </form>
         )}
 
-        {company && (
-          <div className="mt-8 pt-6 border-t border-slate-800">
-            <h3 className="text-lg font-semibold text-slate-300 mb-4">Company Information</h3>
-            <div className="space-y-4">
-              <div className="bg-slate-800/50 rounded-lg p-4">
+        {company && !isEditing && (
+          <div className="mt-8 pt-6 border-t border-slate-200 dark:border-slate-800">
+            <h3 className="text-lg font-semibold text-slate-700 dark:text-slate-300 mb-4">Company Information</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="bg-slate-50/50 dark:bg-slate-800/50 rounded-lg p-4">
                 <div className="flex items-center gap-2 mb-2">
                   <Building2 className="text-blue-400" size={18} />
-                  <span className="text-slate-400 text-sm">Company Name</span>
+                  <span className="text-slate-600 dark:text-slate-400 text-sm">Company Name</span>
                 </div>
-                <p className="text-white text-lg font-semibold">{company.name}</p>
+                <div className="flex items-center justify-between">
+                  <p className="text-slate-900 dark:text-white text-lg font-semibold">{company.name}</p>
+                  {isOwner && (
+                    <button
+                      type="button"
+                      onClick={() => setIsEditing(true)}
+                      className="p-1.5 text-slate-600 dark:text-slate-400 hover:text-blue-400 hover:bg-slate-200 dark:hover:bg-slate-700 rounded transition-colors"
+                      title="Edit company"
+                    >
+                      <Pencil size={16} />
+                    </button>
+                  )}
+                </div>
               </div>
               
-              {ownerEmail && (
-                <div className="bg-slate-800/50 rounded-lg p-4">
+              {company.address && (
+                <div className="bg-slate-50/50 dark:bg-slate-800/50 rounded-lg p-4">
                   <div className="flex items-center gap-2 mb-2">
-                    <Mail className="text-blue-400" size={18} />
-                    <span className="text-slate-400 text-sm">Owner Email</span>
+                    <span className="text-slate-600 dark:text-slate-400 text-sm">Address</span>
                   </div>
-                  <p className="text-white">{ownerEmail}</p>
+                  <p className="text-slate-900 dark:text-white">{company.address}</p>
                 </div>
               )}
               
-              {isOwner && (
-                <div className="space-y-3 pt-4 border-t border-slate-700">
-                  <div className="flex justify-between">
-                    <span className="text-slate-400">Company ID:</span>
-                    <span className="text-slate-300 font-mono text-sm">{company.id}</span>
+              {company.website && (
+                <div className="bg-slate-50/50 dark:bg-slate-800/50 rounded-lg p-4">
+                  <div className="flex items-center gap-2 mb-2">
+                    <span className="text-slate-600 dark:text-slate-400 text-sm">Website</span>
                   </div>
-                  <div className="flex justify-between">
-                    <span className="text-slate-400">Created:</span>
-                    <span className="text-slate-300 text-sm">
-                      {new Date(company.createdAt).toLocaleDateString()}
-                    </span>
+                  <a 
+                    href={company.website} 
+                    target="_blank" 
+                    rel="noopener noreferrer" 
+                    className="text-blue-400 hover:text-blue-300"
+                  >
+                    {company.website}
+                  </a>
+                </div>
+              )}
+              
+              {company.phone && (
+                <div className="bg-slate-50/50 dark:bg-slate-800/50 rounded-lg p-4">
+                  <div className="flex items-center gap-2 mb-2">
+                    <span className="text-slate-600 dark:text-slate-400 text-sm">Phone</span>
                   </div>
+                  <p className="text-slate-900 dark:text-white">{company.phone}</p>
+                </div>
+              )}
+              
+              {company.email && (
+                <div className="bg-slate-50/50 dark:bg-slate-800/50 rounded-lg p-4">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Mail className="text-blue-400" size={18} />
+                    <span className="text-slate-600 dark:text-slate-400 text-sm">Email</span>
+                  </div>
+                  <a 
+                    href={`mailto:${company.email}`}
+                    className="text-blue-400 hover:text-blue-300"
+                  >
+                    {company.email}
+                  </a>
+                </div>
+              )}
+              
+              {company.contactPerson && (
+                <div className="bg-slate-50/50 dark:bg-slate-800/50 rounded-lg p-4">
+                  <div className="flex items-center gap-2 mb-2">
+                    <span className="text-slate-600 dark:text-slate-400 text-sm">Contact Person</span>
+                  </div>
+                  <p className="text-slate-900 dark:text-white">{company.contactPerson}</p>
+                </div>
+              )}
+              
+              {company.numberOfTrucks !== undefined && (
+                <div className="bg-slate-50/50 dark:bg-slate-800/50 rounded-lg p-4">
+                  <div className="flex items-center gap-2 mb-2">
+                    <span className="text-slate-600 dark:text-slate-400 text-sm">Number of Trucks</span>
+                  </div>
+                  <p className="text-slate-900 dark:text-white">{company.numberOfTrucks}</p>
+                </div>
+              )}
+              
+              {ownerEmail && (
+                <div className="bg-slate-50/50 dark:bg-slate-800/50 rounded-lg p-4">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Mail className="text-blue-400" size={18} />
+                    <span className="text-slate-600 dark:text-slate-400 text-sm">Owner Email</span>
+                  </div>
+                  <p className="text-slate-900 dark:text-white">{ownerEmail}</p>
                 </div>
               )}
             </div>

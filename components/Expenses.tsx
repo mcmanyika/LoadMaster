@@ -10,6 +10,7 @@ import { ErrorModal } from './ErrorModal';
 import { exportToCSV, exportExpensesToPDF } from '../services/reports/reportService';
 import { Plus, DollarSign, TrendingUp, Calendar, Filter, X, Search, Edit, Trash2, FileText, Receipt, Download, FileDown } from 'lucide-react';
 import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import { useTheme } from '../contexts/ThemeContext';
 
 interface ExpensesProps {
   user: UserProfile;
@@ -17,6 +18,7 @@ interface ExpensesProps {
 }
 
 export const Expenses: React.FC<ExpensesProps> = ({ user, companyId }) => {
+  const { theme } = useTheme();
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [categories, setCategories] = useState<ExpenseCategory[]>([]);
   const [transporters, setTransporters] = useState<Transporter[]>([]);
@@ -249,7 +251,7 @@ export const Expenses: React.FC<ExpensesProps> = ({ user, companyId }) => {
 
   if (loading && expenses.length === 0) {
     return (
-      <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-12">
+      <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm p-12">
         <div className="flex items-center justify-center">
           <div className="w-8 h-8 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
         </div>
@@ -295,8 +297,8 @@ export const Expenses: React.FC<ExpensesProps> = ({ user, companyId }) => {
       {(categoryChartData.length > 0 || monthlyChartData.length > 0) && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {categoryChartData.length > 0 && (
-            <div className="bg-white rounded-xl border border-slate-200 p-6">
-              <h3 className="text-lg font-semibold text-slate-800 mb-4">Top Categories</h3>
+            <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-6">
+              <h3 className="text-lg font-semibold text-slate-800 dark:text-slate-100 mb-4">Top Categories</h3>
               <ResponsiveContainer width="100%" height={300}>
                 <PieChart>
                   <Pie
@@ -313,21 +315,44 @@ export const Expenses: React.FC<ExpensesProps> = ({ user, companyId }) => {
                       <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                     ))}
                   </Pie>
-                  <Tooltip formatter={(value: number) => `$${value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`} />
+                  <Tooltip 
+                    formatter={(value: number) => `$${value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
+                    contentStyle={{ backgroundColor: '#1e293b', border: '1px solid #334155', color: '#f1f5f9' }}
+                  />
                 </PieChart>
               </ResponsiveContainer>
             </div>
           )}
           {monthlyChartData.length > 0 && (
-            <div className="bg-white rounded-xl border border-slate-200 p-6">
-              <h3 className="text-lg font-semibold text-slate-800 mb-4">Monthly Trends</h3>
+            <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-6">
+              <h3 className="text-lg font-semibold text-slate-800 dark:text-slate-100 mb-4">Monthly Trends</h3>
               <ResponsiveContainer width="100%" height={300}>
                 <BarChart data={monthlyChartData}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="month" />
-                  <YAxis />
-                  <Tooltip formatter={(value: number) => `$${value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`} />
-                  <Bar dataKey="total" fill="#3B82F6" />
+                  <CartesianGrid 
+                    strokeDasharray="3 3" 
+                    stroke={theme === 'dark' ? '#475569' : '#cbd5e1'} 
+                  />
+                  <XAxis 
+                    dataKey="month" 
+                    stroke={theme === 'dark' ? '#cbd5e1' : '#64748b'}
+                    tick={{ fill: theme === 'dark' ? '#cbd5e1' : '#64748b', fontSize: 12 }}
+                  />
+                  <YAxis 
+                    stroke={theme === 'dark' ? '#cbd5e1' : '#64748b'}
+                    tick={{ fill: theme === 'dark' ? '#cbd5e1' : '#64748b', fontSize: 12 }}
+                    tickFormatter={(value) => `$${value}`}
+                  />
+                  <Tooltip 
+                    formatter={(value: number) => `$${value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
+                    contentStyle={{ 
+                      backgroundColor: theme === 'dark' ? '#1e293b' : '#ffffff', 
+                      border: theme === 'dark' ? '1px solid #334155' : '1px solid #e2e8f0', 
+                      color: theme === 'dark' ? '#f1f5f9' : '#1e293b',
+                      borderRadius: '8px'
+                    }}
+                    cursor={{ fill: theme === 'dark' ? 'rgba(148, 163, 184, 0.1)' : 'rgba(0, 0, 0, 0.05)' }}
+                  />
+                  <Bar dataKey="total" fill="#3B82F6" radius={[6, 6, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
             </div>
@@ -336,9 +361,9 @@ export const Expenses: React.FC<ExpensesProps> = ({ user, companyId }) => {
       )}
 
       {/* Filters */}
-      <div className="bg-white rounded-lg border border-slate-200 p-4">
+      <div className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 p-4">
         <div className="flex items-center justify-between mb-4">
-          <h3 className="text-sm font-semibold text-slate-700 flex items-center gap-2">
+          <h3 className="text-sm font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-2">
             <Filter size={16} />
             Filters
           </h3>
@@ -352,7 +377,7 @@ export const Expenses: React.FC<ExpensesProps> = ({ user, companyId }) => {
                 setDriverFilter('');
                 setSearchQuery('');
               }}
-              className="flex items-center gap-2 text-xs text-slate-600 hover:text-slate-800"
+              className="flex items-center gap-2 text-xs text-slate-600 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200"
             >
               <X size={14} />
               Clear All
@@ -361,24 +386,24 @@ export const Expenses: React.FC<ExpensesProps> = ({ user, companyId }) => {
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           <div>
-            <label className="block text-xs text-slate-600 mb-1">Search</label>
+            <label className="block text-xs text-slate-600 dark:text-slate-400 mb-1">Search</label>
             <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-4 h-4" />
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500 w-4 h-4" />
               <input
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="Search expenses..."
-                className="w-full pl-10 pr-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full pl-10 pr-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg text-sm bg-white dark:bg-slate-700 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
             </div>
           </div>
           <div>
-            <label className="block text-xs text-slate-600 mb-1">Category</label>
+            <label className="block text-xs text-slate-600 dark:text-slate-400 mb-1">Category</label>
             <select
               value={categoryFilter}
               onChange={(e) => setCategoryFilter(e.target.value)}
-              className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+              className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg text-sm bg-white dark:bg-slate-700 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
               <option value="">All Categories</option>
               {categories.map(cat => (
@@ -387,11 +412,11 @@ export const Expenses: React.FC<ExpensesProps> = ({ user, companyId }) => {
             </select>
           </div>
           <div>
-            <label className="block text-xs text-slate-600 mb-1">Vehicle</label>
+            <label className="block text-xs text-slate-600 dark:text-slate-400 mb-1">Vehicle</label>
             <select
               value={vehicleFilter}
               onChange={(e) => setVehicleFilter(e.target.value)}
-              className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+              className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg text-sm bg-white dark:bg-slate-700 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
               <option value="">All Vehicles</option>
               {transporters.map(t => (
@@ -400,11 +425,11 @@ export const Expenses: React.FC<ExpensesProps> = ({ user, companyId }) => {
             </select>
           </div>
           <div>
-            <label className="block text-xs text-slate-600 mb-1">Driver</label>
+            <label className="block text-xs text-slate-600 dark:text-slate-400 mb-1">Driver</label>
             <select
               value={driverFilter}
               onChange={(e) => setDriverFilter(e.target.value)}
-              className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+              className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg text-sm bg-white dark:bg-slate-700 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
               <option value="">All Drivers</option>
               {drivers.map(d => (
@@ -413,36 +438,36 @@ export const Expenses: React.FC<ExpensesProps> = ({ user, companyId }) => {
             </select>
           </div>
           <div>
-            <label className="block text-xs text-slate-600 mb-1">Start Date</label>
+            <label className="block text-xs text-slate-600 dark:text-slate-400 mb-1">Start Date</label>
             <input
               type="date"
               value={startDate}
               onChange={(e) => setStartDate(e.target.value)}
-              className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg text-sm bg-white dark:bg-slate-700 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
           </div>
           <div>
-            <label className="block text-xs text-slate-600 mb-1">End Date</label>
+            <label className="block text-xs text-slate-600 dark:text-slate-400 mb-1">End Date</label>
             <input
               type="date"
               value={endDate}
               onChange={(e) => setEndDate(e.target.value)}
-              className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg text-sm bg-white dark:bg-slate-700 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
           </div>
         </div>
       </div>
 
       {/* Expenses List */}
-      <div className="bg-white rounded-lg border border-slate-200 overflow-hidden">
-        <div className="border-b border-slate-200 px-6 py-4 flex justify-between items-center">
-          <h3 className="text-lg font-semibold text-slate-800">Expenses</h3>
+      <div className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 overflow-hidden">
+        <div className="border-b border-slate-200 dark:border-slate-700 px-6 py-4 flex justify-between items-center">
+          <h3 className="text-lg font-semibold text-slate-800 dark:text-slate-100">Expenses</h3>
           <div className="flex items-center gap-2">
             {filteredExpenses.length > 0 && (
               <>
                 <button
                   onClick={handleExportCSV}
-                  className="flex items-center gap-2 text-slate-700 hover:text-slate-900 hover:bg-slate-100 px-3 py-2 rounded-lg text-sm font-medium transition-colors"
+                  className="flex items-center gap-2 text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-700 px-3 py-2 rounded-lg text-sm font-medium transition-colors"
                   title="Export to CSV"
                 >
                   <FileDown size={16} />
@@ -450,7 +475,7 @@ export const Expenses: React.FC<ExpensesProps> = ({ user, companyId }) => {
                 </button>
                 <button
                   onClick={handleExportPDF}
-                  className="flex items-center gap-2 text-slate-700 hover:text-slate-900 hover:bg-slate-100 px-3 py-2 rounded-lg text-sm font-medium transition-colors"
+                  className="flex items-center gap-2 text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-700 px-3 py-2 rounded-lg text-sm font-medium transition-colors"
                   title="Export to PDF"
                 >
                   <FileText size={16} />
@@ -470,11 +495,11 @@ export const Expenses: React.FC<ExpensesProps> = ({ user, companyId }) => {
 
         {filteredExpenses.length === 0 ? (
           <div className="p-12 text-center">
-            <Receipt className="w-12 h-12 text-slate-300 mx-auto mb-4" />
-            <p className="text-slate-500">No expenses found</p>
+            <Receipt className="w-12 h-12 text-slate-300 dark:text-slate-600 mx-auto mb-4" />
+            <p className="text-slate-500 dark:text-slate-400">No expenses found</p>
             <button
               onClick={handleAddExpense}
-              className="mt-4 text-blue-600 hover:text-blue-700 font-medium"
+              className="mt-4 text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 font-medium"
             >
               Add your first expense
             </button>
@@ -482,22 +507,22 @@ export const Expenses: React.FC<ExpensesProps> = ({ user, companyId }) => {
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full">
-              <thead className="bg-slate-50 border-b border-slate-200">
+              <thead className="bg-slate-50 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700">
                 <tr>
-                  <th className="px-6 py-3 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">Date</th>
-                  <th className="px-6 py-3 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">Category</th>
-                  <th className="px-6 py-3 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">Description</th>
-                  <th className="px-6 py-3 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">Vendor</th>
-                  <th className="px-6 py-3 text-right text-xs font-semibold text-slate-600 uppercase tracking-wider">Amount</th>
-                  <th className="px-6 py-3 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">Payment</th>
-                  <th className="px-6 py-3 text-center text-xs font-semibold text-slate-600 uppercase tracking-wider">Receipt</th>
-                  <th className="px-6 py-3 text-center text-xs font-semibold text-slate-600 uppercase tracking-wider">Actions</th>
+                  <th className="px-6 py-3 text-left text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider">Date</th>
+                  <th className="px-6 py-3 text-left text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider">Category</th>
+                  <th className="px-6 py-3 text-left text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider">Description</th>
+                  <th className="px-6 py-3 text-left text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider">Vendor</th>
+                  <th className="px-6 py-3 text-right text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider">Amount</th>
+                  <th className="px-6 py-3 text-left text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider">Payment</th>
+                  <th className="px-6 py-3 text-center text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider">Receipt</th>
+                  <th className="px-6 py-3 text-center text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider">Actions</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-200">
+              <tbody className="divide-y divide-slate-200 dark:divide-slate-700">
                 {filteredExpenses.map(expense => (
-                  <tr key={expense.id} className="hover:bg-slate-50">
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600">
+                  <tr key={expense.id} className="hover:bg-slate-50 dark:hover:bg-slate-700/50">
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600 dark:text-slate-400">
                       {new Date(expense.expenseDate).toLocaleDateString()}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
@@ -508,25 +533,25 @@ export const Expenses: React.FC<ExpensesProps> = ({ user, companyId }) => {
                             style={{ backgroundColor: expense.category.color }}
                           />
                         )}
-                        <span className="text-sm text-slate-800">{expense.category?.name || 'Unknown'}</span>
+                        <span className="text-sm text-slate-800 dark:text-slate-100">{expense.category?.name || 'Unknown'}</span>
                       </div>
                     </td>
-                    <td className="px-6 py-4 text-sm text-slate-600 max-w-xs truncate">
+                    <td className="px-6 py-4 text-sm text-slate-600 dark:text-slate-400 max-w-xs truncate">
                       {expense.description || '-'}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600">
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600 dark:text-slate-400">
                       {expense.vendor || '-'}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-semibold text-slate-800">
+                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-semibold text-slate-800 dark:text-slate-100">
                       ${expense.amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="flex flex-col gap-1">
-                        <span className="text-xs text-slate-600 capitalize">{expense.paymentMethod || '-'}</span>
+                        <span className="text-xs text-slate-600 dark:text-slate-400 capitalize">{expense.paymentMethod || '-'}</span>
                         <span className={`text-xs px-2 py-0.5 rounded-full inline-block w-fit ${
-                          expense.paymentStatus === 'paid' ? 'bg-green-100 text-green-700' :
-                          expense.paymentStatus === 'pending' ? 'bg-yellow-100 text-yellow-700' :
-                          'bg-blue-100 text-blue-700'
+                          expense.paymentStatus === 'paid' ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300' :
+                          expense.paymentStatus === 'pending' ? 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-300' :
+                          'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300'
                         }`}>
                           {expense.paymentStatus}
                         </span>
@@ -538,26 +563,26 @@ export const Expenses: React.FC<ExpensesProps> = ({ user, companyId }) => {
                           href={expense.receiptUrl}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="text-blue-600 hover:text-blue-700"
+                          className="text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300"
                         >
                           <FileText size={16} className="inline" />
                         </a>
                       ) : (
-                        <span className="text-slate-300">-</span>
+                        <span className="text-slate-300 dark:text-slate-600">-</span>
                       )}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-center">
                       <div className="flex items-center justify-center gap-2">
                         <button
                           onClick={() => handleEditExpense(expense)}
-                          className="p-1.5 text-blue-600 hover:bg-blue-50 rounded transition-colors"
+                          className="p-1.5 text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded transition-colors"
                           title="Edit"
                         >
                           <Edit size={16} />
                         </button>
                         <button
                           onClick={() => handleDeleteExpense(expense.id)}
-                          className="p-1.5 text-red-600 hover:bg-red-50 rounded transition-colors"
+                          className="p-1.5 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/30 rounded transition-colors"
                           title="Delete"
                         >
                           <Trash2 size={16} />

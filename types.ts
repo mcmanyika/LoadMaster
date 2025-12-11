@@ -2,6 +2,12 @@ export interface Company {
   id: string;
   name: string;
   ownerId: string;
+  address?: string;
+  website?: string;
+  phone?: string;
+  email?: string;
+  contactPerson?: string;
+  numberOfTrucks?: number;
   createdAt: string;
   updatedAt: string;
 }

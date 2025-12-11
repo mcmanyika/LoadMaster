@@ -171,22 +171,22 @@ export const Pricing: React.FC<PricingProps> = ({ onClose }) => {
           {onClose && (
             <button
               onClick={onClose}
-              className="mb-8 text-slate-600 hover:text-slate-900 transition-colors flex items-center gap-2"
+              className="mb-8 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 transition-colors flex items-center gap-2"
             >
               <ArrowRight className="w-4 h-4 rotate-180" />
               Back
             </button>
           )}
-          <h1 className="text-4xl sm:text-5xl font-bold text-slate-900 mb-4">
+          <h1 className="text-4xl sm:text-5xl font-bold text-slate-900 dark:text-slate-100 mb-4">
             Simple, Transparent Pricing
           </h1>
-          <p className="text-xl text-slate-600 max-w-2xl mx-auto mb-8">
+          <p className="text-xl text-slate-600 dark:text-slate-400 max-w-2xl mx-auto mb-8">
             Choose the plan that fits your fleet. All plans include a 14-day free trial. No credit card required.
           </p>
           
           {/* Active Subscription Notice */}
           {!loadingSubscription && activeSubscription && (
-            <div className="mb-8 p-4 bg-emerald-50 border border-emerald-200 rounded-lg flex items-center gap-3 text-emerald-800 max-w-2xl mx-auto">
+            <div className="mb-8 p-4 bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-900/30 rounded-lg flex items-center gap-3 text-emerald-800 dark:text-emerald-300 max-w-2xl mx-auto">
               <CheckCircle2 size={20} className="flex-shrink-0" />
               <div className="flex-1">
                 <p className="text-sm font-semibold">You have an active subscription</p>
@@ -195,27 +195,27 @@ export const Pricing: React.FC<PricingProps> = ({ onClose }) => {
                   {' • '}
                   {activeSubscription.interval === 'month' ? 'Monthly' : 'Annual'} billing
                   {' • '}
-                  <span className="text-emerald-600">Upgrade to a higher plan anytime</span>
+                  <span className="text-emerald-600 dark:text-emerald-400">Upgrade to a higher plan anytime</span>
                 </p>
               </div>
             </div>
           )}
 
           {error && (
-            <div className="mb-8 p-4 bg-rose-50 border border-rose-200 rounded-lg flex items-center gap-3 text-rose-800 max-w-2xl mx-auto">
+            <div className="mb-8 p-4 bg-rose-50 dark:bg-rose-900/20 border border-rose-200 dark:border-rose-900/30 rounded-lg flex items-center gap-3 text-rose-800 dark:text-rose-300 max-w-2xl mx-auto">
               <AlertCircle size={20} className="flex-shrink-0" />
               <p className="text-sm">{error}</p>
             </div>
           )}
           
           {/* Billing Toggle */}
-          <div className="inline-flex items-center gap-3 bg-white p-1 rounded-xl border border-slate-200 shadow-sm">
+          <div className="inline-flex items-center gap-3 bg-white dark:bg-slate-800 p-1 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm">
             <button
               onClick={() => setBillingCycle('monthly')}
               className={`px-6 py-2 rounded-lg font-medium transition-all ${
                 billingCycle === 'monthly'
-                  ? 'bg-slate-900 text-white shadow-sm'
-                  : 'text-slate-600 hover:text-slate-900'
+                  ? 'bg-slate-900 dark:bg-blue-600 text-white shadow-sm'
+                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
               }`}
             >
               Monthly
@@ -224,8 +224,8 @@ export const Pricing: React.FC<PricingProps> = ({ onClose }) => {
               onClick={() => setBillingCycle('annual')}
               className={`px-6 py-2 rounded-lg font-medium transition-all relative ${
                 billingCycle === 'annual'
-                  ? 'bg-slate-900 text-white shadow-sm'
-                  : 'text-slate-600 hover:text-slate-900'
+                  ? 'bg-slate-900 dark:bg-blue-600 text-white shadow-sm'
+                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
               }`}
             >
               Annual
@@ -243,44 +243,44 @@ export const Pricing: React.FC<PricingProps> = ({ onClose }) => {
               key={plan.id}
               onMouseEnter={() => setHoveredPlan(plan.id)}
               onMouseLeave={() => setHoveredPlan(null)}
-              className={`relative bg-white rounded-2xl border-2 transition-all duration-300 ${
+              className={`relative bg-white dark:bg-slate-800 rounded-2xl border-2 transition-all duration-300 ${
                 plan.popular
-                  ? 'border-slate-900 shadow-2xl scale-105'
-                  : 'border-slate-200 hover:border-slate-300 shadow-lg hover:shadow-xl'
+                  ? 'border-slate-900 dark:border-blue-600 shadow-2xl scale-105'
+                  : 'border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600 shadow-lg hover:shadow-xl'
               } ${hoveredPlan === plan.id && !plan.popular ? 'scale-[1.02]' : ''}`}
             >
               {plan.popular && (
-                <div className="absolute -top-4 left-1/2 -translate-x-1/2 bg-slate-900 text-white px-4 py-1 rounded-full text-sm font-semibold">
+                <div className="absolute -top-4 left-1/2 -translate-x-1/2 bg-slate-900 dark:bg-blue-600 text-white px-4 py-1 rounded-full text-sm font-semibold">
                   Most Popular
                 </div>
               )}
 
               <div className="p-8">
                 {/* Plan Header */}
-                <div className="inline-flex items-center gap-2 text-slate-900 mb-4">
+                <div className="inline-flex items-center gap-2 text-slate-900 dark:text-slate-100 mb-4">
                   {plan.icon}
                   <span className="font-semibold">{plan.name}</span>
                 </div>
-                <p className="text-slate-600 text-sm mb-6">{plan.tagline}</p>
+                <p className="text-slate-600 dark:text-slate-400 text-sm mb-6">{plan.tagline}</p>
 
                 {/* Price */}
                 <div className="mb-6">
                   {plan.monthlyPrice ? (
                     <>
                       <div className="flex items-baseline gap-2">
-                        <span className="text-4xl font-bold text-slate-900">
+                        <span className="text-4xl font-bold text-slate-900 dark:text-slate-100">
                           ${billingCycle === 'monthly' ? plan.monthlyPrice : plan.annualPrice}
                         </span>
-                        <span className="text-slate-500">/month</span>
+                        <span className="text-slate-500 dark:text-slate-400">/month</span>
                       </div>
                       {billingCycle === 'annual' && (
-                        <p className="text-sm text-slate-500 mt-1">
+                        <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
                           ${plan.monthlyPrice * 12}/year (save ${(plan.monthlyPrice - plan.annualPrice!) * 12})
                         </p>
                       )}
                     </>
                   ) : (
-                    <div className="text-4xl font-bold text-slate-900">Custom</div>
+                    <div className="text-4xl font-bold text-slate-900 dark:text-slate-100">Custom</div>
                   )}
                 </div>
 
@@ -301,8 +301,8 @@ export const Pricing: React.FC<PricingProps> = ({ onClose }) => {
                       }
                       className={`w-full py-3 rounded-xl font-semibold transition-all mb-8 flex items-center justify-center gap-2 ${
                         isCurrentPlan
-                          ? 'bg-slate-300 text-slate-500 cursor-not-allowed'
-                          : 'bg-slate-900 text-white hover:bg-slate-800'
+                          ? 'bg-slate-300 dark:bg-slate-700 text-slate-500 dark:text-slate-400 cursor-not-allowed'
+                          : 'bg-slate-900 dark:bg-blue-600 text-white hover:bg-slate-800 dark:hover:bg-blue-700'
                       } disabled:opacity-50 disabled:cursor-not-allowed`}
                     >
                       {loadingPlan === plan.id ? (
@@ -326,11 +326,11 @@ export const Pricing: React.FC<PricingProps> = ({ onClose }) => {
                   {plan.features.map((feature, idx) => (
                     <li key={idx} className="flex items-start gap-3">
                       {feature.included ? (
-                        <Check className="w-5 h-5 flex-shrink-0 text-slate-900 mt-0.5" />
+                        <Check className="w-5 h-5 flex-shrink-0 text-slate-900 dark:text-slate-100 mt-0.5" />
                       ) : (
-                        <X className="w-5 h-5 flex-shrink-0 text-slate-300 mt-0.5" />
+                        <X className="w-5 h-5 flex-shrink-0 text-slate-300 dark:text-slate-600 mt-0.5" />
                       )}
-                      <span className={`text-sm ${feature.included ? 'text-slate-700' : 'text-slate-400'}`}>
+                      <span className={`text-sm ${feature.included ? 'text-slate-700 dark:text-slate-300' : 'text-slate-400 dark:text-slate-500'}`}>
                         {feature.text}
                       </span>
                     </li>
@@ -343,19 +343,19 @@ export const Pricing: React.FC<PricingProps> = ({ onClose }) => {
 
         {/* Contact CTA */}
         <div className="text-center">
-          <h2 className="text-2xl font-bold text-slate-900 mb-4">Questions? We're here to help.</h2>
-          <p className="text-slate-600 mb-6">Contact our sales team to discuss Enterprise pricing or custom solutions.</p>
+          <h2 className="text-2xl font-bold text-slate-900 dark:text-slate-100 mb-4">Questions? We're here to help.</h2>
+          <p className="text-slate-600 dark:text-slate-400 mb-6">Contact our sales team to discuss Enterprise pricing or custom solutions.</p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <a 
               href="mailto:partsonmanyika@gmail.com?subject=Enterprise Plan Inquiry&body=Hi, I'm interested in the Enterprise plan. Please contact me."
-              className="bg-slate-900 text-white px-8 py-3 rounded-xl font-semibold hover:bg-slate-800 transition-colors flex items-center justify-center gap-2"
+              className="bg-slate-900 dark:bg-blue-600 text-white px-8 py-3 rounded-xl font-semibold hover:bg-slate-800 dark:hover:bg-blue-700 transition-colors flex items-center justify-center gap-2"
             >
               <Mail className="w-5 h-5" />
               Email Sales
             </a>
             <a 
               href="tel:+14694738724"
-              className="bg-white text-slate-900 border-2 border-slate-300 px-8 py-3 rounded-xl font-semibold hover:border-slate-400 transition-colors flex items-center justify-center gap-2"
+              className="bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 border-2 border-slate-300 dark:border-slate-600 px-8 py-3 rounded-xl font-semibold hover:border-slate-400 dark:hover:border-slate-500 transition-colors flex items-center justify-center gap-2"
             >
               <Phone className="w-5 h-5" />
               Schedule a Demo

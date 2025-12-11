@@ -45,6 +45,8 @@ import { Expenses } from './components/Expenses';
 import { ErrorModal } from './components/ErrorModal';
 import { CompanySwitcher } from './components/CompanySwitcher';
 import { DispatcherCompaniesList } from './components/DispatcherCompaniesList';
+import { ThemeProvider, useTheme } from './contexts/ThemeContext';
+import { ThemeToggle } from './components/ThemeToggle';
 import { saveSubscription } from './services/subscriptionService';
 import { analyzeFleetPerformance } from './services/geminiService';
 import { getLoads, createLoad, updateLoad, getDrivers, getDispatchers } from './services/loadService';
@@ -64,6 +66,59 @@ import {
   Cell,
   Bar
 } from 'recharts';
+
+// Inner component to access theme context
+const DashboardChart: React.FC<{ chartData: any[]; userRole: string }> = ({ chartData, userRole }) => {
+  const { theme } = useTheme();
+  
+  return (
+    <div className="h-72">
+      <ResponsiveContainer width="100%" height="100%">
+        <BarChart data={chartData}>
+          <CartesianGrid 
+            strokeDasharray="3 3" 
+            vertical={false} 
+            stroke={theme === 'dark' ? '#475569' : '#e2e8f0'} 
+          />
+          <XAxis 
+            dataKey="name" 
+            axisLine={false} 
+            tickLine={false} 
+            tick={{
+              fill: theme === 'dark' ? '#cbd5e1' : '#64748b', 
+              fontSize: 12
+            }} 
+            dy={10}
+          />
+          <YAxis 
+            axisLine={false} 
+            tickLine={false} 
+            tick={{
+              fill: theme === 'dark' ? '#cbd5e1' : '#64748b', 
+              fontSize: 12
+            }} 
+            tickFormatter={(value) => `$${value}`}
+          />
+          <Tooltip 
+            cursor={{fill: theme === 'dark' ? 'rgba(148, 163, 184, 0.1)' : 'rgba(0, 0, 0, 0.05)'}}
+            contentStyle={{
+              borderRadius: '8px', 
+              border: theme === 'dark' ? '1px solid #334155' : 'none', 
+              backgroundColor: theme === 'dark' ? '#1e293b' : '#ffffff',
+              color: theme === 'dark' ? '#f1f5f9' : '#1e293b',
+              boxShadow: theme === 'dark' ? '0 4px 6px -1px rgb(0 0 0 / 0.3)' : '0 4px 6px -1px rgb(0 0 0 / 0.1)'
+            }}
+          />
+          <Bar dataKey="gross" radius={[6, 6, 0, 0]}>
+            {chartData.map((entry, index) => (
+               <Cell key={`cell-${index}`} fill={index % 2 === 0 ? '#3b82f6' : '#6366f1'} />
+            ))}
+          </Bar>
+        </BarChart>
+      </ResponsiveContainer>
+    </div>
+  );
+};
 
 function App() {
   const [user, setUser] = useState<UserProfile | null>(null);
@@ -670,11 +725,11 @@ function App() {
 
   const getSortIcon = (column: keyof CalculatedLoad) => {
     if (sortBy !== column) {
-      return <ArrowUpDown className="w-3 h-3 ml-1 text-slate-400 opacity-50" />;
+      return <ArrowUpDown className="w-3 h-3 ml-1 text-slate-400 dark:text-slate-500 opacity-50" />;
     }
     return sortDirection === 'asc' 
-      ? <ArrowUp className="w-3 h-3 ml-1 text-blue-600" />
-      : <ArrowDown className="w-3 h-3 ml-1 text-blue-600" />;
+      ? <ArrowUp className="w-3 h-3 ml-1 text-blue-600 dark:text-blue-400" />
+      : <ArrowDown className="w-3 h-3 ml-1 text-blue-600 dark:text-blue-400" />;
   };
 
   // --- RENDER STATES ---
@@ -684,7 +739,7 @@ function App() {
       <div className="min-h-screen bg-slate-900 flex items-center justify-center">
         <div className="flex flex-col items-center gap-4">
            <Truck className="w-12 h-12 text-blue-500 animate-bounce" />
-           <p className="text-slate-400 text-sm">Loading TMS...</p>
+           <p className="text-slate-400 dark:text-slate-500 text-sm">Loading TMS...</p>
         </div>
       </div>
     );
@@ -727,7 +782,11 @@ function App() {
         />
       );
     }
-    return <Auth onLogin={setUser} />;
+    return (
+      <ThemeProvider>
+        <Auth onLogin={setUser} />
+      </ThemeProvider>
+    );
   }
 
   // Show payment confirmation if payment status is set
@@ -737,31 +796,38 @@ function App() {
       professional: 'Professional',
     };
     return (
-      <PaymentConfirmation
-        status={paymentStatus}
-        sessionId={paymentSessionId || undefined}
-        planName={paymentPlan ? planNames[paymentPlan] || paymentPlan : undefined}
-        onClose={() => {
-          setPaymentStatus(null);
-          setPaymentPlan(null);
-          setPaymentSessionId(null);
-          setView('dashboard');
-        }}
-      />
+      <ThemeProvider>
+        <PaymentConfirmation
+          status={paymentStatus}
+          sessionId={paymentSessionId || undefined}
+          planName={paymentPlan ? planNames[paymentPlan] || paymentPlan : undefined}
+          onClose={() => {
+            setPaymentStatus(null);
+            setPaymentPlan(null);
+            setPaymentSessionId(null);
+            setView('dashboard');
+          }}
+        />
+      </ThemeProvider>
     );
   }
 
   // --- DRIVER VIEW ---
   if (user.role === 'driver') {
-    return <DriverDashboard user={user} loads={processedLoads} onSignOut={handleSignOut} />;
+    return (
+      <ThemeProvider>
+        <DriverDashboard user={user} loads={processedLoads} onSignOut={handleSignOut} />
+      </ThemeProvider>
+    );
   }
 
   // --- ADMIN / DISPATCHER VIEW ---
   return (
-    <div className="h-screen bg-slate-50 flex font-sans overflow-hidden">
+    <ThemeProvider>
+    <div className="h-screen bg-slate-50 dark:bg-slate-900 flex font-sans overflow-hidden">
       
       {/* Sidebar Navigation */}
-      <aside className="group w-20 hover:w-64 bg-slate-900 text-slate-300 flex-shrink-0 hidden md:flex flex-col h-full overflow-y-auto transition-all duration-300 ease-in-out">
+      <aside className="group w-20 hover:w-64 bg-slate-900 dark:bg-slate-900 text-slate-700 dark:text-slate-300 flex-shrink-0 hidden md:flex flex-col h-full overflow-y-auto transition-all duration-300 ease-in-out">
         <div className="p-4 group-hover:p-6 transition-all duration-300">
           <div className="flex items-center gap-3 text-white mb-8 justify-center group-hover:justify-start">
             <div className="bg-blue-600 p-2 rounded-lg flex-shrink-0">
@@ -773,7 +839,7 @@ function App() {
           <nav className="space-y-2">
             <button 
               onClick={() => setView('dashboard')}
-              className={`w-full flex items-center justify-center group-hover:justify-start gap-3 px-4 py-3 rounded-xl transition-colors ${view === 'dashboard' ? 'bg-blue-600/10 text-blue-400 font-medium' : 'hover:bg-slate-800'}`}
+              className={`w-full flex items-center justify-center group-hover:justify-start gap-3 px-4 py-3 rounded-xl transition-colors ${view === 'dashboard' ? 'bg-blue-600/10 text-blue-400 font-medium' : 'hover:bg-slate-100 dark:hover:bg-slate-800'}`}
               title="Dashboard"
             >
               <LayoutDashboard size={20} className="flex-shrink-0" />
@@ -781,7 +847,7 @@ function App() {
             </button>
             <button 
               onClick={() => setView('loads')}
-              className={`w-full flex items-center justify-center group-hover:justify-start gap-3 px-4 py-3 rounded-xl transition-colors ${view === 'loads' ? 'bg-blue-600/10 text-blue-400 font-medium' : 'hover:bg-slate-800'}`}
+              className={`w-full flex items-center justify-center group-hover:justify-start gap-3 px-4 py-3 rounded-xl transition-colors ${view === 'loads' ? 'bg-blue-600/10 text-blue-400 font-medium' : 'hover:bg-slate-100 dark:hover:bg-slate-800'}`}
               title="All Loads"
             >
               <FileText size={20} className="flex-shrink-0" />
@@ -789,7 +855,7 @@ function App() {
             </button>
             <button 
               onClick={() => setView('fleet')}
-              className={`w-full flex items-center justify-center group-hover:justify-start gap-3 px-4 py-3 rounded-xl transition-colors ${view === 'fleet' ? 'bg-blue-600/10 text-blue-400 font-medium' : 'hover:bg-slate-800'}`}
+              className={`w-full flex items-center justify-center group-hover:justify-start gap-3 px-4 py-3 rounded-xl transition-colors ${view === 'fleet' ? 'bg-blue-600/10 text-blue-400 font-medium' : 'hover:bg-slate-100 dark:hover:bg-slate-800'}`}
               title="Fleet & Drivers"
             >
               <Users size={20} className="flex-shrink-0" />
@@ -798,7 +864,7 @@ function App() {
             {user.role === 'owner' && (
               <button 
                 onClick={() => setView('reports')}
-                className={`w-full flex items-center justify-center group-hover:justify-start gap-3 px-4 py-3 rounded-xl transition-colors ${view === 'reports' ? 'bg-blue-600/10 text-blue-400 font-medium' : 'hover:bg-slate-800'}`}
+                className={`w-full flex items-center justify-center group-hover:justify-start gap-3 px-4 py-3 rounded-xl transition-colors ${view === 'reports' ? 'bg-blue-600/10 text-blue-400 font-medium' : 'hover:bg-slate-100 dark:hover:bg-slate-800'}`}
                 title="Reports"
               >
                 <FileBarChart size={20} className="flex-shrink-0" />
@@ -858,7 +924,7 @@ function App() {
           </nav>
         </div>
         
-        <div className="mt-auto p-4 group-hover:p-6 border-t border-slate-800 transition-all duration-300 flex flex-col items-center group-hover:items-stretch">
+        <div className="mt-auto p-4 group-hover:p-6 border-t border-slate-700 dark:border-slate-800 transition-all duration-300 flex flex-col items-center group-hover:items-stretch">
            {/* User Profile Mini */}
            <div className="flex items-center gap-0 group-hover:gap-3 mb-6 w-full group-hover:justify-start">
               <div className="w-8 h-8 rounded-full bg-blue-500 flex items-center justify-center text-white font-bold text-xs flex-shrink-0 group-hover:mx-0">
@@ -866,16 +932,16 @@ function App() {
               </div>
               <div className="flex-1 min-w-0 hidden group-hover:block transition-opacity duration-300 overflow-hidden">
                 <p className="text-sm font-medium text-white truncate">{user.name}</p>
-                <p className="text-xs text-slate-500 capitalize">{user.role}</p>
+                <p className="text-xs text-slate-600 dark:text-slate-500 capitalize">{user.role}</p>
               </div>
-              <button onClick={handleSignOut} className="text-slate-500 hover:text-white transition-colors flex-shrink-0 hidden group-hover:block" title="Sign Out">
+              <button onClick={handleSignOut} className="text-slate-600 dark:text-slate-500 hover:text-slate-900 dark:hover:text-white transition-colors flex-shrink-0 hidden group-hover:block" title="Sign Out">
                 <LogOut size={16} />
               </button>
            </div>
 
-          <div className="bg-slate-800/50 rounded-xl p-4 hidden group-hover:block transition-opacity duration-300">
-            <h4 className="text-xs font-semibold uppercase tracking-wider text-slate-500 mb-2">Pro Tip</h4>
-            <p className="text-xs text-slate-400 leading-relaxed">
+          <div className="bg-slate-100/50 dark:bg-slate-800/50 rounded-xl p-4 hidden group-hover:block transition-opacity duration-300">
+            <h4 className="text-xs font-semibold uppercase tracking-wider text-slate-600 dark:text-slate-500 mb-2">Pro Tip</h4>
+            <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
               Use the AI Analysis to identify your most profitable routes and dispatchers every week.
             </p>
           </div>
@@ -884,11 +950,11 @@ function App() {
 
       {/* Main Content */}
       <main className="flex-1 flex flex-col overflow-hidden">
-        <header className="bg-white border-b border-slate-200 flex-shrink-0 z-30">
+        <header className="bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 flex-shrink-0 z-30">
           <div className="mx-auto px-4 py-4 flex items-center justify-between">
             <div className="flex items-center gap-4">
               <div>
-                <h1 className="text-2xl font-bold text-slate-800">
+                <h1 className="text-2xl font-bold text-slate-800 dark:text-slate-100">
                   {view === 'dashboard' ? 'Fleet Overview' : view === 'fleet' ? 'Fleet Management' : view === 'pricing' ? 'Pricing Plans' : view === 'subscriptions' ? 'My Subscriptions' : view === 'marketing' ? 'Marketing Management' : view === 'reports' ? 'Reports' : view === 'expenses' ? 'Expenses' : view === 'company' ? 'Company Settings' : 'Load Management'}
                 </h1>
                 {companyName && user.role === 'dispatcher' && (
@@ -905,7 +971,8 @@ function App() {
               )}
             </div>
             <div className="flex items-center gap-4">
-              {dataLoading && <span className="text-sm text-slate-400 animate-pulse">Syncing...</span>}
+              <ThemeToggle />
+              {dataLoading && <span className="text-sm text-slate-400 dark:text-slate-500 animate-pulse">Syncing...</span>}
                {view !== 'fleet' && view !== 'pricing' && view !== 'subscriptions' && view !== 'marketing' && view !== 'company' && view !== 'expenses' && (
                  <button 
                   onClick={() => setIsModalOpen(true)}
@@ -939,8 +1006,8 @@ function App() {
               </div>
             ) : (
               <div className="mx-auto px-4 py-8">
-                <div className="bg-white rounded-lg border border-slate-200 p-12 text-center">
-                  <p className="text-slate-500">Please set up your company first in Company Settings.</p>
+                <div className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 p-12 text-center">
+                  <p className="text-slate-500 dark:text-slate-400">Please set up your company first in Company Settings.</p>
                 </div>
               </div>
             )
@@ -982,28 +1049,28 @@ function App() {
                       })()
                     : "All time"}
                   trend="up"
-                  icon={<DollarSign className="w-6 h-6 text-slate-900" />}
-                  colorClass="bg-slate-100"
+                  icon={<DollarSign className="w-6 h-6 text-slate-900 dark:text-slate-100" />}
+                  colorClass="bg-slate-100 dark:bg-slate-700"
                 />
                  <StatsCard 
                   title="Avg Rate Per Mile" 
                   value={`$${stats.rpm.toFixed(2)}`} 
                   subValue="Target: $2.00+"
                   trend={stats.rpm > 2 ? "up" : "neutral"}
-                  icon={<MapPin className="w-6 h-6 text-slate-900" />}
-                  colorClass="bg-slate-100"
+                  icon={<MapPin className="w-6 h-6 text-slate-900 dark:text-slate-100" />}
+                  colorClass="bg-slate-100 dark:bg-slate-700"
                 />
                  <StatsCard 
                   title="Total Miles" 
                   value={stats.miles.toLocaleString()} 
-                  icon={<Truck className="w-6 h-6 text-slate-900" />}
-                  colorClass="bg-slate-100"
+                  icon={<Truck className="w-6 h-6 text-slate-900 dark:text-slate-100" />}
+                  colorClass="bg-slate-100 dark:bg-slate-700"
                 />
                 <StatsCard 
                   title="Driver Pay Output" 
                   value={`$${stats.driverPay.toLocaleString()}`} 
-                  icon={<User className="w-6 h-6 text-slate-900" />}
-                  colorClass="bg-slate-100"
+                  icon={<User className="w-6 h-6 text-slate-900 dark:text-slate-100" />}
+                  colorClass="bg-slate-100 dark:bg-slate-700"
                 />
               </div>
 
@@ -1022,68 +1089,40 @@ function App() {
                   <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                   
                   {/* Chart Section */}
-                  <div className="lg:col-span-2 bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
-                    <h3 className="text-lg font-bold text-slate-800 mb-6">
+                  <div className="lg:col-span-2 bg-white dark:bg-slate-800 p-6 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm">
+                    <h3 className="text-lg font-bold text-slate-800 dark:text-slate-100 mb-6">
                       {user.role === 'dispatcher' ? 'Revenue by Driver' : 'Revenue by Dispatcher'}
                     </h3>
-                    <div className="h-72">
-                      <ResponsiveContainer width="100%" height="100%">
-                        <BarChart data={chartData}>
-                          <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
-                          <XAxis 
-                            dataKey="name" 
-                            axisLine={false} 
-                            tickLine={false} 
-                            tick={{fill: '#64748b', fontSize: 12}} 
-                            dy={10}
-                          />
-                          <YAxis 
-                            axisLine={false} 
-                            tickLine={false} 
-                            tick={{fill: '#64748b', fontSize: 12}} 
-                            tickFormatter={(value) => `$${value}`}
-                          />
-                          <Tooltip 
-                            cursor={{fill: '#f1f5f9'}}
-                            contentStyle={{borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)'}}
-                          />
-                          <Bar dataKey="gross" radius={[6, 6, 0, 0]}>
-                            {chartData.map((entry, index) => (
-                               <Cell key={`cell-${index}`} fill={index % 2 === 0 ? '#3b82f6' : '#6366f1'} />
-                            ))}
-                          </Bar>
-                        </BarChart>
-                      </ResponsiveContainer>
-                    </div>
+                    <DashboardChart chartData={chartData} userRole={user.role} />
                   </div>
 
                   {/* AI Insights Section */}
-                  <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm flex flex-col">
+                  <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm flex flex-col">
                     <div className="flex items-center justify-between mb-6">
                       <div className="flex items-center gap-2">
-                        <BrainCircuit className="text-slate-600" size={24} />
-                        <h3 className="text-lg font-bold text-slate-800">AI Analyst</h3>
+                        <BrainCircuit className="text-slate-600 dark:text-slate-400" size={24} />
+                        <h3 className="text-lg font-bold text-slate-800 dark:text-slate-100">AI Analyst</h3>
                       </div>
                       {!aiAnalysis && (
                         <button 
                           onClick={handleGenerateAIReport}
                           disabled={isAnalyzing}
-                          className="text-sm text-slate-600 font-medium hover:text-slate-800 disabled:opacity-50"
+                          className="text-sm text-slate-600 dark:text-slate-400 font-medium hover:text-slate-800 dark:hover:text-slate-200 disabled:opacity-50"
                         >
                           {isAnalyzing ? 'Thinking...' : 'Generate Report'}
                         </button>
                       )}
                     </div>
                     
-                    <div className="flex-1 bg-slate-50 rounded-xl p-4 border border-slate-100 overflow-y-auto max-h-[300px]">
+                    <div className="flex-1 bg-slate-50 dark:bg-slate-700/50 rounded-xl p-4 border border-slate-100 dark:border-slate-600 overflow-y-auto max-h-[300px]">
                       {isAnalyzing ? (
-                        <div className="flex flex-col items-center justify-center h-full text-slate-400 space-y-3">
-                          <div className="w-6 h-6 border-2 border-slate-500 border-t-transparent rounded-full animate-spin"></div>
+                        <div className="flex flex-col items-center justify-center h-full text-slate-400 dark:text-slate-500 space-y-3">
+                          <div className="w-6 h-6 border-2 border-slate-500 dark:border-slate-400 border-t-transparent rounded-full animate-spin"></div>
                           <span className="text-sm">Analyzing market data...</span>
                         </div>
                       ) : aiAnalysis ? (
-                        <div className="prose prose-sm prose-slate">
-                          <div className="whitespace-pre-wrap text-slate-600 text-sm leading-relaxed font-medium">
+                        <div className="prose prose-sm prose-slate dark:prose-invert">
+                          <div className="whitespace-pre-wrap text-slate-600 dark:text-slate-300 text-sm leading-relaxed font-medium">
                             {aiAnalysis}
                           </div>
                           <div className="mt-4 flex items-center gap-3">
@@ -1094,14 +1133,14 @@ function App() {
                                   setErrorModal({ isOpen: true, message: result.error });
                                 }
                               }}
-                              className="flex items-center gap-2 px-3 py-2 text-sm text-slate-600 hover:text-slate-800 hover:bg-slate-100 rounded-lg transition-colors"
+                              className="flex items-center gap-2 px-3 py-2 text-sm text-slate-600 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors"
                             >
                               <FileDown size={16} />
                               Export PDF
                             </button>
                             <button 
                               onClick={() => setAiAnalysis(null)} 
-                              className="text-xs text-slate-400 underline hover:text-slate-600"
+                              className="text-xs text-slate-400 dark:text-slate-500 underline hover:text-slate-600 dark:hover:text-slate-300"
                             >
                               Clear Report
                             </button>
@@ -1120,26 +1159,26 @@ function App() {
               )}
 
               {/* Recent Loads / All Loads Table */}
-              <div className="bg-white rounded-2xl border border-slate-200 shadow-sm flex flex-col">
-                <div className="p-6 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                  <h3 className="text-lg font-bold text-slate-800">Recent Loads</h3>
+              <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm flex flex-col">
+                <div className="p-6 border-b border-slate-100 dark:border-slate-700 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                  <h3 className="text-lg font-bold text-slate-800 dark:text-slate-100">Recent Loads</h3>
                   <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
                     <div className="relative flex-1 sm:flex-initial">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-4 h-4" />
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500 w-4 h-4" />
                     <input 
                       type="text" 
                       placeholder="Search company, city..." 
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
-                      className="pl-9 pr-4 py-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none w-full sm:w-64"
+                      className="pl-9 pr-4 py-2 border border-slate-200 dark:border-slate-600 rounded-lg text-sm bg-white dark:bg-slate-700 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none w-full sm:w-64"
                     />
                     </div>
                     <div className="relative flex-1 sm:flex-initial">
-                      <Filter className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-4 h-4 pointer-events-none" />
+                      <Filter className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500 w-4 h-4 pointer-events-none" />
                       <select
                         value={selectedDriverId}
                         onChange={(e) => setSelectedDriverId(e.target.value)}
-                        className="pl-9 pr-8 py-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none w-full sm:w-48 bg-white appearance-none cursor-pointer"
+                        className="pl-9 pr-8 py-2 border border-slate-200 dark:border-slate-600 rounded-lg text-sm bg-white dark:bg-slate-700 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none w-full sm:w-48 appearance-none cursor-pointer"
                       >
                         <option value="">All Drivers</option>
                         {drivers.map(driver => (
@@ -1151,7 +1190,7 @@ function App() {
                       {selectedDriverId && (
                         <button
                           onClick={() => setSelectedDriverId('')}
-                          className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-1"
+                          className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 p-1"
                           title="Clear filter"
                         >
                           <X size={16} />
@@ -1159,28 +1198,28 @@ function App() {
                       )}
                     </div>
                     <div className="flex items-center gap-2 flex-1 sm:flex-initial">
-                      <Calendar className="text-slate-400 w-4 h-4" />
+                      <Calendar className="text-slate-400 dark:text-slate-500 w-4 h-4" />
                       <input
                         type="date"
                         value={dateFilter.startDate}
                         onChange={(e) => setDateFilter({ ...dateFilter, startDate: e.target.value })}
                         placeholder="From"
-                        className="px-3 py-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none w-full sm:w-40"
+                        className="px-3 py-2 border border-slate-200 dark:border-slate-600 rounded-lg text-sm bg-white dark:bg-slate-700 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none w-full sm:w-40"
                         title="Filter from date"
                       />
-                      <span className="text-slate-400 text-sm">to</span>
+                      <span className="text-slate-400 dark:text-slate-500 text-sm">to</span>
                       <input
                         type="date"
                         value={dateFilter.endDate}
                         onChange={(e) => setDateFilter({ ...dateFilter, endDate: e.target.value })}
                         placeholder="To"
-                        className="px-3 py-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none w-full sm:w-40"
+                        className="px-3 py-2 border border-slate-200 dark:border-slate-600 rounded-lg text-sm bg-white dark:bg-slate-700 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none w-full sm:w-40"
                         title="Filter to date"
                       />
                       {(dateFilter.startDate || dateFilter.endDate) && (
                         <button
                           onClick={() => setDateFilter({ startDate: '', endDate: '' })}
-                          className="p-2 text-slate-400 hover:text-slate-600 transition-colors"
+                          className="p-2 text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 transition-colors"
                           title="Clear date filter"
                         >
                           <X size={16} />
@@ -1193,9 +1232,9 @@ function App() {
                 <div className="relative overflow-auto max-h-[600px]">
                   <table className="w-full text-left border-collapse">
                     <thead className="sticky top-0 z-20 shadow-md">
-                      <tr className="bg-slate-50 text-slate-500 text-xs uppercase tracking-wider">
+                      <tr className="bg-slate-50 dark:bg-slate-800 text-xs uppercase tracking-wider">
                         <th 
-                          className="bg-slate-50 p-4 font-semibold border-b border-slate-200 cursor-pointer hover:bg-slate-100 transition-colors select-none"
+                          className="bg-slate-50 dark:bg-slate-800 text-slate-500 dark:text-slate-400 p-4 font-semibold border-b border-slate-200 dark:border-slate-700 cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors select-none"
                           onClick={() => handleSort('company')}
                         >
                           <div className="flex items-center">
@@ -1203,9 +1242,9 @@ function App() {
                             {getSortIcon('company')}
                           </div>
                         </th>
-                        <th className="bg-slate-50 p-4 font-semibold border-b border-slate-200">Route</th>
+                        <th className="bg-slate-50 dark:bg-slate-800 text-slate-500 dark:text-slate-400 p-4 font-semibold border-b border-slate-200 dark:border-slate-700">Route</th>
                         <th 
-                          className="bg-slate-50 p-4 font-semibold border-b border-slate-200 cursor-pointer hover:bg-slate-100 transition-colors select-none"
+                          className="bg-slate-50 dark:bg-slate-800 text-slate-500 dark:text-slate-400 p-4 font-semibold border-b border-slate-200 dark:border-slate-700 cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors select-none"
                           onClick={() => handleSort('dropDate')}
                         >
                           <div className="flex items-center">
@@ -1214,7 +1253,7 @@ function App() {
                           </div>
                         </th>
                         <th 
-                          className="bg-slate-50 p-4 font-semibold border-b border-slate-200 cursor-pointer hover:bg-slate-100 transition-colors select-none"
+                          className="bg-slate-50 dark:bg-slate-800 text-slate-500 dark:text-slate-400 p-4 font-semibold border-b border-slate-200 dark:border-slate-700 cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors select-none"
                           onClick={() => handleSort('dispatcher')}
                         >
                           <div className="flex items-center">
@@ -1223,7 +1262,7 @@ function App() {
                           </div>
                         </th>
                         <th 
-                          className="bg-slate-50 p-4 font-semibold border-b border-slate-200 text-right cursor-pointer hover:bg-slate-100 transition-colors select-none"
+                          className="bg-slate-50 dark:bg-slate-800 text-slate-500 dark:text-slate-400 p-4 font-semibold border-b border-slate-200 dark:border-slate-700 text-right cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors select-none"
                           onClick={() => handleSort('gross')}
                         >
                           <div className="flex items-center justify-end">
@@ -1232,7 +1271,7 @@ function App() {
                           </div>
                         </th>
                         <th 
-                          className="bg-slate-50 p-4 font-semibold border-b border-slate-200 text-right cursor-pointer hover:bg-slate-100 transition-colors select-none"
+                          className="bg-slate-50 dark:bg-slate-800 text-slate-500 dark:text-slate-400 p-4 font-semibold border-b border-slate-200 dark:border-slate-700 text-right cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors select-none"
                           onClick={() => handleSort('dispatchFee')}
                         >
                           <div className="flex items-center justify-end">
@@ -1241,7 +1280,7 @@ function App() {
                           </div>
                         </th>
                         <th 
-                          className="bg-slate-50 p-4 font-semibold border-b border-slate-200 text-right cursor-pointer hover:bg-slate-100 transition-colors select-none"
+                          className="bg-slate-50 dark:bg-slate-800 text-slate-500 dark:text-slate-400 p-4 font-semibold border-b border-slate-200 dark:border-slate-700 text-right cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors select-none"
                           onClick={() => handleSort('driverPay')}
                         >
                           <div className="flex items-center justify-end">
@@ -1250,7 +1289,7 @@ function App() {
                           </div>
                         </th>
                         <th 
-                          className="bg-slate-50 p-4 font-semibold border-b border-slate-200 cursor-pointer hover:bg-slate-100 transition-colors select-none"
+                          className="bg-slate-50 dark:bg-slate-800 text-slate-500 dark:text-slate-400 p-4 font-semibold border-b border-slate-200 dark:border-slate-700 cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors select-none"
                           onClick={() => handleSort('status')}
                         >
                           <div className="flex items-center">
@@ -1260,7 +1299,7 @@ function App() {
                         </th>
                         {user.role === 'owner' && (
                           <th 
-                            className="bg-slate-50 p-4 font-semibold border-b border-slate-200 cursor-pointer hover:bg-slate-100 transition-colors select-none"
+                            className="bg-slate-50 dark:bg-slate-800 text-slate-500 dark:text-slate-400 p-4 font-semibold border-b border-slate-200 dark:border-slate-700 cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors select-none"
                             onClick={() => handleSort('driverPayoutStatus')}
                           >
                             <div className="flex items-center">
@@ -1271,19 +1310,19 @@ function App() {
                         )}
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-slate-100">
+                    <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
                       {dataLoading && sortedLoads.length === 0 ? (
                          <tr>
-                            <td colSpan={user.role === 'owner' ? 9 : 8} className="p-12 text-center text-slate-400">
+                            <td colSpan={user.role === 'owner' ? 9 : 8} className="p-12 text-center text-slate-400 dark:text-slate-500">
                                <div className="flex justify-center items-center gap-2">
-                                 <div className="w-4 h-4 border-2 border-slate-400 border-t-transparent rounded-full animate-spin"></div>
+                                 <div className="w-4 h-4 border-2 border-slate-400 dark:border-slate-500 border-t-transparent rounded-full animate-spin"></div>
                                  <span>Loading fleet data...</span>
                                </div>
                             </td>
                          </tr>
                       ) : sortedLoads.length === 0 ? (
                          <tr>
-                            <td colSpan={user.role === 'owner' ? 9 : 8} className="p-8 text-center text-slate-400">
+                            <td colSpan={user.role === 'owner' ? 9 : 8} className="p-8 text-center text-slate-400 dark:text-slate-500">
                                No loads found. Add a new load to get started.
                             </td>
                          </tr>
@@ -1292,37 +1331,39 @@ function App() {
                           <tr 
                             key={load.id} 
                             onClick={() => handleEditLoad(load)}
-                            className="hover:bg-slate-50/50 transition-colors group cursor-pointer"
+                            className="hover:bg-slate-50/50 dark:hover:bg-slate-700/50 transition-colors group cursor-pointer border-b border-slate-100 dark:border-slate-700/50"
                           >
                             <td className="p-4">
-                              <div className="font-medium text-slate-900">{load.company}</div>
-                              <div className="text-xs text-slate-400">ID: #{load.id.toString().slice(0, 8)}</div>
+                              <div className="font-medium text-slate-900 dark:text-slate-100">{load.company}</div>
+                              <div className="text-xs text-slate-400 dark:text-slate-500">ID: #{load.id.toString().slice(0, 8)}</div>
                             </td>
                             <td className="p-4">
                               <div className="flex flex-col gap-1">
-                                <span className="text-xs bg-slate-100 px-2 py-0.5 rounded text-slate-600 w-fit">{load.origin}</span>
-                                <span className="text-xs text-slate-400 ml-1">↓</span>
-                                <span className="text-xs bg-slate-100 px-2 py-0.5 rounded text-slate-600 w-fit">{load.destination}</span>
+                                <span className="text-xs bg-slate-100 dark:bg-slate-700 px-2 py-0.5 rounded text-slate-600 dark:text-slate-300 w-fit">{load.origin}</span>
+                                <span className="text-xs text-slate-400 dark:text-slate-500 ml-1">↓</span>
+                                <span className="text-xs bg-slate-100 dark:bg-slate-700 px-2 py-0.5 rounded text-slate-600 dark:text-slate-300 w-fit">{load.destination}</span>
                               </div>
                             </td>
-                            <td className="p-4 text-sm text-slate-600 whitespace-nowrap">{load.dropDate}</td>
+                            <td className="p-4 text-sm text-slate-600 dark:text-slate-300 whitespace-nowrap">{load.dropDate}</td>
                             <td className="p-4">
                               <div className="flex items-center gap-2">
-                                <div className="w-6 h-6 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center text-xs font-bold">
+                                <div className="w-6 h-6 rounded-full bg-indigo-100 dark:bg-indigo-900/40 text-indigo-600 dark:text-indigo-400 flex items-center justify-center text-xs font-bold">
                                   {load.dispatcher.charAt(0)}
                                 </div>
-                                <span className="text-sm text-slate-700">{load.dispatcher}</span>
+                                <span className="text-sm text-slate-700 dark:text-slate-300">{load.dispatcher}</span>
                               </div>
                             </td>
-                            <td className="p-4 text-right font-medium text-slate-900">${load.gross.toLocaleString()}</td>
-                            <td className="p-4 text-right text-sm text-rose-600">-${load.dispatchFee.toFixed(1)}</td>
+                            <td className="p-4 text-right font-medium text-slate-900 dark:text-slate-100">${load.gross.toLocaleString()}</td>
+                            <td className="p-4 text-right text-sm text-rose-600 dark:text-rose-400">-${load.dispatchFee.toFixed(1)}</td>
                             <td className="p-4 text-right">
-                              <div className="font-bold text-emerald-600">${load.driverPay.toFixed(1)}</div>
-                              <div className="text-xs text-slate-400">Gas: ${load.gasAmount}</div>
+                              <div className="font-bold text-emerald-600 dark:text-emerald-400">${load.driverPay.toFixed(1)}</div>
+                              <div className="text-xs text-slate-400 dark:text-slate-500">Gas: ${load.gasAmount}</div>
                             </td>
                             <td className="p-4">
                               <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                                load.status === 'Factored' ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'
+                                load.status === 'Factored' 
+                                  ? 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-800 dark:text-emerald-300' 
+                                  : 'bg-amber-100 dark:bg-amber-900/30 text-amber-800 dark:text-amber-300'
                               }`}>
                                 {load.status}
                               </span>
@@ -1330,9 +1371,11 @@ function App() {
                             {user.role === 'owner' && (
                               <td className="p-4">
                                 <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                                  load.driverPayoutStatus === 'paid' ? 'bg-green-100 text-green-800' :
-                                  load.driverPayoutStatus === 'partial' ? 'bg-yellow-100 text-yellow-800' :
-                                  'bg-slate-100 text-slate-800'
+                                  load.driverPayoutStatus === 'paid' 
+                                    ? 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300' :
+                                  load.driverPayoutStatus === 'partial' 
+                                    ? 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-300' :
+                                    'bg-slate-100 dark:bg-slate-700 text-slate-800 dark:text-slate-300'
                                 }`}>
                                   {load.driverPayoutStatus === 'paid' ? 'Paid' :
                                    load.driverPayoutStatus === 'partial' ? 'Partial' :
@@ -1349,8 +1392,8 @@ function App() {
                 
                 {/* Pagination Controls */}
                 {sortedLoads.length > 0 && totalPages > 1 && (
-                  <div className="px-6 py-4 border-t border-slate-200 flex items-center justify-between">
-                    <div className="text-sm text-slate-600">
+                  <div className="px-6 py-4 border-t border-slate-200 dark:border-slate-700 flex items-center justify-between">
+                    <div className="text-sm text-slate-600 dark:text-slate-400">
                       Showing <span className="font-medium">{(currentPage - 1) * itemsPerPage + 1}</span> to{' '}
                       <span className="font-medium">
                         {Math.min(currentPage * itemsPerPage, sortedLoads.length)}
@@ -1361,10 +1404,10 @@ function App() {
                       <button
                         onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
                         disabled={currentPage === 1}
-                        className="p-2 border border-slate-200 rounded-lg hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                        className="p-2 border border-slate-200 dark:border-slate-600 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                         title="Previous page"
                       >
-                        <ChevronLeft size={16} className="text-slate-600" />
+                        <ChevronLeft size={16} className="text-slate-600 dark:text-slate-400" />
                       </button>
                       
                       <div className="flex items-center gap-1">
@@ -1387,7 +1430,7 @@ function App() {
                               className={`px-3 py-1.5 text-sm font-medium rounded-lg transition-colors ${
                                 currentPage === pageNum
                                   ? 'bg-blue-600 text-white'
-                                  : 'text-slate-600 hover:bg-slate-100'
+                                  : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700'
                               }`}
                             >
                               {pageNum}
@@ -1399,10 +1442,10 @@ function App() {
                       <button
                         onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
                         disabled={currentPage === totalPages}
-                        className="p-2 border border-slate-200 rounded-lg hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                        className="p-2 border border-slate-200 dark:border-slate-600 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                         title="Next page"
                       >
-                        <ChevronRight size={16} className="text-slate-600" />
+                        <ChevronRight size={16} className="text-slate-600 dark:text-slate-400" />
                       </button>
                     </div>
                   </div>
@@ -1431,6 +1474,7 @@ function App() {
         onClose={() => setErrorModal({ isOpen: false, message: '' })}
       />
     </div>
+    </ThemeProvider>
   );
 }
 

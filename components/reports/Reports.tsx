@@ -283,7 +283,7 @@ export const Reports: React.FC<ReportsProps> = ({ user, companyId }) => {
 
   if (loading) {
     return (
-      <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-12">
+      <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm p-12">
         <div className="flex items-center justify-center">
           <div className="w-8 h-8 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
         </div>
@@ -293,9 +293,9 @@ export const Reports: React.FC<ReportsProps> = ({ user, companyId }) => {
 
   if (error) {
     return (
-      <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-12">
+      <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm p-12">
         <div className="flex flex-col items-center justify-center">
-          <p className="text-red-600 mb-4">Error: {error}</p>
+          <p className="text-red-600 dark:text-red-400 mb-4">Error: {error}</p>
           <button
             onClick={fetchData}
             className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
@@ -313,23 +313,23 @@ export const Reports: React.FC<ReportsProps> = ({ user, companyId }) => {
       {/* <div className="bg-yellow-100 p-4 rounded">Reports component loaded</div> */}
       
       {/* Filters */}
-      <div className="bg-white rounded-lg border border-slate-200 p-4">
+      <div className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 p-4">
         <div className="space-y-4">
           {/* Driver/Dispatcher Filters */}
           <div className="flex items-center gap-4">
             {activeTab === 'drivers' ? (
-              <User className="w-5 h-5 text-slate-400 flex-shrink-0" />
-            ) : (
-              <Users className="w-5 h-5 text-slate-400 flex-shrink-0" />
-            )}
+              <User className="w-5 h-5 text-slate-400 dark:text-slate-500 flex-shrink-0" />
+              ) : (
+                <Users className="w-5 h-5 text-slate-400 dark:text-slate-500 flex-shrink-0" />
+              )}
             <div className="flex items-center gap-3 flex-1">
               {activeTab === 'drivers' ? (
                 <div className="flex-1">
-                  <label className="block text-xs text-slate-600 mb-1">Filter by Driver</label>
+                  <label className="block text-xs text-slate-600 dark:text-slate-400 mb-1">Filter by Driver</label>
                   <select
                     value={dateFilter.driverId || ''}
                     onChange={(e) => setDateFilter({ ...dateFilter, driverId: e.target.value || undefined })}
-                    className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+                    className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg text-sm bg-white dark:bg-slate-700 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
                   >
                     <option value="">All Drivers</option>
                     {drivers.map((driver) => (
@@ -341,11 +341,11 @@ export const Reports: React.FC<ReportsProps> = ({ user, companyId }) => {
                 </div>
               ) : (
                 <div className="flex-1">
-                  <label className="block text-xs text-slate-600 mb-1">Filter by Dispatcher</label>
+                  <label className="block text-xs text-slate-600 dark:text-slate-400 mb-1">Filter by Dispatcher</label>
                   <select
                     value={dateFilter.dispatcherId || ''}
                     onChange={(e) => setDateFilter({ ...dateFilter, dispatcherId: e.target.value || undefined })}
-                    className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+                    className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg text-sm bg-white dark:bg-slate-700 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
                   >
                     <option value="">All Dispatchers</option>
                     {dispatchers.map((dispatcher) => (
@@ -361,24 +361,24 @@ export const Reports: React.FC<ReportsProps> = ({ user, companyId }) => {
 
           {/* Date Range Filter */}
           <div className="flex items-center gap-4">
-            <Calendar className="w-5 h-5 text-slate-400 flex-shrink-0" />
+            <Calendar className="w-5 h-5 text-slate-400 dark:text-slate-500 flex-shrink-0" />
             <div className="flex items-center gap-3 flex-1">
               <div className="flex-1">
-                <label className="block text-xs text-slate-600 mb-1">Start Date</label>
+                <label className="block text-xs text-slate-600 dark:text-slate-400 mb-1">Start Date</label>
                 <input
                   type="date"
                   value={dateFilter.startDate || ''}
                   onChange={(e) => setDateFilter({ ...dateFilter, startDate: e.target.value })}
-                  className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg text-sm bg-white dark:bg-slate-700 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
               <div className="flex-1">
-                <label className="block text-xs text-slate-600 mb-1">End Date</label>
+                <label className="block text-xs text-slate-600 dark:text-slate-400 mb-1">End Date</label>
                 <input
                   type="date"
                   value={dateFilter.endDate || ''}
                   onChange={(e) => setDateFilter({ ...dateFilter, endDate: e.target.value })}
-                  className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg text-sm bg-white dark:bg-slate-700 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
             </div>
@@ -389,7 +389,7 @@ export const Reports: React.FC<ReportsProps> = ({ user, companyId }) => {
             <div className="flex justify-end">
               <button
                 onClick={() => setDateFilter({ startDate: '', endDate: '', driverId: '', dispatcherId: '' })}
-                className="flex items-center gap-2 px-4 py-2 text-sm text-slate-600 hover:text-slate-800 hover:bg-slate-100 rounded-lg transition-colors"
+                className="flex items-center gap-2 px-4 py-2 text-sm text-slate-600 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors"
               >
                 <X size={16} />
                 Clear All Filters
@@ -400,8 +400,8 @@ export const Reports: React.FC<ReportsProps> = ({ user, companyId }) => {
       </div>
 
       {/* Tabs */}
-      <div className="bg-white rounded-lg border border-slate-200">
-        <div className="border-b border-slate-200">
+      <div className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700">
+        <div className="border-b border-slate-200 dark:border-slate-700">
           <div className="flex">
             <button
               onClick={() => {
@@ -411,8 +411,8 @@ export const Reports: React.FC<ReportsProps> = ({ user, companyId }) => {
               }}
               className={`flex-1 px-6 py-4 text-sm font-medium transition-colors ${
                 activeTab === 'drivers'
-                  ? 'text-slate-800 border-b-2 border-slate-600 bg-slate-50/50'
-                  : 'text-slate-600 hover:text-slate-800 hover:bg-slate-50'
+                  ? 'text-slate-800 dark:text-slate-100 border-b-2 border-slate-600 dark:border-slate-500 bg-slate-50/50 dark:bg-slate-700/50'
+                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700'
               }`}
             >
               Driver Reports
@@ -425,8 +425,8 @@ export const Reports: React.FC<ReportsProps> = ({ user, companyId }) => {
               }}
               className={`flex-1 px-6 py-4 text-sm font-medium transition-colors ${
                 activeTab === 'dispatchers'
-                  ? 'text-slate-800 border-b-2 border-slate-600 bg-slate-50/50'
-                  : 'text-slate-600 hover:text-slate-800 hover:bg-slate-50'
+                  ? 'text-slate-800 dark:text-slate-100 border-b-2 border-slate-600 dark:border-slate-500 bg-slate-50/50 dark:bg-slate-700/50'
+                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700'
               }`}
             >
               Dispatcher Reports

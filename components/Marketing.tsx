@@ -227,7 +227,7 @@ export const Marketing: React.FC<MarketingProps> = ({ user }) => {
   return (
     <div className="space-y-6">
       {/* Tabs */}
-      <div className="border-b border-slate-200">
+      <div className="border-b border-slate-200 dark:border-slate-700">
         <nav className="flex space-x-8">
           {(['ads', 'posts', 'metrics', 'analytics'] as const).map((tab) => (
             <button
@@ -235,8 +235,8 @@ export const Marketing: React.FC<MarketingProps> = ({ user }) => {
               onClick={() => setActiveTab(tab)}
               className={`py-4 px-1 border-b-2 font-medium text-sm capitalize ${
                 activeTab === tab
-                  ? 'border-blue-500 text-blue-600'
-                  : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300'
+                  ? 'border-blue-500 text-blue-600 dark:text-blue-400'
+                  : 'border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300 hover:border-slate-300 dark:hover:border-slate-600'
               }`}
             >
               {tab === 'ads' && 'Ad Library'}
@@ -250,7 +250,7 @@ export const Marketing: React.FC<MarketingProps> = ({ user }) => {
 
       {loading ? (
         <div className="text-center py-12">
-          <div className="animate-pulse text-slate-400">Loading...</div>
+          <div className="animate-pulse text-slate-400 dark:text-slate-500">Loading...</div>
         </div>
       ) : (
         <>
@@ -258,20 +258,20 @@ export const Marketing: React.FC<MarketingProps> = ({ user }) => {
           {activeTab === 'ads' && (
             <div className="space-y-4">
               <div className="flex justify-between items-center">
-                <h2 className="text-lg font-semibold text-slate-800">Weekly Ad Variations</h2>
-                <p className="text-sm text-slate-500">12 pre-written ad variations for weekly posting</p>
+                <h2 className="text-lg font-semibold text-slate-800 dark:text-slate-100">Weekly Ad Variations</h2>
+                <p className="text-sm text-slate-500 dark:text-slate-400">12 pre-written ad variations for weekly posting</p>
               </div>
               <div className="grid grid-cols-1 gap-4">
                 {ads.map((ad) => (
-                  <div key={ad.id} className="bg-white rounded-lg border border-slate-200 p-6">
+                  <div key={ad.id} className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 p-6">
                     <div className="flex justify-between items-start mb-4">
                       <div>
-                        <h3 className="text-lg font-semibold text-slate-800">{ad.title}</h3>
-                        <p className="text-sm text-slate-500">Week {ad.weekNumber}</p>
+                        <h3 className="text-lg font-semibold text-slate-800 dark:text-slate-100">{ad.title}</h3>
+                        <p className="text-sm text-slate-500 dark:text-slate-400">Week {ad.weekNumber}</p>
                       </div>
                       <button
                         onClick={() => handleCopy(ad.content, ad.id)}
-                        className="flex items-center gap-2 px-3 py-1.5 text-sm bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 transition-colors"
+                        className="flex items-center gap-2 px-3 py-1.5 text-sm bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 rounded-lg hover:bg-blue-100 dark:hover:bg-blue-900/50 transition-colors"
                       >
                         {copiedId === ad.id ? (
                           <>
@@ -286,8 +286,8 @@ export const Marketing: React.FC<MarketingProps> = ({ user }) => {
                         )}
                       </button>
                     </div>
-                    <div className="bg-slate-50 rounded-lg p-4 border border-slate-200">
-                      <pre className="whitespace-pre-wrap text-sm text-slate-700 font-mono">
+                    <div className="bg-slate-50 dark:bg-slate-700 rounded-lg p-4 border border-slate-200 dark:border-slate-600">
+                      <pre className="whitespace-pre-wrap text-sm text-slate-700 dark:text-slate-300 font-mono">
                         {ad.content}
                       </pre>
                     </div>
@@ -301,7 +301,7 @@ export const Marketing: React.FC<MarketingProps> = ({ user }) => {
           {activeTab === 'posts' && (
             <div className="space-y-4">
               <div className="flex justify-between items-center">
-                <h2 className="text-lg font-semibold text-slate-800">Posting History</h2>
+                <h2 className="text-lg font-semibold text-slate-800 dark:text-slate-100">Posting History</h2>
                 <button
                   onClick={() => {
                     setEditingPostId(null);
@@ -316,17 +316,17 @@ export const Marketing: React.FC<MarketingProps> = ({ user }) => {
               </div>
 
               {showPostForm && (
-                <div className="bg-white rounded-lg border border-slate-200 p-6">
-                  <h3 className="text-lg font-semibold text-slate-800 mb-4">
+                <div className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 p-6">
+                  <h3 className="text-lg font-semibold text-slate-800 dark:text-slate-100 mb-4">
                     {editingPostId ? 'Edit Post' : 'Log New Post'}
                   </h3>
                   <form onSubmit={handleCreatePost} className="space-y-4">
                     <div>
-                      <label className="block text-sm font-medium text-slate-700 mb-1">Ad (optional)</label>
+                      <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Ad (optional)</label>
                       <select
                         value={postForm.adId}
                         onChange={(e) => setPostForm({ ...postForm, adId: e.target.value })}
-                        className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                        className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-white dark:bg-slate-700 text-slate-900 dark:text-white"
                       >
                         <option value="">No specific ad (general post)</option>
                         {ads.map((ad) => (
@@ -337,7 +337,7 @@ export const Marketing: React.FC<MarketingProps> = ({ user }) => {
                       </select>
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-slate-700 mb-1">Posted Date</label>
+                      <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Posted Date</label>
                       <input
                         type="datetime-local"
                         value={postForm.postedAt ? (() => {
@@ -350,16 +350,16 @@ export const Marketing: React.FC<MarketingProps> = ({ user }) => {
                           return `${year}-${month}-${day}T${hours}:${minutes}`;
                         })() : ''}
                         onChange={(e) => setPostForm({ ...postForm, postedAt: e.target.value ? new Date(e.target.value).toISOString() : '' })}
-                        className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                        className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-white dark:bg-slate-700 text-slate-900 dark:text-white"
                         required
                       />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-slate-700 mb-1">Platform</label>
+                      <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Platform</label>
                       <select
                         value={postForm.platform}
                         onChange={(e) => setPostForm({ ...postForm, platform: e.target.value })}
-                        className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                        className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-white dark:bg-slate-700 text-slate-900 dark:text-white"
                       >
                         <option value="whatsapp">WhatsApp</option>
                         <option value="facebook">Facebook</option>
@@ -368,12 +368,12 @@ export const Marketing: React.FC<MarketingProps> = ({ user }) => {
                       </select>
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-slate-700 mb-1">Notes (optional)</label>
+                      <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Notes (optional)</label>
                       <textarea
                         value={postForm.notes}
                         onChange={(e) => setPostForm({ ...postForm, notes: e.target.value })}
                         rows={3}
-                        className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                        className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-white dark:bg-slate-700 text-slate-900 dark:text-white"
                         placeholder="Add any additional notes about this post..."
                       />
                     </div>
@@ -387,7 +387,7 @@ export const Marketing: React.FC<MarketingProps> = ({ user }) => {
                       <button
                         type="button"
                         onClick={handleCancelEdit}
-                        className="px-4 py-2 bg-slate-200 text-slate-700 rounded-lg hover:bg-slate-300 transition-colors"
+                        className="px-4 py-2 bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-lg hover:bg-slate-300 dark:hover:bg-slate-600 transition-colors"
                       >
                         Cancel
                       </button>
@@ -397,14 +397,14 @@ export const Marketing: React.FC<MarketingProps> = ({ user }) => {
               )}
 
               {showMetricForm && (
-                <div className="bg-white rounded-lg border border-slate-200 p-6">
-                  <h3 className="text-lg font-semibold text-slate-800 mb-4">
+                <div className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 p-6">
+                  <h3 className="text-lg font-semibold text-slate-800 dark:text-slate-100 mb-4">
                     {editingMetricId ? 'Edit Response' : 'Add Response'}
                   </h3>
                   <form onSubmit={handleCreateMetric} className="space-y-4">
                     {selectedPostId ? (
-                      <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
-                        <p className="text-sm text-blue-800">
+                      <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-900/30 rounded-lg p-3">
+                        <p className="text-sm text-blue-800 dark:text-blue-300">
                           <span className="font-medium">{editingMetricId ? 'Editing response for:' : 'Adding response to:'}</span>{' '}
                           {(() => {
                             const post = posts.find(p => p.id === selectedPostId);
@@ -416,11 +416,11 @@ export const Marketing: React.FC<MarketingProps> = ({ user }) => {
                       </div>
                     ) : (
                       <div>
-                        <label className="block text-sm font-medium text-slate-700 mb-1">Related Post (optional)</label>
+                        <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Related Post (optional)</label>
                         <select
                           value={metricForm.postId}
                           onChange={(e) => setMetricForm({ ...metricForm, postId: e.target.value })}
-                          className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                          className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-white dark:bg-slate-700 text-slate-900 dark:text-white"
                         >
                           <option value="">Select a post...</option>
                           {posts.map((post) => {
@@ -435,12 +435,12 @@ export const Marketing: React.FC<MarketingProps> = ({ user }) => {
                       </div>
                     )}
                     <div>
-                      <label className="block text-sm font-medium text-slate-700 mb-1">Response Type</label>
+                      <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Response Type</label>
                       <select
                         required
                         value={metricForm.metricType}
                         onChange={(e) => setMetricForm({ ...metricForm, metricType: e.target.value as MetricType })}
-                        className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                        className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-white dark:bg-slate-700 text-slate-900 dark:text-white"
                       >
                         <option value="response">Response</option>
                         <option value="call_scheduled">Call Scheduled</option>
@@ -451,39 +451,39 @@ export const Marketing: React.FC<MarketingProps> = ({ user }) => {
                     </div>
                     <div className="grid grid-cols-2 gap-4">
                       <div>
-                        <label className="block text-sm font-medium text-slate-700 mb-1">Contact Name</label>
+                        <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Contact Name</label>
                         <input
                           type="text"
                           value={metricForm.contactName}
                           onChange={(e) => setMetricForm({ ...metricForm, contactName: e.target.value })}
-                          className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                          className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-white dark:bg-slate-700 text-slate-900 dark:text-white"
                         />
                       </div>
                       <div>
-                        <label className="block text-sm font-medium text-slate-700 mb-1">Phone</label>
+                        <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Phone</label>
                         <input
                           type="tel"
                           value={metricForm.contactPhone}
                           onChange={(e) => setMetricForm({ ...metricForm, contactPhone: e.target.value })}
-                          className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                          className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-white dark:bg-slate-700 text-slate-900 dark:text-white"
                         />
                       </div>
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-slate-700 mb-1">Email</label>
+                      <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Email</label>
                       <input
                         type="email"
                         value={metricForm.contactEmail}
                         onChange={(e) => setMetricForm({ ...metricForm, contactEmail: e.target.value })}
-                        className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                        className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-white dark:bg-slate-700 text-slate-900 dark:text-white"
                       />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-slate-700 mb-1">Notes</label>
+                      <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Notes</label>
                       <textarea
                         value={metricForm.notes}
                         onChange={(e) => setMetricForm({ ...metricForm, notes: e.target.value })}
-                        className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                        className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-white dark:bg-slate-700 text-slate-900 dark:text-white"
                         rows={3}
                       />
                     </div>
@@ -497,7 +497,7 @@ export const Marketing: React.FC<MarketingProps> = ({ user }) => {
                       <button
                         type="button"
                         onClick={handleCancelMetricEdit}
-                        className="px-4 py-2 bg-slate-200 text-slate-700 rounded-lg hover:bg-slate-300 transition-colors"
+                        className="px-4 py-2 bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-lg hover:bg-slate-300 dark:hover:bg-slate-600 transition-colors"
                       >
                         Cancel
                       </button>
@@ -507,34 +507,34 @@ export const Marketing: React.FC<MarketingProps> = ({ user }) => {
               )}
 
               {/* Date Filter */}
-              <div className="bg-white rounded-lg border border-slate-200 p-4">
+              <div className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 p-4">
                 <div className="flex items-center gap-4 flex-wrap">
                   <div className="flex items-center gap-2">
-                    <Filter size={18} className="text-slate-600" />
-                    <span className="text-sm font-medium text-slate-700">Filter by Date:</span>
+                    <Filter size={18} className="text-slate-600 dark:text-slate-400" />
+                    <span className="text-sm font-medium text-slate-700 dark:text-slate-300">Filter by Date:</span>
                   </div>
                   <div className="flex items-center gap-2">
-                    <label className="text-sm text-slate-600">From:</label>
+                    <label className="text-sm text-slate-600 dark:text-slate-400">From:</label>
                     <input
                       type="date"
                       value={dateFilter.startDate}
                       onChange={(e) => setDateFilter({ ...dateFilter, startDate: e.target.value })}
-                      className="px-3 py-1.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm"
+                      className="px-3 py-1.5 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm bg-white dark:bg-slate-700 text-slate-900 dark:text-white"
                     />
                   </div>
                   <div className="flex items-center gap-2">
-                    <label className="text-sm text-slate-600">To:</label>
+                    <label className="text-sm text-slate-600 dark:text-slate-400">To:</label>
                     <input
                       type="date"
                       value={dateFilter.endDate}
                       onChange={(e) => setDateFilter({ ...dateFilter, endDate: e.target.value })}
-                      className="px-3 py-1.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm"
+                      className="px-3 py-1.5 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm bg-white dark:bg-slate-700 text-slate-900 dark:text-white"
                     />
                   </div>
                   {(dateFilter.startDate || dateFilter.endDate) && (
                     <button
                       onClick={() => setDateFilter({ startDate: '', endDate: '' })}
-                      className="px-3 py-1.5 text-sm bg-slate-100 text-slate-700 rounded-lg hover:bg-slate-200 transition-colors"
+                      className="px-3 py-1.5 text-sm bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-600 transition-colors"
                     >
                       Clear Filter
                     </button>
@@ -562,7 +562,7 @@ export const Marketing: React.FC<MarketingProps> = ({ user }) => {
 
                   if (filteredPosts.length === 0) {
                     return (
-                      <div className="text-center py-12 text-slate-500">
+                      <div className="text-center py-12 text-slate-500 dark:text-slate-400">
                         {posts.length === 0 
                           ? 'No posts logged yet. Click "Log Post" to get started.'
                           : 'No posts found in the selected date range.'}
@@ -574,20 +574,20 @@ export const Marketing: React.FC<MarketingProps> = ({ user }) => {
                     const ad = post.adId ? ads.find((a) => a.id === post.adId) : null;
                     const postMetrics = metrics.filter((m) => m.postId === post.id);
                     return (
-                      <div key={post.id} className="bg-white rounded-lg border border-slate-200 p-6">
+                      <div key={post.id} className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 p-6">
                         <div className="flex justify-between items-start mb-4">
                           <div>
-                            <h3 className="font-semibold text-slate-800">
+                            <h3 className="font-semibold text-slate-800 dark:text-slate-100">
                               {ad ? `Week ${ad.weekNumber}: ${ad.title}` : 'General Post'}
                             </h3>
-                            <p className="text-sm text-slate-500">
+                            <p className="text-sm text-slate-500 dark:text-slate-400">
                               Posted on {new Date(post.postedAt).toLocaleDateString()} via {post.platform}
                             </p>
                           </div>
                           <div className="flex items-center gap-2">
                             <button
                               onClick={() => handleEditPost(post)}
-                              className="flex items-center gap-2 px-3 py-1.5 text-sm bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 transition-colors"
+                              className="flex items-center gap-2 px-3 py-1.5 text-sm bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 rounded-lg hover:bg-blue-100 dark:hover:bg-blue-900/50 transition-colors"
                             >
                               <Edit size={16} />
                               Edit
@@ -606,7 +606,7 @@ export const Marketing: React.FC<MarketingProps> = ({ user }) => {
                                 });
                                 setShowMetricForm(true);
                               }}
-                              className="flex items-center gap-2 px-3 py-1.5 text-sm bg-green-50 text-green-600 rounded-lg hover:bg-green-100 transition-colors"
+                              className="flex items-center gap-2 px-3 py-1.5 text-sm bg-green-50 dark:bg-green-900/30 text-green-600 dark:text-green-400 rounded-lg hover:bg-green-100 dark:hover:bg-green-900/50 transition-colors"
                             >
                               <Plus size={16} />
                               Add Response
@@ -614,30 +614,30 @@ export const Marketing: React.FC<MarketingProps> = ({ user }) => {
                           </div>
                         </div>
                         {post.notes && (
-                          <p className="text-sm text-slate-600 mb-3 italic">{post.notes}</p>
+                          <p className="text-sm text-slate-600 dark:text-slate-400 mb-3 italic">{post.notes}</p>
                         )}
                         {postMetrics.length > 0 && (
-                          <div className="mt-4 pt-4 border-t border-slate-200">
-                            <p className="text-sm font-medium text-slate-700 mb-2">Responses ({postMetrics.length}):</p>
+                          <div className="mt-4 pt-4 border-t border-slate-200 dark:border-slate-700">
+                            <p className="text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Responses ({postMetrics.length}):</p>
                             <div className="space-y-2">
                               {postMetrics.map((metric) => (
                                 <div key={metric.id} className="flex items-center justify-between gap-2 text-sm">
                                   <div className="flex items-center gap-2">
                                     <span className={`px-2 py-1 rounded text-xs font-medium ${
-                                      metric.metricType === 'conversion' ? 'bg-green-100 text-green-700' :
-                                      metric.metricType === 'call_scheduled' ? 'bg-blue-100 text-blue-700' :
-                                      metric.metricType === 'demo_scheduled' ? 'bg-purple-100 text-purple-700' :
-                                      metric.metricType === 'not_interested' ? 'bg-red-100 text-red-700' :
-                                      'bg-slate-100 text-slate-700'
+                                      metric.metricType === 'conversion' ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300' :
+                                      metric.metricType === 'call_scheduled' ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300' :
+                                      metric.metricType === 'demo_scheduled' ? 'bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300' :
+                                      metric.metricType === 'not_interested' ? 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300' :
+                                      'bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300'
                                     }`}>
                                       {metric.metricType.replace('_', ' ')}
                                     </span>
-                                    {metric.contactName && <span className="text-slate-600">{metric.contactName}</span>}
-                                    {metric.contactPhone && <span className="text-slate-500">({metric.contactPhone})</span>}
+                                    {metric.contactName && <span className="text-slate-600 dark:text-slate-400">{metric.contactName}</span>}
+                                    {metric.contactPhone && <span className="text-slate-500 dark:text-slate-500">({metric.contactPhone})</span>}
                                   </div>
                                   <button
                                     onClick={() => handleEditMetric(metric)}
-                                    className="flex items-center gap-1 px-2 py-1 text-xs bg-blue-50 text-blue-600 rounded hover:bg-blue-100 transition-colors"
+                                    className="flex items-center gap-1 px-2 py-1 text-xs bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 rounded hover:bg-blue-100 dark:hover:bg-blue-900/50 transition-colors"
                                     title="Edit response"
                                   >
                                     <Edit size={14} />
@@ -660,7 +660,7 @@ export const Marketing: React.FC<MarketingProps> = ({ user }) => {
           {activeTab === 'metrics' && (
             <div className="space-y-4">
               <div className="flex justify-between items-center">
-                <h2 className="text-lg font-semibold text-slate-800">Response Tracker</h2>
+                <h2 className="text-lg font-semibold text-slate-800 dark:text-slate-100">Response Tracker</h2>
                 <button
                   onClick={() => {
                     setEditingMetricId(null);
@@ -683,14 +683,14 @@ export const Marketing: React.FC<MarketingProps> = ({ user }) => {
               </div>
 
               {showMetricForm && (
-                <div className="bg-white rounded-lg border border-slate-200 p-6">
-                  <h3 className="text-lg font-semibold text-slate-800 mb-4">
+                <div className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 p-6">
+                  <h3 className="text-lg font-semibold text-slate-800 dark:text-slate-100 mb-4">
                     {editingMetricId ? 'Edit Response' : 'Add Response'}
                   </h3>
                   <form onSubmit={handleCreateMetric} className="space-y-4">
                     {selectedPostId ? (
-                      <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
-                        <p className="text-sm text-blue-800">
+                      <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-900/30 rounded-lg p-3">
+                        <p className="text-sm text-blue-800 dark:text-blue-300">
                           <span className="font-medium">{editingMetricId ? 'Editing response for:' : 'Adding response to:'}</span>{' '}
                           {(() => {
                             const post = posts.find(p => p.id === selectedPostId);
@@ -702,11 +702,11 @@ export const Marketing: React.FC<MarketingProps> = ({ user }) => {
                       </div>
                     ) : (
                       <div>
-                        <label className="block text-sm font-medium text-slate-700 mb-1">Related Post (optional)</label>
+                        <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Related Post (optional)</label>
                         <select
                           value={metricForm.postId}
                           onChange={(e) => setMetricForm({ ...metricForm, postId: e.target.value })}
-                          className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                          className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-white dark:bg-slate-700 text-slate-900 dark:text-white"
                         >
                           <option value="">Select a post...</option>
                           {posts.map((post) => {
@@ -721,12 +721,12 @@ export const Marketing: React.FC<MarketingProps> = ({ user }) => {
                       </div>
                     )}
                     <div>
-                      <label className="block text-sm font-medium text-slate-700 mb-1">Response Type</label>
+                      <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Response Type</label>
                       <select
                         required
                         value={metricForm.metricType}
                         onChange={(e) => setMetricForm({ ...metricForm, metricType: e.target.value as MetricType })}
-                        className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                        className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-white dark:bg-slate-700 text-slate-900 dark:text-white"
                       >
                         <option value="response">Response</option>
                         <option value="call_scheduled">Call Scheduled</option>
@@ -737,39 +737,39 @@ export const Marketing: React.FC<MarketingProps> = ({ user }) => {
                     </div>
                     <div className="grid grid-cols-2 gap-4">
                       <div>
-                        <label className="block text-sm font-medium text-slate-700 mb-1">Contact Name</label>
+                        <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Contact Name</label>
                         <input
                           type="text"
                           value={metricForm.contactName}
                           onChange={(e) => setMetricForm({ ...metricForm, contactName: e.target.value })}
-                          className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                          className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-white dark:bg-slate-700 text-slate-900 dark:text-white"
                         />
                       </div>
                       <div>
-                        <label className="block text-sm font-medium text-slate-700 mb-1">Phone</label>
+                        <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Phone</label>
                         <input
                           type="tel"
                           value={metricForm.contactPhone}
                           onChange={(e) => setMetricForm({ ...metricForm, contactPhone: e.target.value })}
-                          className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                          className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-white dark:bg-slate-700 text-slate-900 dark:text-white"
                         />
                       </div>
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-slate-700 mb-1">Email</label>
+                      <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Email</label>
                       <input
                         type="email"
                         value={metricForm.contactEmail}
                         onChange={(e) => setMetricForm({ ...metricForm, contactEmail: e.target.value })}
-                        className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                        className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-white dark:bg-slate-700 text-slate-900 dark:text-white"
                       />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-slate-700 mb-1">Notes</label>
+                      <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Notes</label>
                       <textarea
                         value={metricForm.notes}
                         onChange={(e) => setMetricForm({ ...metricForm, notes: e.target.value })}
-                        className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                        className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-white dark:bg-slate-700 text-slate-900 dark:text-white"
                         rows={3}
                       />
                     </div>
@@ -783,7 +783,7 @@ export const Marketing: React.FC<MarketingProps> = ({ user }) => {
                       <button
                         type="button"
                         onClick={handleCancelMetricEdit}
-                        className="px-4 py-2 bg-slate-200 text-slate-700 rounded-lg hover:bg-slate-300 transition-colors"
+                        className="px-4 py-2 bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-lg hover:bg-slate-300 dark:hover:bg-slate-600 transition-colors"
                       >
                         Cancel
                       </button>
@@ -812,7 +812,7 @@ export const Marketing: React.FC<MarketingProps> = ({ user }) => {
 
                   if (filteredMetrics.length === 0) {
                     return (
-                      <div className="text-center py-12 text-slate-500">
+                      <div className="text-center py-12 text-slate-500 dark:text-slate-400">
                         {metrics.length === 0 
                           ? 'No responses tracked yet. Click "Add Response" to get started.'
                           : 'No responses found in the selected date range.'}
@@ -824,44 +824,44 @@ export const Marketing: React.FC<MarketingProps> = ({ user }) => {
                     const post = posts.find((p) => p.id === metric.postId);
                     const ad = post ? ads.find((a) => a.id === post.adId) : null;
                     return (
-                      <div key={metric.id} className="bg-white rounded-lg border border-slate-200 p-6">
+                      <div key={metric.id} className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 p-6">
                         <div className="flex justify-between items-start">
                           <div className="flex-1">
                             <div className="flex items-center gap-2 mb-2">
                               <span className={`px-3 py-1 rounded-full text-sm font-medium ${
-                                metric.metricType === 'conversion' ? 'bg-green-100 text-green-700' :
-                                metric.metricType === 'call_scheduled' ? 'bg-blue-100 text-blue-700' :
-                                metric.metricType === 'demo_scheduled' ? 'bg-purple-100 text-purple-700' :
-                                metric.metricType === 'not_interested' ? 'bg-red-100 text-red-700' :
-                                'bg-slate-100 text-slate-700'
+                                metric.metricType === 'conversion' ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300' :
+                                metric.metricType === 'call_scheduled' ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300' :
+                                metric.metricType === 'demo_scheduled' ? 'bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300' :
+                                metric.metricType === 'not_interested' ? 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300' :
+                                'bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300'
                               }`}>
                                 {metric.metricType.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())}
                               </span>
-                              <span className="text-sm text-slate-500">
+                              <span className="text-sm text-slate-500 dark:text-slate-400">
                                 {new Date(metric.createdAt).toLocaleDateString()}
                               </span>
                             </div>
                             {metric.contactName && (
-                              <p className="font-medium text-slate-800">{metric.contactName}</p>
+                              <p className="font-medium text-slate-800 dark:text-slate-100">{metric.contactName}</p>
                             )}
                             {metric.contactPhone && (
-                              <p className="text-sm text-slate-600">Phone: {metric.contactPhone}</p>
+                              <p className="text-sm text-slate-600 dark:text-slate-400">Phone: {metric.contactPhone}</p>
                             )}
                             {metric.contactEmail && (
-                              <p className="text-sm text-slate-600">Email: {metric.contactEmail}</p>
+                              <p className="text-sm text-slate-600 dark:text-slate-400">Email: {metric.contactEmail}</p>
                             )}
                             {post && ad && (
-                              <p className="text-xs text-slate-500 mt-2">
+                              <p className="text-xs text-slate-500 dark:text-slate-500 mt-2">
                                 From: Week {ad.weekNumber} - {new Date(post.postedAt).toLocaleDateString()}
                               </p>
                             )}
                             {metric.notes && (
-                              <p className="text-sm text-slate-600 mt-2 italic">{metric.notes}</p>
+                              <p className="text-sm text-slate-600 dark:text-slate-400 mt-2 italic">{metric.notes}</p>
                             )}
                           </div>
                           <button
                             onClick={() => handleEditMetric(metric)}
-                            className="flex items-center gap-2 px-3 py-1.5 text-sm bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 transition-colors"
+                            className="flex items-center gap-2 px-3 py-1.5 text-sm bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 rounded-lg hover:bg-blue-100 dark:hover:bg-blue-900/50 transition-colors"
                           >
                             <Edit size={16} />
                             Edit
@@ -879,45 +879,45 @@ export const Marketing: React.FC<MarketingProps> = ({ user }) => {
           {activeTab === 'analytics' && analytics && (
             <div className="space-y-6">
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                <div className="bg-white rounded-lg border border-slate-200 p-6">
+                <div className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 p-6">
                   <div className="flex items-center justify-between mb-2">
-                    <p className="text-sm text-slate-600">Total Posts</p>
-                    <FileText className="w-5 h-5 text-slate-400" />
+                    <p className="text-sm text-slate-600 dark:text-slate-400">Total Posts</p>
+                    <FileText className="w-5 h-5 text-slate-400 dark:text-slate-500" />
                   </div>
-                  <p className="text-2xl font-bold text-slate-800">{analytics.totalPosts}</p>
+                  <p className="text-2xl font-bold text-slate-800 dark:text-slate-100">{analytics.totalPosts}</p>
                 </div>
-                <div className="bg-white rounded-lg border border-slate-200 p-6">
+                <div className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 p-6">
                   <div className="flex items-center justify-between mb-2">
-                    <p className="text-sm text-slate-600">Total Responses</p>
+                    <p className="text-sm text-slate-600 dark:text-slate-400">Total Responses</p>
                     <MessageSquare className="w-5 h-5 text-blue-400" />
                   </div>
-                  <p className="text-2xl font-bold text-slate-800">{analytics.totalResponses}</p>
-                  <p className="text-xs text-slate-500 mt-1">
+                  <p className="text-2xl font-bold text-slate-800 dark:text-slate-100">{analytics.totalResponses}</p>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
                     {analytics.responseRate.toFixed(1)}% response rate
                   </p>
                 </div>
-                <div className="bg-white rounded-lg border border-slate-200 p-6">
+                <div className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 p-6">
                   <div className="flex items-center justify-between mb-2">
-                    <p className="text-sm text-slate-600">Calls Scheduled</p>
+                    <p className="text-sm text-slate-600 dark:text-slate-400">Calls Scheduled</p>
                     <Phone className="w-5 h-5 text-green-400" />
                   </div>
-                  <p className="text-2xl font-bold text-slate-800">{analytics.totalCallsScheduled}</p>
+                  <p className="text-2xl font-bold text-slate-800 dark:text-slate-100">{analytics.totalCallsScheduled}</p>
                 </div>
-                <div className="bg-white rounded-lg border border-slate-200 p-6">
+                <div className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 p-6">
                   <div className="flex items-center justify-between mb-2">
-                    <p className="text-sm text-slate-600">Conversions</p>
+                    <p className="text-sm text-slate-600 dark:text-slate-400">Conversions</p>
                     <UserCheck className="w-5 h-5 text-purple-400" />
                   </div>
-                  <p className="text-2xl font-bold text-slate-800">{analytics.totalConversions}</p>
-                  <p className="text-xs text-slate-500 mt-1">
+                  <p className="text-2xl font-bold text-slate-800 dark:text-slate-100">{analytics.totalConversions}</p>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
                     {analytics.conversionRate.toFixed(1)}% conversion rate
                   </p>
                 </div>
               </div>
 
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <div className="bg-white rounded-lg border border-slate-200 p-6">
-                  <h3 className="text-lg font-semibold text-slate-800 mb-4">Responses by Type</h3>
+                <div className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 p-6">
+                  <h3 className="text-lg font-semibold text-slate-800 dark:text-slate-100 mb-4">Responses by Type</h3>
                   <ResponsiveContainer width="100%" height={300}>
                     <PieChart>
                       <Pie
@@ -942,13 +942,16 @@ export const Marketing: React.FC<MarketingProps> = ({ user }) => {
                             <Cell key={`cell-${entry.type}`} fill={COLORS[index % COLORS.length]} />
                           ))}
                       </Pie>
-                      <Tooltip formatter={(value: number) => [`${value}`, 'Count']} />
+                      <Tooltip 
+                        formatter={(value: number) => [`${value}`, 'Count']}
+                        contentStyle={{ backgroundColor: '#1e293b', border: '1px solid #334155', color: '#f1f5f9' }}
+                      />
                     </PieChart>
                   </ResponsiveContainer>
                 </div>
 
-                <div className="bg-white rounded-lg border border-slate-200 p-6">
-                  <h3 className="text-lg font-semibold text-slate-800 mb-4">Response Types</h3>
+                <div className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 p-6">
+                  <h3 className="text-lg font-semibold text-slate-800 dark:text-slate-100 mb-4">Response Types</h3>
                   <div className="space-y-3">
                     {analytics.metricsByType.map((item, index) => (
                       <div key={item.type} className="flex items-center justify-between">
@@ -957,11 +960,11 @@ export const Marketing: React.FC<MarketingProps> = ({ user }) => {
                             className="w-4 h-4 rounded"
                             style={{ backgroundColor: COLORS[index % COLORS.length] }}
                           />
-                          <span className="text-sm text-slate-700 capitalize">
+                          <span className="text-sm text-slate-700 dark:text-slate-300 capitalize">
                             {item.type.replace('_', ' ')}
                           </span>
                         </div>
-                        <span className="text-sm font-semibold text-slate-800">{item.count}</span>
+                        <span className="text-sm font-semibold text-slate-800 dark:text-slate-100">{item.count}</span>
                       </div>
                     ))}
                   </div>

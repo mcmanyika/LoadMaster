@@ -235,12 +235,12 @@ export const FleetManagement: React.FC<FleetManagementProps> = ({ user }) => {
   };
 
   return (
-    <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden min-h-[600px]">
-      <div className="border-b border-slate-200">
+    <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm overflow-hidden min-h-[600px]">
+      <div className="border-b border-slate-200 dark:border-slate-700">
         <div className="p-6 flex justify-between items-center">
           <div>
-            <h2 className="text-xl font-bold text-slate-800">Fleet Management</h2>
-            <p className="text-sm text-slate-500">
+            <h2 className="text-xl font-bold text-slate-800 dark:text-slate-100">Fleet Management</h2>
+            <p className="text-sm text-slate-500 dark:text-slate-400">
               {isOwner ? 'Manage your drivers and dispatchers' : 'Manage your carriers and drivers'}
             </p>
           </div>
@@ -264,7 +264,7 @@ export const FleetManagement: React.FC<FleetManagementProps> = ({ user }) => {
           <button 
             onClick={() => setActiveTab('dispatchers')}
             className={`pb-4 text-sm font-medium transition-colors relative ${
-              activeTab === 'dispatchers' ? 'text-blue-600' : 'text-slate-500 hover:text-slate-700'
+              activeTab === 'dispatchers' ? 'text-blue-600 dark:text-blue-400' : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300'
             }`}
           >
             {isOwner ? 'Dispatchers' : 'Join Company'}
@@ -275,22 +275,22 @@ export const FleetManagement: React.FC<FleetManagementProps> = ({ user }) => {
             <button 
               onClick={() => setActiveTab('drivers')}
               className={`pb-4 text-sm font-medium transition-colors relative ${
-                activeTab === 'drivers' ? 'text-blue-600' : 'text-slate-500 hover:text-slate-700'
+                activeTab === 'drivers' ? 'text-blue-600 dark:text-blue-400' : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300'
               }`}
             >
               Drivers
-              {activeTab === 'drivers' && <div className="absolute bottom-0 left-0 w-full h-0.5 bg-blue-600 rounded-t-full"></div>}
+              {activeTab === 'drivers' && <div className="absolute bottom-0 left-0 w-full h-0.5 bg-blue-600 dark:bg-blue-400 rounded-t-full"></div>}
             </button>
           )}
           {isOwner && (
             <button 
               onClick={() => setActiveTab('vehicles')}
               className={`pb-4 text-sm font-medium transition-colors relative ${
-                activeTab === 'vehicles' ? 'text-blue-600' : 'text-slate-500 hover:text-slate-700'
+                activeTab === 'vehicles' ? 'text-blue-600 dark:text-blue-400' : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300'
               }`}
             >
               Vehicles
-              {activeTab === 'vehicles' && <div className="absolute bottom-0 left-0 w-full h-0.5 bg-blue-600 rounded-t-full"></div>}
+              {activeTab === 'vehicles' && <div className="absolute bottom-0 left-0 w-full h-0.5 bg-blue-600 dark:bg-blue-400 rounded-t-full"></div>}
             </button>
           )}
         </div>
@@ -298,36 +298,36 @@ export const FleetManagement: React.FC<FleetManagementProps> = ({ user }) => {
 
       <div className="p-6">
         {loading ? (
-          <div className="text-center py-12 text-slate-400">Loading fleet data...</div>
+          <div className="text-center py-12 text-slate-400 dark:text-slate-500">Loading fleet data...</div>
         ) : (
           <>
             {/* ADD FORMS */}
             {showAddForm && (
-              <div className="mb-8 bg-slate-50 p-6 rounded-xl border border-slate-200 animate-in slide-in-from-top-4">
+              <div className="mb-8 bg-slate-50 dark:bg-slate-800/50 p-6 rounded-xl border border-slate-200 dark:border-slate-700 animate-in slide-in-from-top-4">
                  <div className="flex justify-between items-center mb-4">
-                    <h3 className="font-bold text-slate-800">Add New {
+                    <h3 className="font-bold text-slate-800 dark:text-slate-100">Add New {
                       activeTab === 'vehicles' ? 'Vehicle' :
                       activeTab === 'drivers' ? 'Driver' : 
                       'Dispatcher'
                     }</h3>
-                    <button onClick={() => setShowAddForm(false)} className="text-sm text-slate-500 hover:text-slate-800">Cancel</button>
+                    <button onClick={() => setShowAddForm(false)} className="text-sm text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200">Cancel</button>
                  </div>
                  
                  {activeTab === 'vehicles' ? (
                    <form onSubmit={handleAddTransporter} className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <input required placeholder="Vehicle Name" className="p-2 border rounded-lg" value={tForm.name} onChange={e => setTForm({...tForm, name: e.target.value})} />
-                      <input required placeholder="Registration Number" className="p-2 border rounded-lg" value={tForm.registrationNumber} onChange={e => setTForm({...tForm, registrationNumber: e.target.value})} />
+                      <input required placeholder="Vehicle Name" className="p-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-white" value={tForm.name} onChange={e => setTForm({...tForm, name: e.target.value})} />
+                      <input required placeholder="Registration Number" className="p-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-white" value={tForm.registrationNumber} onChange={e => setTForm({...tForm, registrationNumber: e.target.value})} />
                       <button type="submit" className="md:col-span-2 bg-blue-600 text-white py-2 rounded-lg font-medium hover:bg-blue-700">Register Vehicle</button>
                    </form>
                  ) : activeTab === 'drivers' ? (
                    // Driver form removed - now using invite code system
-                   <div className="text-slate-500 text-sm">
+                   <div className="text-slate-500 dark:text-slate-400 text-sm">
                      Drivers are now managed through invite codes. Use the "Generate Invite Code" section above.
                    </div>
                  ) : (
                    <form onSubmit={handleAddDispatcher} className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       {error && (
-                        <div className="md:col-span-2 p-3 bg-rose-50 border border-rose-200 rounded-lg flex items-center gap-2 text-rose-700 text-sm">
+                        <div className="md:col-span-2 p-3 bg-rose-50 dark:bg-rose-900/20 border border-rose-200 dark:border-rose-800/30 rounded-lg flex items-center gap-2 text-rose-700 dark:text-rose-400 text-sm">
                           <AlertCircle size={16} />
                           <span>{error}</span>
                         </div>
@@ -335,20 +335,20 @@ export const FleetManagement: React.FC<FleetManagementProps> = ({ user }) => {
                       <input 
                         required 
                         placeholder="Full Name" 
-                        className="p-2 border rounded-lg" 
+                        className="p-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-white" 
                         value={dispForm.name} 
                         onChange={e => setDispForm({...dispForm, name: e.target.value})} 
                       />
                       <input 
                         type="email"
                         placeholder="Email Address (Optional)" 
-                        className="p-2 border rounded-lg" 
+                        className="p-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-white" 
                         value={dispForm.email} 
                         onChange={e => setDispForm({...dispForm, email: e.target.value})} 
                       />
                       <input 
                         placeholder="Phone (Optional)" 
-                        className="p-2 border rounded-lg" 
+                        className="p-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-white" 
                         value={dispForm.phone} 
                         onChange={e => setDispForm({...dispForm, phone: e.target.value})} 
                       />
@@ -358,7 +358,7 @@ export const FleetManagement: React.FC<FleetManagementProps> = ({ user }) => {
                         max="100"
                         step="0.1"
                         placeholder="Fee Percentage (%)" 
-                        className="p-2 border rounded-lg" 
+                        className="p-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-white" 
                         value={dispForm.feePercentage} 
                         onChange={e => setDispForm({...dispForm, feePercentage: e.target.value})} 
                       />
@@ -375,7 +375,7 @@ export const FleetManagement: React.FC<FleetManagementProps> = ({ user }) => {
                   const isEditing = editingVehicleId === t.id;
                   
                   return (
-                    <div key={t.id} className="p-4 border border-slate-200 rounded-xl hover:shadow-md transition-shadow bg-white">
+                    <div key={t.id} className="p-4 border border-slate-200 dark:border-slate-700 rounded-xl hover:shadow-md transition-shadow bg-white dark:bg-slate-800">
                       <div className="flex items-start justify-between mb-3">
                         <div className="flex items-center gap-3 flex-1">
                           <div className="p-2 bg-indigo-100 rounded-lg text-indigo-600">
@@ -387,20 +387,20 @@ export const FleetManagement: React.FC<FleetManagementProps> = ({ user }) => {
                                 type="text"
                                 value={editVehicleForm.name}
                                 onChange={(e) => setEditVehicleForm({...editVehicleForm, name: e.target.value})}
-                                className="w-full px-2 py-1 border border-slate-300 rounded text-sm font-bold text-slate-800"
+                                className="w-full px-2 py-1 border border-slate-300 dark:border-slate-600 rounded text-sm font-bold text-slate-800 dark:text-slate-100 bg-white dark:bg-slate-700"
                                 placeholder={activeTab === 'vehicles' ? 'Vehicle Name' : 'Company Name'}
                               />
                             ) : (
-                              <h4 className="font-bold text-slate-800">{t.name}</h4>
+                              <h4 className="font-bold text-slate-800 dark:text-slate-100">{t.name}</h4>
                             )}
-                            <div className="flex items-center gap-1 text-xs text-slate-500 mt-1">
+                            <div className="flex items-center gap-1 text-xs text-slate-500 dark:text-slate-400 mt-1">
                               {isEditing ? (
                                 activeTab === 'vehicles' ? (
                                   <input
                                     type="text"
                                     value={editVehicleForm.registrationNumber}
                                     onChange={(e) => setEditVehicleForm({...editVehicleForm, registrationNumber: e.target.value})}
-                                    className="flex-1 px-2 py-1 border border-slate-300 rounded text-xs"
+                                    className="flex-1 px-2 py-1 border border-slate-300 dark:border-slate-600 rounded text-xs bg-white dark:bg-slate-700 text-slate-900 dark:text-white"
                                     placeholder="Registration Number"
                                   />
                                 ) : (
@@ -408,7 +408,7 @@ export const FleetManagement: React.FC<FleetManagementProps> = ({ user }) => {
                                     type="text"
                                     value={editVehicleForm.mcNumber}
                                     onChange={(e) => setEditVehicleForm({...editVehicleForm, mcNumber: e.target.value})}
-                                    className="flex-1 px-2 py-1 border border-slate-300 rounded text-xs"
+                                    className="flex-1 px-2 py-1 border border-slate-300 dark:border-slate-600 rounded text-xs bg-white dark:bg-slate-700 text-slate-900 dark:text-white"
                                     placeholder="MC Number"
                                   />
                                 )
@@ -442,7 +442,7 @@ export const FleetManagement: React.FC<FleetManagementProps> = ({ user }) => {
                           ) : (
                             <button
                               onClick={() => handleEditVehicle(t)}
-                              className="p-1.5 text-slate-400 hover:text-slate-600 hover:bg-slate-50 rounded transition-colors"
+                              className="p-1.5 text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 rounded transition-colors"
                               title="Edit"
                             >
                               <Edit2 size={16} />
@@ -450,20 +450,20 @@ export const FleetManagement: React.FC<FleetManagementProps> = ({ user }) => {
                           )}
                         </div>
                       </div>
-                      <div className="mt-4 bg-slate-50 p-2 rounded text-xs text-center text-slate-500">
+                      <div className="mt-4 bg-slate-50 dark:bg-slate-800/50 p-2 rounded text-xs text-center text-slate-500 dark:text-slate-400">
                          {drivers.filter(d => d.transporterId === t.id).length} Active Drivers
                       </div>
                     </div>
                   );
                 })}
-                {transporters.length === 0 && <div className="col-span-3 text-center text-slate-400 py-10">No vehicles registered yet.</div>}
+                {transporters.length === 0 && <div className="col-span-3 text-center text-slate-400 dark:text-slate-500 py-10">No vehicles registered yet.</div>}
               </div>
             )}
 
             {activeTab === 'drivers' && (
               <div className="space-y-6">
                 {/* Invitation Management Section - Show for both owners and drivers */}
-                <div className="border-b border-slate-200 pb-6">
+                <div className="border-b border-slate-200 dark:border-slate-700 pb-6">
                   <DriverInvitationManagement
                     user={user}
                     companyId={companyId}
@@ -478,7 +478,7 @@ export const FleetManagement: React.FC<FleetManagementProps> = ({ user }) => {
             {activeTab === 'dispatchers' && (
               <div className="space-y-6">
                 {/* Invitation Management Section - Show for both owners and dispatchers */}
-                <div className="border-b border-slate-200 pb-6">
+                <div className="border-b border-slate-200 dark:border-slate-700 pb-6">
                   <InvitationManagement
                     user={user}
                     companyId={companyId}

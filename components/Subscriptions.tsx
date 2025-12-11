@@ -46,10 +46,10 @@ export const Subscriptions: React.FC<SubscriptionsProps> = ({ userId }) => {
 
   const getStatusBadge = (status: string) => {
     const styles = {
-      active: 'bg-emerald-100 text-emerald-800 border-emerald-200',
-      canceled: 'bg-slate-100 text-slate-800 border-slate-200',
-      completed: 'bg-blue-100 text-blue-800 border-blue-200',
-      past_due: 'bg-amber-100 text-amber-800 border-amber-200',
+      active: 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-800 dark:text-emerald-300 border-emerald-200 dark:border-emerald-900/30',
+      canceled: 'bg-slate-100 dark:bg-slate-700 text-slate-800 dark:text-slate-300 border-slate-200 dark:border-slate-600',
+      completed: 'bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300 border-blue-200 dark:border-blue-900/30',
+      past_due: 'bg-amber-100 dark:bg-amber-900/30 text-amber-800 dark:text-amber-300 border-amber-200 dark:border-amber-900/30',
     };
 
     const icons = {
@@ -84,8 +84,8 @@ export const Subscriptions: React.FC<SubscriptionsProps> = ({ userId }) => {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
         <div className="text-center">
-          <Loader2 className="w-8 h-8 text-blue-600 animate-spin mx-auto mb-4" />
-          <p className="text-slate-600">Loading subscriptions...</p>
+          <Loader2 className="w-8 h-8 text-blue-600 dark:text-blue-400 animate-spin mx-auto mb-4" />
+          <p className="text-slate-600 dark:text-slate-400">Loading subscriptions...</p>
         </div>
       </div>
     );
@@ -95,9 +95,9 @@ export const Subscriptions: React.FC<SubscriptionsProps> = ({ userId }) => {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
         <div className="text-center">
-          <AlertCircle className="w-12 h-12 text-red-500 mx-auto mb-4" />
-          <p className="text-red-600 font-semibold mb-2">Error loading subscriptions</p>
-          <p className="text-slate-600 text-sm">{error}</p>
+          <AlertCircle className="w-12 h-12 text-red-500 dark:text-red-400 mx-auto mb-4" />
+          <p className="text-red-600 dark:text-red-400 font-semibold mb-2">Error loading subscriptions</p>
+          <p className="text-slate-600 dark:text-slate-400 text-sm">{error}</p>
           <button
             onClick={fetchSubscriptions}
             className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
@@ -113,9 +113,9 @@ export const Subscriptions: React.FC<SubscriptionsProps> = ({ userId }) => {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
         <div className="text-center max-w-md">
-          <Calendar className="w-16 h-16 text-slate-400 mx-auto mb-4" />
-          <h3 className="text-xl font-semibold text-slate-900 mb-2">No Subscriptions Yet</h3>
-          <p className="text-slate-600 mb-6">
+          <Calendar className="w-16 h-16 text-slate-400 dark:text-slate-500 mx-auto mb-4" />
+          <h3 className="text-xl font-semibold text-slate-900 dark:text-slate-100 mb-2">No Subscriptions Yet</h3>
+          <p className="text-slate-600 dark:text-slate-400 mb-6">
             You haven't subscribed to any plans yet. Visit the pricing page to get started!
           </p>
         </div>
@@ -126,44 +126,44 @@ export const Subscriptions: React.FC<SubscriptionsProps> = ({ userId }) => {
   return (
     <div className="p-6 max-w-6xl mx-auto">
       <div className="mb-6">
-        <h1 className="text-3xl font-bold text-slate-900 mb-2">My Subscriptions</h1>
-        <p className="text-slate-600">View your subscription history and manage your active plans</p>
+        <h1 className="text-3xl font-bold text-slate-900 dark:text-slate-100 mb-2">My Subscriptions</h1>
+        <p className="text-slate-600 dark:text-slate-400">View your subscription history and manage your active plans</p>
       </div>
 
       <div className="grid gap-6">
         {subscriptions.map((subscription) => (
           <div
             key={subscription.id}
-            className="bg-white rounded-xl border border-slate-200 shadow-sm hover:shadow-md transition-shadow p-6"
+            className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm hover:shadow-md transition-shadow p-6"
           >
             <div className="flex items-start justify-between mb-4">
               <div>
                 <div className="flex items-center gap-3 mb-2">
-                  <h3 className="text-xl font-semibold text-slate-900">
+                  <h3 className="text-xl font-semibold text-slate-900 dark:text-slate-100">
                     {getPlanName(subscription.plan)}
                   </h3>
                   {getStatusBadge(subscription.status)}
                 </div>
-                <p className="text-sm text-slate-600">
+                <p className="text-sm text-slate-600 dark:text-slate-400">
                   {subscription.interval === 'month' ? 'Monthly' : 'Annual'} billing
                 </p>
               </div>
               <div className="text-right">
-                <p className="text-2xl font-bold text-slate-900">
+                <p className="text-2xl font-bold text-slate-900 dark:text-slate-100">
                   {formatCurrency(subscription.amount)}
                 </p>
-                <p className="text-sm text-slate-600">
+                <p className="text-sm text-slate-600 dark:text-slate-400">
                   /{subscription.interval === 'month' ? 'month' : 'year'}
                 </p>
               </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-4 border-t border-slate-200">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-4 border-t border-slate-200 dark:border-slate-700">
               <div className="flex items-start gap-3">
-                <Calendar className="w-5 h-5 text-slate-400 mt-0.5" />
+                <Calendar className="w-5 h-5 text-slate-400 dark:text-slate-500 mt-0.5" />
                 <div>
-                  <p className="text-xs text-slate-500 mb-1">Started</p>
-                  <p className="text-sm font-medium text-slate-900">
+                  <p className="text-xs text-slate-500 dark:text-slate-400 mb-1">Started</p>
+                  <p className="text-sm font-medium text-slate-900 dark:text-slate-100">
                     {formatDate(subscription.startedAt)}
                   </p>
                 </div>
@@ -171,10 +171,10 @@ export const Subscriptions: React.FC<SubscriptionsProps> = ({ userId }) => {
 
               {subscription.nextBillingDate && subscription.status === 'active' && (
                 <div className="flex items-start gap-3">
-                  <Clock className="w-5 h-5 text-slate-400 mt-0.5" />
+                  <Clock className="w-5 h-5 text-slate-400 dark:text-slate-500 mt-0.5" />
                   <div>
-                    <p className="text-xs text-slate-500 mb-1">Next Billing</p>
-                    <p className="text-sm font-medium text-slate-900">
+                    <p className="text-xs text-slate-500 dark:text-slate-400 mb-1">Next Billing</p>
+                    <p className="text-sm font-medium text-slate-900 dark:text-slate-100">
                       {formatDate(subscription.nextBillingDate)}
                     </p>
                   </div>
@@ -183,10 +183,10 @@ export const Subscriptions: React.FC<SubscriptionsProps> = ({ userId }) => {
 
               {subscription.endedAt && (
                 <div className="flex items-start gap-3">
-                  <XCircle className="w-5 h-5 text-slate-400 mt-0.5" />
+                  <XCircle className="w-5 h-5 text-slate-400 dark:text-slate-500 mt-0.5" />
                   <div>
-                    <p className="text-xs text-slate-500 mb-1">Ended</p>
-                    <p className="text-sm font-medium text-slate-900">
+                    <p className="text-xs text-slate-500 dark:text-slate-400 mb-1">Ended</p>
+                    <p className="text-sm font-medium text-slate-900 dark:text-slate-100">
                       {formatDate(subscription.endedAt)}
                     </p>
                   </div>
@@ -195,10 +195,10 @@ export const Subscriptions: React.FC<SubscriptionsProps> = ({ userId }) => {
 
               {subscription.canceledAt && (
                 <div className="flex items-start gap-3">
-                  <XCircle className="w-5 h-5 text-slate-400 mt-0.5" />
+                  <XCircle className="w-5 h-5 text-slate-400 dark:text-slate-500 mt-0.5" />
                   <div>
-                    <p className="text-xs text-slate-500 mb-1">Canceled</p>
-                    <p className="text-sm font-medium text-slate-900">
+                    <p className="text-xs text-slate-500 dark:text-slate-400 mb-1">Canceled</p>
+                    <p className="text-sm font-medium text-slate-900 dark:text-slate-100">
                       {formatDate(subscription.canceledAt)}
                     </p>
                   </div>
@@ -207,8 +207,8 @@ export const Subscriptions: React.FC<SubscriptionsProps> = ({ userId }) => {
             </div>
 
             {subscription.stripeSubscriptionId && (
-              <div className="mt-4 pt-4 border-t border-slate-200">
-                <p className="text-xs text-slate-500">
+              <div className="mt-4 pt-4 border-t border-slate-200 dark:border-slate-700">
+                <p className="text-xs text-slate-500 dark:text-slate-400">
                   Subscription ID: <span className="font-mono">{subscription.stripeSubscriptionId}</span>
                 </p>
               </div>
@@ -218,8 +218,8 @@ export const Subscriptions: React.FC<SubscriptionsProps> = ({ userId }) => {
       </div>
 
       {subscriptions.filter((s) => s.status === 'active').length > 0 && (
-        <div className="mt-6 bg-blue-50 border border-blue-200 rounded-lg p-4">
-          <p className="text-sm text-blue-800">
+        <div className="mt-6 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-900/30 rounded-lg p-4">
+          <p className="text-sm text-blue-800 dark:text-blue-300">
             <strong>Active Subscription:</strong> You currently have{' '}
             {subscriptions.filter((s) => s.status === 'active').length} active subscription
             {subscriptions.filter((s) => s.status === 'active').length > 1 ? 's' : ''}.

@@ -223,7 +223,7 @@ export const ExpenseForm: React.FC<ExpenseFormProps> = ({ onClose, onSave, curre
   if (loadingOptions) {
     return (
       <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-        <div className="bg-white rounded-2xl shadow-xl w-full max-w-2xl p-8">
+        <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-xl w-full max-w-2xl p-8">
           <div className="flex items-center justify-center py-12">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
           </div>
@@ -236,24 +236,24 @@ export const ExpenseForm: React.FC<ExpenseFormProps> = ({ onClose, onSave, curre
 
   return (
     <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-2xl shadow-xl w-full max-w-3xl max-h-[90vh] flex flex-col">
-        <div className="flex-shrink-0 bg-white border-b border-slate-200 px-6 py-4 flex justify-between items-center rounded-t-2xl">
+      <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-xl w-full max-w-3xl max-h-[90vh] flex flex-col">
+        <div className="flex-shrink-0 bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 px-6 py-4 flex justify-between items-center rounded-t-2xl">
           <div className="flex items-center gap-3">
-            <div className="bg-blue-100 p-2 rounded-lg">
-              <Receipt className="w-5 h-5 text-blue-600" />
+            <div className="bg-blue-100 dark:bg-blue-900/30 p-2 rounded-lg">
+              <Receipt className="w-5 h-5 text-blue-600 dark:text-blue-400" />
             </div>
             <div>
-              <h2 className="text-xl font-bold text-slate-800">
+              <h2 className="text-xl font-bold text-slate-800 dark:text-slate-100">
                 {isEditMode ? 'Edit Expense' : 'Add New Expense'}
               </h2>
-              <p className="text-xs text-slate-500">Track your operational expenses</p>
+              <p className="text-xs text-slate-500 dark:text-slate-400">Track your operational expenses</p>
             </div>
           </div>
           <button
             onClick={onClose}
-            className="p-2 hover:bg-slate-100 rounded-lg transition-colors"
+            className="p-2 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors"
           >
-            <X size={20} className="text-slate-600" />
+            <X size={20} className="text-slate-600 dark:text-slate-400" />
           </button>
         </div>
 
@@ -262,7 +262,7 @@ export const ExpenseForm: React.FC<ExpenseFormProps> = ({ onClose, onSave, curre
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {/* Category */}
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
                 Category <span className="text-red-500">*</span>
               </label>
               <select
@@ -270,7 +270,7 @@ export const ExpenseForm: React.FC<ExpenseFormProps> = ({ onClose, onSave, curre
                 required
                 value={formData.categoryId}
                 onChange={handleChange}
-                className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-white"
+                className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-white dark:bg-slate-700 text-slate-900 dark:text-white"
               >
                 <option value="">Select Category...</option>
                 {categories.map(cat => (
@@ -278,13 +278,13 @@ export const ExpenseForm: React.FC<ExpenseFormProps> = ({ onClose, onSave, curre
                 ))}
               </select>
               {selectedCategory && selectedCategory.description && (
-                <p className="text-xs text-slate-500 mt-1">{selectedCategory.description}</p>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">{selectedCategory.description}</p>
               )}
             </div>
 
             {/* Amount */}
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
                 Amount ($) <span className="text-red-500">*</span>
               </label>
               <input
@@ -295,14 +295,14 @@ export const ExpenseForm: React.FC<ExpenseFormProps> = ({ onClose, onSave, curre
                 min="0"
                 value={formData.amount}
                 onChange={handleChange}
-                className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-white dark:bg-slate-700 text-slate-900 dark:text-white"
                 placeholder="0.00"
               />
             </div>
 
             {/* Expense Date */}
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
                 Expense Date <span className="text-red-500">*</span>
               </label>
               <input
@@ -311,44 +311,44 @@ export const ExpenseForm: React.FC<ExpenseFormProps> = ({ onClose, onSave, curre
                 type="date"
                 value={formData.expenseDate}
                 onChange={handleChange}
-                className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-white dark:bg-slate-700 text-slate-900 dark:text-white"
               />
             </div>
 
             {/* Vendor */}
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">Vendor</label>
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Vendor</label>
               <input
                 name="vendor"
                 type="text"
                 value={formData.vendor}
                 onChange={handleChange}
-                className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-white dark:bg-slate-700 text-slate-900 dark:text-white"
                 placeholder="Vendor name"
               />
             </div>
 
             {/* Description */}
             <div className="md:col-span-2">
-              <label className="block text-sm font-medium text-slate-700 mb-1">Description</label>
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Description</label>
               <textarea
                 name="description"
                 value={formData.description}
                 onChange={handleChange}
                 rows={3}
-                className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none resize-none"
+                className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none resize-none bg-white dark:bg-slate-700 text-slate-900 dark:text-white"
                 placeholder="Additional details about this expense..."
               />
             </div>
 
             {/* Vehicle/Transporter */}
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">Vehicle (Optional)</label>
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Vehicle (Optional)</label>
               <select
                 name="vehicleId"
                 value={formData.vehicleId}
                 onChange={handleChange}
-                className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-white"
+                className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-white dark:bg-slate-700 text-slate-900 dark:text-white"
               >
                 <option value="">Select Vehicle...</option>
                 {transporters.map(t => (
@@ -359,12 +359,12 @@ export const ExpenseForm: React.FC<ExpenseFormProps> = ({ onClose, onSave, curre
 
             {/* Driver */}
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">Driver (Optional)</label>
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Driver (Optional)</label>
               <select
                 name="driverId"
                 value={formData.driverId}
                 onChange={handleChange}
-                className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-white"
+                className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-white dark:bg-slate-700 text-slate-900 dark:text-white"
               >
                 <option value="">Select Driver...</option>
                 {drivers.map(d => (
@@ -375,12 +375,12 @@ export const ExpenseForm: React.FC<ExpenseFormProps> = ({ onClose, onSave, curre
 
             {/* Load */}
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">Load (Optional)</label>
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Load (Optional)</label>
               <select
                 name="loadId"
                 value={formData.loadId}
                 onChange={handleChange}
-                className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-white"
+                className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-white dark:bg-slate-700 text-slate-900 dark:text-white"
               >
                 <option value="">Select Load...</option>
                 {loads.map(l => (
@@ -393,12 +393,12 @@ export const ExpenseForm: React.FC<ExpenseFormProps> = ({ onClose, onSave, curre
 
             {/* Payment Method */}
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">Payment Method</label>
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Payment Method</label>
               <select
                 name="paymentMethod"
                 value={formData.paymentMethod}
                 onChange={handleChange}
-                className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-white"
+                className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-white dark:bg-slate-700 text-slate-900 dark:text-white"
               >
                 <option value="credit_card">Credit Card</option>
                 <option value="check">Check</option>
@@ -410,12 +410,12 @@ export const ExpenseForm: React.FC<ExpenseFormProps> = ({ onClose, onSave, curre
 
             {/* Payment Status */}
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">Payment Status</label>
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Payment Status</label>
               <select
                 name="paymentStatus"
                 value={formData.paymentStatus}
                 onChange={handleChange}
-                className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-white"
+                className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-white dark:bg-slate-700 text-slate-900 dark:text-white"
               >
                 <option value="paid">Paid</option>
                 <option value="pending">Pending</option>
@@ -426,12 +426,12 @@ export const ExpenseForm: React.FC<ExpenseFormProps> = ({ onClose, onSave, curre
             {/* Recurring Frequency */}
             {formData.paymentStatus === 'recurring' && (
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">Recurring Frequency</label>
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Recurring Frequency</label>
                 <select
                   name="recurringFrequency"
                   value={formData.recurringFrequency}
                   onChange={handleChange}
-                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-white"
+                  className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-white dark:bg-slate-700 text-slate-900 dark:text-white"
                 >
                   <option value="">Select Frequency...</option>
                   <option value="monthly">Monthly</option>
@@ -443,11 +443,11 @@ export const ExpenseForm: React.FC<ExpenseFormProps> = ({ onClose, onSave, curre
 
             {/* Receipt Upload */}
             <div className="md:col-span-2">
-              <label className="block text-sm font-medium text-slate-700 mb-1">Receipt (Optional)</label>
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Receipt (Optional)</label>
               {receiptPreview ? (
-                <div className="border border-slate-300 rounded-lg p-4">
+                <div className="border border-slate-300 dark:border-slate-600 rounded-lg p-4 bg-white dark:bg-slate-700">
                   <div className="flex items-center justify-between mb-2">
-                    <div className="flex items-center gap-2 text-sm text-slate-600">
+                    <div className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-400">
                       <FileText size={16} />
                       <span>Receipt uploaded</span>
                     </div>
@@ -456,14 +456,14 @@ export const ExpenseForm: React.FC<ExpenseFormProps> = ({ onClose, onSave, curre
                         href={receiptPreview}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="text-blue-600 hover:text-blue-700 text-sm font-medium"
+                        className="text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 text-sm font-medium"
                       >
                         View
                       </a>
                       <button
                         type="button"
                         onClick={handleRemoveReceipt}
-                        className="text-red-600 hover:text-red-700 text-sm font-medium"
+                        className="text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 text-sm font-medium"
                       >
                         Remove
                       </button>
@@ -471,7 +471,7 @@ export const ExpenseForm: React.FC<ExpenseFormProps> = ({ onClose, onSave, curre
                   </div>
                 </div>
               ) : (
-                <div className="border-2 border-dashed border-slate-300 rounded-lg p-6 text-center hover:border-blue-400 transition-colors">
+                <div className="border-2 border-dashed border-slate-300 dark:border-slate-600 rounded-lg p-6 text-center hover:border-blue-400 dark:hover:border-blue-500 transition-colors bg-white dark:bg-slate-700">
                   <input
                     type="file"
                     id="receipt-upload"
@@ -483,25 +483,25 @@ export const ExpenseForm: React.FC<ExpenseFormProps> = ({ onClose, onSave, curre
                     htmlFor="receipt-upload"
                     className="cursor-pointer flex flex-col items-center gap-2"
                   >
-                    <Upload className="w-8 h-8 text-slate-400" />
-                    <span className="text-sm text-slate-600">
+                    <Upload className="w-8 h-8 text-slate-400 dark:text-slate-500" />
+                    <span className="text-sm text-slate-600 dark:text-slate-400">
                       Click to upload or drag and drop
                     </span>
-                    <span className="text-xs text-slate-400">PDF, JPG, PNG, WebP (max 10MB)</span>
+                    <span className="text-xs text-slate-400 dark:text-slate-500">PDF, JPG, PNG, WebP (max 10MB)</span>
                   </label>
                 </div>
               )}
               {uploadingReceipt && (
-                <p className="text-xs text-blue-600 animate-pulse mt-2">Uploading receipt...</p>
+                <p className="text-xs text-blue-600 dark:text-blue-400 animate-pulse mt-2">Uploading receipt...</p>
               )}
             </div>
           </div>
 
-          <div className="flex justify-end gap-3 pt-4 border-t border-slate-200">
+          <div className="flex justify-end gap-3 pt-4 border-t border-slate-200 dark:border-slate-700">
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100 rounded-lg transition-colors"
+              className="px-4 py-2 text-sm font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors"
             >
               Cancel
             </button>
@@ -519,21 +519,21 @@ export const ExpenseForm: React.FC<ExpenseFormProps> = ({ onClose, onSave, curre
         {/* Error Modal */}
         {errorModal.isOpen && (
           <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-[70] p-4">
-            <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden">
-              <div className="bg-red-50 px-6 py-4 flex justify-between items-center border-b border-red-100">
-                <div className="flex items-center gap-2 text-red-800">
-                  <AlertCircle size={20} className="text-red-600" />
+            <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-xl w-full max-w-md overflow-hidden">
+              <div className="bg-red-50 dark:bg-red-900/20 px-6 py-4 flex justify-between items-center border-b border-red-100 dark:border-red-900/30">
+                <div className="flex items-center gap-2 text-red-800 dark:text-red-300">
+                  <AlertCircle size={20} className="text-red-600 dark:text-red-400" />
                   <h2 className="font-bold text-lg">Error</h2>
                 </div>
                 <button 
                   onClick={() => setErrorModal({ isOpen: false, message: '' })} 
-                  className="text-red-400 hover:text-red-600 transition-colors"
+                  className="text-red-400 dark:text-red-500 hover:text-red-600 dark:hover:text-red-400 transition-colors"
                 >
                   <X size={20} />
                 </button>
               </div>
               <div className="p-6">
-                <p className="text-slate-700 mb-6">{errorModal.message}</p>
+                <p className="text-slate-700 dark:text-slate-300 mb-6">{errorModal.message}</p>
                 <div className="flex justify-end">
                   <button
                     onClick={() => setErrorModal({ isOpen: false, message: '' })}

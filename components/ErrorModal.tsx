@@ -12,22 +12,22 @@ export const ErrorModal: React.FC<ErrorModalProps> = ({ isOpen, message, title =
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-[70] p-4">
-      <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden">
-        <div className="bg-red-50 px-6 py-4 flex justify-between items-center border-b border-red-100">
-          <div className="flex items-center gap-2 text-red-800">
-            <AlertCircle size={20} className="text-red-600" />
-            <h2 className="font-bold text-lg">{title}</h2>
+    <div className="fixed inset-0 bg-slate-900/60 dark:bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-[70] p-4">
+      <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-xl w-full max-w-md overflow-hidden">
+        <div className="bg-red-50 dark:bg-red-900/20 px-6 py-4 flex justify-between items-center border-b border-red-100 dark:border-red-800/30">
+          <div className="flex items-center gap-2 text-red-800 dark:text-red-400">
+            <AlertCircle size={20} className="text-red-600 dark:text-red-400" />
+            <h2 className="font-bold text-lg dark:text-red-300">{title}</h2>
           </div>
           <button 
             onClick={onClose}
-            className="text-red-400 hover:text-red-600 transition-colors"
+            className="text-red-400 dark:text-red-500 hover:text-red-600 dark:hover:text-red-400 transition-colors"
           >
             <X size={20} />
           </button>
         </div>
         <div className="p-6">
-          <p className="text-slate-700 mb-6">{message}</p>
+          <p className="text-slate-700 dark:text-slate-300 mb-6">{message}</p>
           <div className="flex justify-end">
             <button
               onClick={onClose}

@@ -16,16 +16,16 @@ export const ReportCard: React.FC<ReportCardProps> = ({
   colorClass = 'bg-slate-100'
 }) => {
   return (
-    <div className="bg-white rounded-lg border border-slate-200 p-6">
+    <div className="bg-slate-800 dark:bg-slate-800 rounded-lg border border-slate-700 dark:border-slate-700 p-6">
       <div className="flex items-center justify-between mb-2">
-        <p className="text-sm text-slate-600">{title}</p>
-        <div className={colorClass + ' p-2 rounded-lg'}>
+        <p className="text-sm text-slate-300 dark:text-slate-400">{title}</p>
+        <div className={colorClass + ' dark:bg-slate-700 p-2 rounded-lg'}>
           {icon}
         </div>
       </div>
-      <p className="text-2xl font-bold text-slate-800">{value}</p>
+      <p className="text-2xl font-bold text-white dark:text-slate-100">{value}</p>
       {subValue && (
-        <p className="text-xs text-slate-500 mt-1">{subValue}</p>
+        <p className="text-xs text-slate-400 dark:text-slate-500 mt-1">{subValue}</p>
       )}
     </div>
   );

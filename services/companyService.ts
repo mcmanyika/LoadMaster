@@ -66,6 +66,10 @@ export const getCompany = async (currentCompanyId?: string): Promise<Company | n
             id: company.id,
             name: company.name,
             ownerId: company.owner_id,
+            address: company.address || undefined,
+            website: company.website || undefined,
+            phone: company.phone || undefined,
+            numberOfTrucks: company.number_of_trucks || undefined,
             createdAt: company.created_at,
             updatedAt: company.updated_at
           };
@@ -152,6 +156,12 @@ export const getCompany = async (currentCompanyId?: string): Promise<Company | n
       id: company.id,
       name: company.name,
       ownerId: company.owner_id,
+      address: company.address || undefined,
+      website: company.website || undefined,
+      phone: company.phone || undefined,
+      email: company.email || undefined,
+      contactPerson: company.contact_person || undefined,
+      numberOfTrucks: company.number_of_trucks || undefined,
       createdAt: company.created_at,
       updatedAt: company.updated_at
     };
@@ -161,12 +171,22 @@ export const getCompany = async (currentCompanyId?: string): Promise<Company | n
   }
 };
 
-export const createCompany = async (name: string, ownerId: string): Promise<Company> => {
+export const createCompany = async (
+  name: string, 
+  ownerId: string,
+  companyData?: Partial<Omit<Company, 'id' | 'ownerId' | 'createdAt' | 'updatedAt'>>
+): Promise<Company> => {
   if (!isSupabaseConfigured || !supabase) {
     const newCompany: Company = {
       id: Math.random().toString(36).substr(2, 9),
       name,
       ownerId,
+      address: companyData?.address,
+      website: companyData?.website,
+      phone: companyData?.phone,
+      email: companyData?.email,
+      contactPerson: companyData?.contactPerson,
+      numberOfTrucks: companyData?.numberOfTrucks,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString()
     };
@@ -178,7 +198,13 @@ export const createCompany = async (name: string, ownerId: string): Promise<Comp
     .from('companies')
     .insert([{
       name,
-      owner_id: ownerId
+      owner_id: ownerId,
+      address: companyData?.address || null,
+      website: companyData?.website || null,
+      phone: companyData?.phone || null,
+      email: companyData?.email || null,
+      contact_person: companyData?.contactPerson || null,
+      number_of_trucks: companyData?.numberOfTrucks || null,
     }])
     .select()
     .single();
@@ -198,12 +224,19 @@ export const createCompany = async (name: string, ownerId: string): Promise<Comp
     id: data.id,
     name: data.name,
     ownerId: data.owner_id,
+    address: data.address || undefined,
+    website: data.website || undefined,
+    phone: data.phone || undefined,
+    numberOfTrucks: data.number_of_trucks || undefined,
     createdAt: data.created_at,
     updatedAt: data.updated_at
   };
 };
 
-export const updateCompany = async (id: string, updates: Partial<Pick<Company, 'name'>>): Promise<Company> => {
+export const updateCompany = async (
+  id: string, 
+  updates: Partial<Omit<Company, 'id' | 'ownerId' | 'createdAt' | 'updatedAt'>>
+): Promise<Company> => {
   if (!isSupabaseConfigured || !supabase) {
     const company = MOCK_COMPANIES.find(c => c.id === id);
     if (!company) throw new Error('Company not found');
@@ -213,6 +246,12 @@ export const updateCompany = async (id: string, updates: Partial<Pick<Company, '
 
   const updateData: any = {};
   if (updates.name !== undefined) updateData.name = updates.name;
+  if (updates.address !== undefined) updateData.address = updates.address || null;
+  if (updates.website !== undefined) updateData.website = updates.website || null;
+  if (updates.phone !== undefined) updateData.phone = updates.phone || null;
+  if (updates.email !== undefined) updateData.email = updates.email || null;
+  if (updates.contactPerson !== undefined) updateData.contact_person = updates.contactPerson || null;
+  if (updates.numberOfTrucks !== undefined) updateData.number_of_trucks = updates.numberOfTrucks || null;
 
   const { data, error } = await supabase
     .from('companies')
@@ -230,6 +269,10 @@ export const updateCompany = async (id: string, updates: Partial<Pick<Company, '
     id: data.id,
     name: data.name,
     ownerId: data.owner_id,
+    address: data.address || undefined,
+    website: data.website || undefined,
+    phone: data.phone || undefined,
+    numberOfTrucks: data.number_of_trucks || undefined,
     createdAt: data.created_at,
     updatedAt: data.updated_at
   };

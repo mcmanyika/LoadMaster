@@ -87,11 +87,11 @@ export const DriverReports: React.FC<DriverReportsProps> = ({
 
   const getSortIcon = (column: keyof DriverReport) => {
     if (localSortBy !== column) {
-      return <ArrowUpDown size={14} className="text-slate-400 ml-1" />;
+      return <ArrowUpDown size={14} className="text-slate-400 dark:text-slate-500 ml-1" />;
     }
     return localSortDirection === 'asc' 
-      ? <ArrowUp size={14} className="text-slate-600 ml-1" />
-      : <ArrowDown size={14} className="text-slate-600 ml-1" />;
+      ? <ArrowUp size={14} className="text-blue-600 dark:text-blue-400 ml-1" />
+      : <ArrowDown size={14} className="text-blue-600 dark:text-blue-400 ml-1" />;
   };
 
   const handleExportCSV = () => {
@@ -127,28 +127,28 @@ export const DriverReports: React.FC<DriverReportsProps> = ({
         <ReportCard
           title="Total Drivers"
           value={summary.totalDrivers}
-          icon={<Truck className="w-5 h-5 text-slate-400" />}
+          icon={<Truck className="w-5 h-5 text-slate-300 dark:text-slate-400" />}
         />
         <ReportCard
           title="Total Loads"
           value={summary.totalLoads}
-          icon={<FileText className="w-5 h-5 text-slate-400" />}
+          icon={<FileText className="w-5 h-5 text-slate-300 dark:text-slate-400" />}
         />
         <ReportCard
           title="Total Driver Pay"
           value={`$${summary.totalPay.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
-          icon={<DollarSign className="w-5 h-5 text-slate-400" />}
+          icon={<DollarSign className="w-5 h-5 text-slate-300 dark:text-slate-400" />}
         />
         <ReportCard
           title="Total Miles"
           value={summary.totalMiles.toLocaleString()}
-          icon={<MapPin className="w-5 h-5 text-slate-400" />}
+          icon={<MapPin className="w-5 h-5 text-slate-300 dark:text-slate-400" />}
         />
         <ReportCard
           title="Avg Rate/Mile"
           value={`$${summary.avgRPM.toFixed(2)}`}
           subValue="Across all drivers"
-          icon={<DollarSign className="w-5 h-5 text-slate-400" />}
+          icon={<DollarSign className="w-5 h-5 text-slate-300 dark:text-slate-400" />}
         />
       </div>
 
@@ -156,14 +156,14 @@ export const DriverReports: React.FC<DriverReportsProps> = ({
       <div className="flex justify-end gap-3">
         <button
           onClick={handleExportCSV}
-          className="flex items-center gap-2 px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg transition-colors"
+          className="flex items-center gap-2 px-4 py-2 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-300 rounded-lg transition-colors"
         >
           <Download size={16} />
           Export CSV
         </button>
         <button
           onClick={handleExportPDF}
-          className="flex items-center gap-2 px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg transition-colors"
+          className="flex items-center gap-2 px-4 py-2 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-300 rounded-lg transition-colors"
         >
           <FileDown size={16} />
           Export PDF
@@ -171,13 +171,13 @@ export const DriverReports: React.FC<DriverReportsProps> = ({
       </div>
 
       {/* Reports Table */}
-      <div className="bg-white rounded-lg border border-slate-200 overflow-hidden">
+      <div className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full">
-            <thead className="bg-slate-50">
+            <thead className="bg-slate-50 dark:bg-slate-800">
               <tr>
                 <th
-                  className="p-4 font-semibold border-b border-slate-200 text-left cursor-pointer hover:bg-slate-100 transition-colors select-none"
+                  className="bg-slate-50 dark:bg-slate-800 p-4 font-semibold border-b border-slate-200 dark:border-slate-700 text-left cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors select-none text-slate-500 dark:text-slate-400"
                   onClick={() => handleSort('driverName')}
                 >
                   <div className="flex items-center">
@@ -186,7 +186,7 @@ export const DriverReports: React.FC<DriverReportsProps> = ({
                   </div>
                 </th>
                 <th
-                  className="p-4 font-semibold border-b border-slate-200 text-right cursor-pointer hover:bg-slate-100 transition-colors select-none"
+                  className="bg-slate-50 dark:bg-slate-800 p-4 font-semibold border-b border-slate-200 dark:border-slate-700 text-right cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors select-none text-slate-500 dark:text-slate-400"
                   onClick={() => handleSort('totalLoads')}
                 >
                   <div className="flex items-center justify-end">
@@ -195,7 +195,7 @@ export const DriverReports: React.FC<DriverReportsProps> = ({
                   </div>
                 </th>
                 <th
-                  className="p-4 font-semibold border-b border-slate-200 text-right cursor-pointer hover:bg-slate-100 transition-colors select-none"
+                  className="bg-slate-50 dark:bg-slate-800 p-4 font-semibold border-b border-slate-200 dark:border-slate-700 text-right cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors select-none text-slate-500 dark:text-slate-400"
                   onClick={() => handleSort('totalPay')}
                 >
                   <div className="flex items-center justify-end">
@@ -204,7 +204,7 @@ export const DriverReports: React.FC<DriverReportsProps> = ({
                   </div>
                 </th>
                 <th
-                  className="p-4 font-semibold border-b border-slate-200 text-right cursor-pointer hover:bg-slate-100 transition-colors select-none"
+                  className="bg-slate-50 dark:bg-slate-800 p-4 font-semibold border-b border-slate-200 dark:border-slate-700 text-right cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors select-none text-slate-500 dark:text-slate-400"
                   onClick={() => handleSort('totalMiles')}
                 >
                   <div className="flex items-center justify-end">
@@ -213,7 +213,7 @@ export const DriverReports: React.FC<DriverReportsProps> = ({
                   </div>
                 </th>
                 <th
-                  className="p-4 font-semibold border-b border-slate-200 text-right cursor-pointer hover:bg-slate-100 transition-colors select-none"
+                  className="bg-slate-50 dark:bg-slate-800 p-4 font-semibold border-b border-slate-200 dark:border-slate-700 text-right cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors select-none text-slate-500 dark:text-slate-400"
                   onClick={() => handleSort('avgRatePerMile')}
                 >
                   <div className="flex items-center justify-end">
@@ -221,14 +221,14 @@ export const DriverReports: React.FC<DriverReportsProps> = ({
                     {getSortIcon('avgRatePerMile')}
                   </div>
                 </th>
-                <th className="p-4 font-semibold border-b border-slate-200 text-center">Status</th>
-                <th className="p-4 font-semibold border-b border-slate-200 text-center">Payout</th>
+                <th className="bg-slate-50 dark:bg-slate-800 p-4 font-semibold border-b border-slate-200 dark:border-slate-700 text-center text-slate-500 dark:text-slate-400">Status</th>
+                <th className="bg-slate-50 dark:bg-slate-800 p-4 font-semibold border-b border-slate-200 dark:border-slate-700 text-center text-slate-500 dark:text-slate-400">Payout</th>
               </tr>
             </thead>
             <tbody>
               {paginatedReports.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="p-8 text-center text-slate-400">
+                  <td colSpan={7} className="p-8 text-center text-slate-400 dark:text-slate-500">
                     No driver data available for the selected date range
                   </td>
                 </tr>
@@ -236,44 +236,44 @@ export const DriverReports: React.FC<DriverReportsProps> = ({
                 paginatedReports.map((report) => (
                   <tr 
                     key={report.driverId} 
-                    className="border-b border-slate-100 hover:bg-slate-50 cursor-pointer"
+                    className="border-b border-slate-100 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700/50 cursor-pointer"
                     onClick={() => {
                       setSelectedReport(report);
                       setIsModalOpen(true);
                     }}
                   >
-                    <td className="p-4 font-medium text-slate-800">{report.driverName}</td>
-                    <td className="p-4 text-right text-slate-600">{report.totalLoads}</td>
+                    <td className="p-4 font-medium text-slate-800 dark:text-slate-100">{report.driverName}</td>
+                    <td className="p-4 text-right text-slate-600 dark:text-slate-300">{report.totalLoads}</td>
                     <td className="p-4 text-right">
-                      <span className="font-semibold text-slate-800">
+                      <span className="font-semibold text-slate-800 dark:text-slate-100">
                         ${report.totalPay.toFixed(2)}
                       </span>
                     </td>
-                    <td className="p-4 text-right text-slate-600">
+                    <td className="p-4 text-right text-slate-600 dark:text-slate-300">
                       {report.totalMiles.toLocaleString()}
                     </td>
-                    <td className="p-4 text-right text-slate-600">
+                    <td className="p-4 text-right text-slate-600 dark:text-slate-300">
                       ${report.avgRatePerMile.toFixed(2)}
                     </td>
                     <td className="p-4 text-center">
                       <div className="flex flex-col gap-1 text-xs">
-                        <span className="text-slate-600">
+                        <span className="text-slate-600 dark:text-slate-400">
                           F: {report.loadsByStatus.factored}
                         </span>
-                        <span className="text-slate-600">
+                        <span className="text-slate-600 dark:text-slate-400">
                           NF: {report.loadsByStatus.notFactored}
                         </span>
                       </div>
                     </td>
                     <td className="p-4 text-center">
                       <div className="flex flex-col gap-1 text-xs">
-                        <span className="text-slate-600">
+                        <span className="text-slate-600 dark:text-slate-400">
                           P: {report.payoutStatus.pending}
                         </span>
-                        <span className="text-slate-600">
+                        <span className="text-slate-600 dark:text-slate-400">
                           Paid: {report.payoutStatus.paid}
                         </span>
-                        <span className="text-slate-600">
+                        <span className="text-slate-600 dark:text-slate-400">
                           Part: {report.payoutStatus.partial}
                         </span>
                       </div>
@@ -288,8 +288,8 @@ export const DriverReports: React.FC<DriverReportsProps> = ({
 
       {/* Pagination */}
       {sortedReports.length > itemsPerPage && (
-        <div className="flex items-center justify-between bg-white rounded-lg border border-slate-200 p-4">
-          <div className="text-sm text-slate-600">
+        <div className="flex items-center justify-between bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 p-4">
+          <div className="text-sm text-slate-600 dark:text-slate-400">
             Showing <span className="font-medium">{(currentPage - 1) * itemsPerPage + 1}</span> to{' '}
             <span className="font-medium">
               {Math.min(currentPage * itemsPerPage, sortedReports.length)}
@@ -301,10 +301,10 @@ export const DriverReports: React.FC<DriverReportsProps> = ({
             <button
               onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
               disabled={currentPage === 1}
-              className="p-2 border border-slate-200 rounded-lg hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              className="p-2 border border-slate-200 dark:border-slate-600 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               title="Previous page"
             >
-              <ChevronLeft size={16} className="text-slate-600" />
+              <ChevronLeft size={16} className="text-slate-600 dark:text-slate-400" />
             </button>
             
             <div className="flex items-center gap-1">
@@ -326,8 +326,8 @@ export const DriverReports: React.FC<DriverReportsProps> = ({
                     onClick={() => setCurrentPage(pageNum)}
                     className={`px-3 py-1 rounded-lg text-sm font-medium transition-colors ${
                       currentPage === pageNum
-                        ? 'bg-slate-600 text-white'
-                        : 'text-slate-600 hover:bg-slate-100'
+                        ? 'bg-blue-600 text-white'
+                        : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700'
                     }`}
                   >
                     {pageNum}
@@ -339,10 +339,10 @@ export const DriverReports: React.FC<DriverReportsProps> = ({
             <button
               onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
               disabled={currentPage === totalPages}
-              className="p-2 border border-slate-200 rounded-lg hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              className="p-2 border border-slate-200 dark:border-slate-600 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               title="Next page"
             >
-              <ChevronRight size={16} className="text-slate-600" />
+              <ChevronRight size={16} className="text-slate-600 dark:text-slate-400" />
             </button>
           </div>
         </div>

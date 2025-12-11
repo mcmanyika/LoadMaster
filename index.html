@@ -7,12 +7,17 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
       tailwind.config = {
+        darkMode: 'class',
         theme: {
           extend: {
             colors: {
               slate: {
                 850: '#1e293b',
                 900: '#0f172a',
+              },
+              navy: {
+                900: '#1e3a5f',
+                950: '#0f2544',
               }
             }
           }
@@ -33,7 +38,7 @@
 }
 </script>
 </head>
-  <body class="bg-slate-50 text-slate-900 antialiased">
+  <body class="bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-slate-100 antialiased">
     <div id="root"></div>
     <script type="module" src="/index.tsx"></script>
   </body>

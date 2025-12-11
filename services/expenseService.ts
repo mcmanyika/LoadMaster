@@ -234,6 +234,13 @@ export const createExpense = async (
       loadCompany: data.loads?.company,
     };
 
+    // Sync gas_amount if this is a Fuel expense linked to a load
+    if (mappedExpense.loadId && mappedExpense.category?.name === 'Fuel') {
+      syncLoadGasAmount(mappedExpense.loadId).catch(err => {
+        console.error('Error syncing gas amount after expense creation:', err);
+      });
+    }
+
     return { data: mappedExpense, error: null };
   } catch (error) {
     console.error('Error in createExpense:', error);
@@ -253,6 +260,31 @@ export const updateExpense = async (
   }
 
   try {
+    // Fetch old expense to check if we need to sync old load
+    let oldLoadId: string | null = null;
+    let oldCategoryId: string | null = null;
+    let oldCategoryName: string | null = null;
+    
+    if (expense.loadId !== undefined || expense.categoryId !== undefined || expense.amount !== undefined) {
+      const { data: oldExpense } = await supabase
+        .from('expenses')
+        .select(`
+          load_id,
+          category_id,
+          expense_categories (
+            name
+          )
+        `)
+        .eq('id', id)
+        .single();
+      
+      if (oldExpense) {
+        oldLoadId = oldExpense.load_id;
+        oldCategoryId = oldExpense.category_id;
+        oldCategoryName = oldExpense.expense_categories?.name || null;
+      }
+    }
+
     const updateData: any = {};
     if (expense.categoryId !== undefined) updateData.category_id = expense.categoryId;
     if (expense.amount !== undefined) updateData.amount = expense.amount;
@@ -328,6 +360,30 @@ export const updateExpense = async (
       loadCompany: data.loads?.company,
     };
 
+    // Sync gas_amount if this expense affects Fuel expenses for loads
+    const newLoadId = mappedExpense.loadId;
+    const newCategoryName = mappedExpense.category?.name;
+    const loadIdChanged = expense.loadId !== undefined && oldLoadId !== newLoadId;
+    const categoryChanged = expense.categoryId !== undefined && oldCategoryId !== mappedExpense.categoryId;
+    const amountChanged = expense.amount !== undefined;
+
+    // If loadId or category changed, or amount changed, we need to sync
+    if (loadIdChanged || categoryChanged || amountChanged) {
+      // Sync old load if it was a Fuel expense
+      if (oldLoadId && oldCategoryName === 'Fuel' && oldLoadId !== newLoadId) {
+        syncLoadGasAmount(oldLoadId).catch(err => {
+          console.error('Error syncing old load gas amount after expense update:', err);
+        });
+      }
+
+      // Sync new load if it's a Fuel expense
+      if (newLoadId && newCategoryName === 'Fuel') {
+        syncLoadGasAmount(newLoadId).catch(err => {
+          console.error('Error syncing new load gas amount after expense update:', err);
+        });
+      }
+    }
+
     return { data: mappedExpense, error: null };
   } catch (error) {
     console.error('Error in updateExpense:', error);
@@ -344,6 +400,22 @@ export const deleteExpense = async (id: string): Promise<{ error: Error | null }
   }
 
   try {
+    // Fetch expense before deleting to check if we need to sync load
+    const { data: expenseToDelete } = await supabase
+      .from('expenses')
+      .select(`
+        load_id,
+        category_id,
+        expense_categories (
+          name
+        )
+      `)
+      .eq('id', id)
+      .single();
+
+    const loadIdToSync = expenseToDelete?.load_id;
+    const categoryName = expenseToDelete?.expense_categories?.name;
+
     const { error } = await supabase
       .from('expenses')
       .delete()
@@ -352,6 +424,13 @@ export const deleteExpense = async (id: string): Promise<{ error: Error | null }
     if (error) {
       console.error('Error deleting expense:', error);
       return { error };
+    }
+
+    // Sync gas_amount if this was a Fuel expense linked to a load
+    if (loadIdToSync && categoryName === 'Fuel') {
+      syncLoadGasAmount(loadIdToSync).catch(err => {
+        console.error('Error syncing gas amount after expense deletion:', err);
+      });
     }
 
     return { error: null };
@@ -517,6 +596,161 @@ export const getExpenseSummary = async (
       averageExpense: 0,
       largestExpense: null,
     };
+  }
+};
+
+/**
+ * Get the Fuel category ID from expense_categories
+ */
+const getFuelCategoryId = async (): Promise<string | null> => {
+  if (!isSupabaseConfigured || !supabase) {
+    return null;
+  }
+
+  try {
+    const { data, error } = await supabase
+      .from('expense_categories')
+      .select('id')
+      .eq('name', 'Fuel')
+      .single();
+
+    if (error) {
+      console.error('Error fetching Fuel category ID:', error);
+      return null;
+    }
+
+    return data?.id || null;
+  } catch (error) {
+    console.error('Error in getFuelCategoryId:', error);
+    return null;
+  }
+};
+
+/**
+ * Sync the gas_amount field in loads table based on Fuel expenses
+ */
+const syncLoadGasAmount = async (loadId: string): Promise<void> => {
+  if (!isSupabaseConfigured || !supabase || !loadId) {
+    return;
+  }
+
+  try {
+    // Get Fuel category ID
+    const fuelCategoryId = await getFuelCategoryId();
+    if (!fuelCategoryId) {
+      console.warn('Fuel category not found, skipping gas amount sync');
+      return;
+    }
+
+    // Query all Fuel expenses for this load
+    const { data: fuelExpenses, error: queryError } = await supabase
+      .from('expenses')
+      .select('amount')
+      .eq('load_id', loadId)
+      .eq('category_id', fuelCategoryId);
+
+    if (queryError) {
+      console.error('Error querying Fuel expenses for load:', queryError);
+      return;
+    }
+
+    // Sum all amounts
+    const totalGasAmount = fuelExpenses?.reduce((sum, exp) => {
+      return sum + parseFloat(exp.amount || '0');
+    }, 0) || 0;
+
+    // Update the load's gas_amount
+    const { error: updateError } = await supabase
+      .from('loads')
+      .update({ gas_amount: totalGasAmount })
+      .eq('id', loadId);
+
+    if (updateError) {
+      console.error('Error updating load gas_amount:', updateError);
+    }
+  } catch (error) {
+    console.error('Error in syncLoadGasAmount:', error);
+  }
+};
+
+/**
+ * Get all Fuel expenses linked to a specific load
+ */
+export const getFuelExpensesForLoad = async (loadId: string): Promise<Expense[]> => {
+  if (!isSupabaseConfigured || !supabase) {
+    return [];
+  }
+
+  try {
+    // Get Fuel category ID
+    const fuelCategoryId = await getFuelCategoryId();
+    if (!fuelCategoryId) {
+      return [];
+    }
+
+    const { data, error } = await supabase
+      .from('expenses')
+      .select(`
+        *,
+        expense_categories (
+          id,
+          name,
+          description,
+          icon,
+          color
+        ),
+        transporters:vehicle_id (
+          name
+        ),
+        drivers:driver_id (
+          name
+        ),
+        loads:load_id (
+          company
+        )
+      `)
+      .eq('load_id', loadId)
+      .eq('category_id', fuelCategoryId)
+      .order('expense_date', { ascending: false });
+
+    if (error) {
+      console.error('Error fetching Fuel expenses for load:', error);
+      return [];
+    }
+
+    return data.map(exp => ({
+      id: exp.id,
+      companyId: exp.company_id,
+      categoryId: exp.category_id,
+      amount: parseFloat(exp.amount),
+      description: exp.description,
+      expenseDate: exp.expense_date,
+      vendor: exp.vendor,
+      receiptUrl: exp.receipt_url,
+      vehicleId: exp.vehicle_id,
+      driverId: exp.driver_id,
+      loadId: exp.load_id,
+      paymentMethod: exp.payment_method,
+      paymentStatus: exp.payment_status,
+      recurringFrequency: exp.recurring_frequency,
+      createdBy: exp.created_by,
+      createdAt: exp.created_at,
+      updatedAt: exp.updated_at,
+      category: exp.expense_categories ? {
+        id: exp.expense_categories.id,
+        name: exp.expense_categories.name,
+        description: exp.expense_categories.description,
+        icon: exp.expense_categories.icon,
+        color: exp.expense_categories.color,
+        createdAt: '',
+      } : undefined,
+      vehicleName: exp.transporters?.name,
+      driverName: exp.drivers?.name,
+      loadCompany: exp.loads?.company,
+    }));
+  } catch (error) {
+    console.error('Error in getFuelExpensesForLoad:', error);
+    return [];
   }
 };
 

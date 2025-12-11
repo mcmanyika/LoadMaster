@@ -690,6 +690,12 @@ export const getActiveCompanies = async (
         id: company.id,
         name: company.name,
         ownerId: company.owner_id,
+        address: company.address || undefined,
+        website: company.website || undefined,
+        phone: company.phone || undefined,
+        email: company.email || undefined,
+        contactPerson: company.contact_person || undefined,
+        numberOfTrucks: company.number_of_trucks || undefined,
         createdAt: company.created_at,
         updatedAt: company.updated_at
       }));

@@ -183,8 +183,8 @@ export const DriverInvitationManagement: React.FC<DriverInvitationManagementProp
 
   if (isOwner && !companyId) {
     return (
-      <div className="bg-white rounded-lg border border-slate-200 p-6">
-        <p className="text-slate-500">Please set up your company first.</p>
+      <div className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 p-6">
+        <p className="text-slate-500 dark:text-slate-400">Please set up your company first.</p>
       </div>
     );
   }
@@ -200,9 +200,9 @@ export const DriverInvitationManagement: React.FC<DriverInvitationManagementProp
       {isOwner ? (
         <>
           {/* Generate Invite Code Form */}
-          <div className="bg-white rounded-lg border border-slate-200 p-6">
+          <div className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 p-6">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-semibold text-slate-800 flex items-center gap-2">
+              <h3 className="text-lg font-semibold text-slate-800 dark:text-slate-100 flex items-center gap-2">
                 <Key size={20} />
                 Generate Invite Code
               </h3>
@@ -220,7 +220,7 @@ export const DriverInvitationManagement: React.FC<DriverInvitationManagementProp
             {showInviteForm && (
               <form onSubmit={handleGenerateCode} className="space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
                     Expires In (Days)
                   </label>
                   <input
@@ -230,7 +230,7 @@ export const DriverInvitationManagement: React.FC<DriverInvitationManagementProp
                     max="365"
                     value={inviteForm.expiresInDays}
                     onChange={(e) => setInviteForm({ ...inviteForm, expiresInDays: e.target.value })}
-                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                    className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-white dark:bg-slate-700 text-slate-900 dark:text-white"
                     placeholder="30"
                   />
                 </div>
@@ -249,7 +249,7 @@ export const DriverInvitationManagement: React.FC<DriverInvitationManagementProp
                       setInviteForm({ expiresInDays: '30' });
                       setGeneratedCode(null);
                     }}
-                    className="px-4 py-2 bg-slate-200 text-slate-700 rounded-lg hover:bg-slate-300 transition-colors text-sm font-medium"
+                    className="px-4 py-2 bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-lg hover:bg-slate-300 dark:hover:bg-slate-600 transition-colors text-sm font-medium"
                   >
                     Cancel
                   </button>
@@ -259,18 +259,18 @@ export const DriverInvitationManagement: React.FC<DriverInvitationManagementProp
 
             {/* Generated Code Display */}
             {generatedCode && (
-              <div className="mt-4 p-4 bg-green-50 border border-green-200 rounded-lg">
+              <div className="mt-4 p-4 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-900/30 rounded-lg">
                 <div className="flex items-center justify-between mb-2">
-                  <p className="text-sm font-medium text-green-800">Generated Invite Code</p>
+                  <p className="text-sm font-medium text-green-800 dark:text-green-300">Generated Invite Code</p>
                   <button
                     onClick={() => setGeneratedCode(null)}
-                    className="text-green-600 hover:text-green-800"
+                    className="text-green-600 dark:text-green-400 hover:text-green-800 dark:hover:text-green-300"
                   >
                     <X size={16} />
                   </button>
                 </div>
                 <div className="flex items-center gap-3">
-                  <code className="flex-1 px-4 py-3 bg-white border border-green-300 rounded-lg text-2xl font-mono font-bold text-green-900 text-center">
+                  <code className="flex-1 px-4 py-3 bg-white dark:bg-slate-700 border border-green-300 dark:border-green-900/30 rounded-lg text-2xl font-mono font-bold text-green-900 dark:text-green-300 text-center">
                     {formatInviteCode(generatedCode, 'dashed')}
                   </code>
                   <button
@@ -282,7 +282,7 @@ export const DriverInvitationManagement: React.FC<DriverInvitationManagementProp
                     Copy
                   </button>
                 </div>
-                <p className="text-xs text-green-700 mt-2">
+                <p className="text-xs text-green-700 dark:text-green-400 mt-2">
                   Share this code with drivers. They can use it to join your company.
                 </p>
               </div>
@@ -291,8 +291,8 @@ export const DriverInvitationManagement: React.FC<DriverInvitationManagementProp
 
           {/* Unused Invite Codes */}
           {unusedCodes.length > 0 && (
-            <div className="bg-white rounded-lg border border-slate-200 p-6">
-              <h3 className="text-lg font-semibold text-slate-800 mb-4 flex items-center gap-2">
+            <div className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 p-6">
+              <h3 className="text-lg font-semibold text-slate-800 dark:text-slate-100 mb-4 flex items-center gap-2">
                 <Clock size={20} className="text-amber-500" />
                 Active Invite Codes ({unusedCodes.length})
               </h3>
@@ -300,30 +300,30 @@ export const DriverInvitationManagement: React.FC<DriverInvitationManagementProp
                 {unusedCodes.map((code) => (
                   <div
                     key={code.id}
-                    className="flex items-center justify-between p-4 bg-amber-50 border border-amber-200 rounded-lg"
+                    className="flex items-center justify-between p-4 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-900/30 rounded-lg"
                   >
                     <div className="flex-1">
                       <div className="flex items-center gap-3 mb-2">
-                        <code className="px-3 py-1 bg-white border border-amber-300 rounded text-lg font-mono font-bold text-amber-900">
+                        <code className="px-3 py-1 bg-white dark:bg-slate-700 border border-amber-300 dark:border-amber-900/30 rounded text-lg font-mono font-bold text-amber-900 dark:text-amber-300">
                           {formatInviteCode(code.inviteCode || '', 'dashed')}
                         </code>
                         <button
                           onClick={() => handleCopyCode(formatInviteCode(code.inviteCode || '', 'dashed'))}
-                          className="p-1 text-amber-600 hover:bg-amber-100 rounded transition-colors"
+                          className="p-1 text-amber-600 dark:text-amber-400 hover:bg-amber-100 dark:hover:bg-amber-900/30 rounded transition-colors"
                           title="Copy code"
                         >
                           <Copy size={16} />
                         </button>
                       </div>
                       {code.expiresAt && (
-                        <p className="text-xs text-slate-500">
+                        <p className="text-xs text-slate-500 dark:text-slate-400">
                           Expires: {new Date(code.expiresAt).toLocaleDateString()}
                         </p>
                       )}
                     </div>
                     <button
                       onClick={() => handleRevokeCode(code.id)}
-                      className="px-3 py-1 text-red-600 hover:bg-red-50 rounded transition-colors text-sm font-medium"
+                      className="px-3 py-1 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/30 rounded transition-colors text-sm font-medium"
                     >
                       Revoke
                     </button>
@@ -334,29 +334,29 @@ export const DriverInvitationManagement: React.FC<DriverInvitationManagementProp
           )}
 
           {/* Active Drivers */}
-          <div className="bg-white rounded-lg border border-slate-200 p-6">
-            <h3 className="text-lg font-semibold text-slate-800 mb-4 flex items-center gap-2">
+          <div className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 p-6">
+            <h3 className="text-lg font-semibold text-slate-800 dark:text-slate-100 mb-4 flex items-center gap-2">
               <Users size={20} className="text-green-500" />
               Active Drivers ({activeDrivers.length})
             </h3>
             {activeDrivers.length === 0 ? (
-              <p className="text-slate-500">No active drivers</p>
+              <p className="text-slate-500 dark:text-slate-400">No active drivers</p>
             ) : (
               <div className="space-y-3">
                 {activeDrivers.map((association) => (
                   <div
                     key={association.id}
-                    className="flex items-center justify-between p-4 bg-slate-50 border border-slate-200 rounded-lg"
+                    className="flex items-center justify-between p-4 bg-slate-800 dark:bg-slate-800 border border-slate-700 dark:border-slate-700 rounded-lg"
                   >
                     <div className="flex-1">
-                      <p className="font-medium text-slate-800">
+                      <p className="font-medium text-white dark:text-slate-100">
                         {association.driver?.name || association.driver?.email || 'Unknown'}
                       </p>
-                      <p className="text-sm text-slate-600">
+                      <p className="text-sm text-slate-300 dark:text-slate-400">
                         {association.driver?.email}
                       </p>
                       {association.driver?.phone && (
-                        <p className="text-sm text-slate-600">
+                        <p className="text-sm text-slate-300 dark:text-slate-400">
                           {association.driver.phone}
                         </p>
                       )}
@@ -364,7 +364,7 @@ export const DriverInvitationManagement: React.FC<DriverInvitationManagementProp
                     <div className="flex items-center gap-4">
                       <button
                         onClick={() => handleRemove(association.id)}
-                        className="p-2 text-red-600 hover:bg-red-50 rounded transition-colors"
+                        className="p-2 text-red-400 dark:text-red-400 hover:bg-red-700/30 dark:hover:bg-red-900/30 rounded transition-colors"
                         title="Remove driver"
                       >
                         <Trash2 size={16} />
@@ -378,15 +378,15 @@ export const DriverInvitationManagement: React.FC<DriverInvitationManagementProp
         </>
       ) : (
         /* Driver View - Enter Invite Code */
-        <div className="bg-white rounded-lg border border-slate-200 p-6">
-          <h3 className="text-lg font-semibold text-slate-800 mb-4 flex items-center gap-2">
+        <div className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 p-6">
+          <h3 className="text-lg font-semibold text-slate-800 dark:text-slate-100 mb-4 flex items-center gap-2">
             <Key size={20} className="text-blue-500" />
             Join Company with Invite Code
           </h3>
           
           <div className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
                 Enter Invite Code
               </label>
               <input
@@ -394,31 +394,31 @@ export const DriverInvitationManagement: React.FC<DriverInvitationManagementProp
                 value={codeInput}
                 onChange={(e) => handleCodeInputChange(e.target.value)}
                 placeholder="XXXX-XXXX"
-                className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-center text-xl font-mono tracking-wider uppercase"
+                className="w-full px-4 py-3 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-center text-xl font-mono tracking-wider uppercase bg-white dark:bg-slate-700 text-slate-900 dark:text-white"
                 maxLength={9} // XXXX-XXXX format
               />
-              <p className="text-xs text-slate-500 mt-1">
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
                 Enter the 8-character code provided by the company owner
               </p>
             </div>
 
             {/* Code Preview */}
             {previewLoading && (
-              <div className="p-4 bg-slate-50 border border-slate-200 rounded-lg text-center">
-                <p className="text-slate-600">Checking code...</p>
+              <div className="p-4 bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-lg text-center">
+                <p className="text-slate-600 dark:text-slate-400">Checking code...</p>
               </div>
             )}
 
             {codePreview && !previewLoading && (
-              <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
+              <div className="p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-900/30 rounded-lg">
                 <div className="flex items-center gap-2 mb-2">
-                  <Building2 size={18} className="text-blue-600" />
-                  <p className="font-medium text-slate-800">
+                  <Building2 size={18} className="text-blue-600 dark:text-blue-400" />
+                  <p className="font-medium text-slate-800 dark:text-slate-100">
                     {codePreview.company?.name || 'Unknown Company'}
                   </p>
                 </div>
                 {codePreview.expiresAt && (
-                  <p className="text-xs text-slate-500 mt-1">
+                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
                     Expires: {new Date(codePreview.expiresAt).toLocaleDateString()}
                   </p>
                 )}
@@ -427,8 +427,8 @@ export const DriverInvitationManagement: React.FC<DriverInvitationManagementProp
 
             {/* Show warning if code format is valid but preview failed to load */}
             {!previewLoading && !codePreview && codeInput && validateInviteCodeFormat(normalizeInviteCode(codeInput)) && (
-              <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg">
-                <p className="text-sm text-amber-800">
+              <div className="p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-900/30 rounded-lg">
+                <p className="text-sm text-amber-800 dark:text-amber-300">
                   <AlertCircle size={16} className="inline mr-1" />
                   Code format is valid, but couldn't find this code. You can still try to join - you'll get an error if the code is invalid.
                 </p>
