@@ -46,12 +46,12 @@ serve(async (req) => {
     // Plan pricing in cents
     const PLAN_PRICES: Record<string, Record<string, number>> = {
       essential: {
-        month: 9900, // $99/month
-        year: 102000, // $85/month × 12 = $1,020/year
+        month: 2499, // $24.99/month
+        year: 25490, // $21.24/month × 12 = $254.90/year (15% discount)
       },
       professional: {
-        month: 19900, // $199/month
-        year: 204000, // $170/month × 12 = $2,040/year
+        month: 4499, // $44.99/month
+        year: 45890, // $38.24/month × 12 = $458.90/year (15% discount)
       },
       enterprise: {
         month: 49900, // $499/month
