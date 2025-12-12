@@ -11,7 +11,9 @@ import {
 } from '../services/driverAssociationService';
 import { formatInviteCode, normalizeInviteCode, validateInviteCodeFormat } from '../services/inviteCodeService';
 import { ErrorModal } from './ErrorModal';
+import { ConfirmModal } from './ConfirmModal';
 import { Mail, X, Check, Users, Clock, AlertCircle, Trash2, Copy, Key, Building2 } from 'lucide-react';
+import { supabase } from '../services/supabaseClient';
 
 interface DriverInvitationManagementProps {
   user: UserProfile;
@@ -29,6 +31,7 @@ export const DriverInvitationManagement: React.FC<DriverInvitationManagementProp
   const [activeDrivers, setActiveDrivers] = useState<DriverCompanyAssociation[]>([]);
   const [loading, setLoading] = useState(false);
   const [errorModal, setErrorModal] = useState<{ isOpen: boolean; message: string }>({ isOpen: false, message: '' });
+  const [confirmModal, setConfirmModal] = useState<{ isOpen: boolean; message: string; onConfirm: () => void }>({ isOpen: false, message: '', onConfirm: () => {} });
   const [showInviteForm, setShowInviteForm] = useState(false);
   const [inviteForm, setInviteForm] = useState({ expiresInDays: '30' });
   const [generatedCode, setGeneratedCode] = useState<string | null>(null);
@@ -48,11 +51,111 @@ export const DriverInvitationManagement: React.FC<DriverInvitationManagementProp
     if (!companyId) return;
     setLoading(true);
     try {
-      const [drivers, codes] = await Promise.all([
+      const [driversFromAssociations, codes] = await Promise.all([
         getCompanyDrivers(companyId),
         getUnusedDriverInviteCodes(companyId)
       ]);
-      setActiveDrivers(drivers.filter(d => d.status === 'active' && d.driverId));
+      
+      // Also fetch manually created drivers from the drivers table
+      let manuallyCreatedDrivers: DriverCompanyAssociation[] = [];
+      try {
+        const { data: driversData, error: driversError } = await supabase
+          .from('drivers')
+          .select('*')
+          .eq('company_id', companyId);
+        
+        if (!driversError && driversData) {
+          // Convert manually created drivers to DriverCompanyAssociation format
+          manuallyCreatedDrivers = driversData.map((d: any) => ({
+            id: `manual-${d.id}`, // Use a prefix to distinguish from associations
+            driverId: d.profile_id || d.id, // Use profile_id if available, otherwise driver table id
+            companyId: d.company_id,
+            status: 'active' as const,
+            joinedAt: d.created_at || new Date().toISOString(),
+            createdAt: d.created_at || new Date().toISOString(),
+            updatedAt: d.updated_at || new Date().toISOString(),
+            driver: {
+              id: d.profile_id || d.id,
+              name: d.name,
+              email: d.email || '',
+              phone: d.phone || '',
+              role: 'driver' as const,
+              status: 'active' as const
+            }
+          }));
+        }
+      } catch (error) {
+        console.error('Error fetching manually created drivers:', error);
+        // Continue without manually created drivers if there's an error
+      }
+      
+      // Combine drivers from associations and manually created ones
+      // Filter out duplicates (if a driver exists in both, prefer the association version)
+      const associationDriverIds = new Set(
+        driversFromAssociations
+          .filter(d => d.status === 'active' && d.driverId)
+          .map(d => d.driverId)
+      );
+      
+      // Also create a set of association driver emails and names for additional deduplication
+      const associationDriverEmails = new Set(
+        driversFromAssociations
+          .filter(d => d.status === 'active' && d.driver?.email)
+          .map(d => d.driver!.email!.toLowerCase().trim())
+      );
+      
+      const associationDriverNames = new Set(
+        driversFromAssociations
+          .filter(d => d.status === 'active' && d.driver?.name)
+          .map(d => d.driver!.name!.toLowerCase().trim())
+      );
+      
+      // Deduplicate manually created drivers first (in case there are duplicates in the table)
+      const seenManualDrivers = new Map<string, DriverCompanyAssociation>();
+      manuallyCreatedDrivers.forEach(driver => {
+        const key = driver.driver?.email 
+          ? driver.driver.email.toLowerCase().trim()
+          : driver.driver?.name?.toLowerCase().trim() || driver.id;
+        
+        if (!seenManualDrivers.has(key)) {
+          seenManualDrivers.set(key, driver);
+        }
+      });
+      const uniqueManualDriversList = Array.from(seenManualDrivers.values());
+      
+      // Only include manually created drivers that don't have an association
+      // Check by driverId, email, and name to catch all duplicates
+      const uniqueManualDrivers = uniqueManualDriversList.filter(d => {
+        // Skip if driverId matches an association
+        if (d.driverId && associationDriverIds.has(d.driverId)) {
+          return false;
+        }
+        
+        // Skip if email matches an association (and email exists)
+        if (d.driver?.email) {
+          const emailKey = d.driver.email.toLowerCase().trim();
+          if (emailKey && associationDriverEmails.has(emailKey)) {
+            return false;
+          }
+        }
+        
+        // Skip if name matches an association (and name exists, and no email to distinguish)
+        if (d.driver?.name && !d.driver?.email) {
+          const nameKey = d.driver.name.toLowerCase().trim();
+          if (nameKey && associationDriverNames.has(nameKey)) {
+            return false;
+          }
+        }
+        
+        return true;
+      });
+      
+      const allActiveDrivers = [
+        ...driversFromAssociations.filter(d => d.status === 'active' && d.driverId),
+        ...uniqueManualDrivers
+      ];
+      
+      setActiveDrivers(allActiveDrivers);
       setUnusedCodes(codes);
     } catch (error: any) {
       setErrorModal({ isOpen: true, message: error.message || 'Failed to load drivers' });
@@ -143,42 +246,84 @@ export const DriverInvitationManagement: React.FC<DriverInvitationManagementProp
     }
   };
 
-  const handleRevokeCode = async (associationId: string) => {
-    if (!confirm('Are you sure you want to revoke this invite code?')) return;
-
-    setLoading(true);
-    try {
-      const result = await revokeDriverInviteCode(associationId);
-      if (result.success) {
-        await loadOwnerData();
-        onUpdate?.();
-      } else {
-        setErrorModal({ isOpen: true, message: result.error || 'Failed to revoke invite code' });
+  const handleRevokeCode = (associationId: string) => {
+    setConfirmModal({
+      isOpen: true,
+      message: 'Are you sure you want to revoke this invite code?',
+      onConfirm: async () => {
+        setConfirmModal({ isOpen: false, message: '', onConfirm: () => {} });
+        setLoading(true);
+        try {
+          const result = await revokeDriverInviteCode(associationId);
+          if (result.success) {
+            await loadOwnerData();
+            onUpdate?.();
+          } else {
+            setErrorModal({ isOpen: true, message: result.error || 'Failed to revoke invite code' });
+          }
+        } catch (error: any) {
+          setErrorModal({ isOpen: true, message: error.message || 'Failed to revoke invite code' });
+        } finally {
+          setLoading(false);
+        }
       }
-    } catch (error: any) {
-      setErrorModal({ isOpen: true, message: error.message || 'Failed to revoke invite code' });
-    } finally {
-      setLoading(false);
-    }
+    });
   };
 
-  const handleRemove = async (associationId: string) => {
-    if (!confirm('Are you sure you want to remove this driver from your company?')) return;
-
-    setLoading(true);
-    try {
-      const result = await removeDriver(associationId);
-      if (result.success) {
-        await loadOwnerData();
-        onUpdate?.();
-      } else {
-        setErrorModal({ isOpen: true, message: result.error || 'Failed to remove driver' });
+  const handleRemove = (associationId: string) => {
+    setConfirmModal({
+      isOpen: true,
+      message: 'Are you sure you want to remove this driver from your company?',
+      onConfirm: async () => {
+        setConfirmModal({ isOpen: false, message: '', onConfirm: () => {} });
+        setLoading(true);
+        try {
+          // Check if this is a manually created driver (has 'manual-' prefix)
+          if (associationId.startsWith('manual-')) {
+            const driverId = associationId.replace('manual-', '');
+            
+            // First, set driver_id to NULL in all loads that reference this driver
+            // This prevents foreign key constraint violations
+            const { error: updateError } = await supabase
+              .from('loads')
+              .update({ driver_id: null })
+              .eq('driver_id', driverId);
+            
+            if (updateError) {
+              setErrorModal({ isOpen: true, message: updateError.message || 'Failed to update related loads' });
+              setLoading(false);
+              return;
+            }
+            
+            // Now delete the driver
+            const { error } = await supabase
+              .from('drivers')
+              .delete()
+              .eq('id', driverId);
+            
+            if (error) {
+              setErrorModal({ isOpen: true, message: error.message || 'Failed to remove driver' });
+            } else {
+              await loadOwnerData();
+              onUpdate?.();
+            }
+          } else {
+            // Handle association-based driver
+            const result = await removeDriver(associationId);
+            if (result.success) {
+              await loadOwnerData();
+              onUpdate?.();
+            } else {
+              setErrorModal({ isOpen: true, message: result.error || 'Failed to remove driver' });
+            }
+          }
+        } catch (error: any) {
+          setErrorModal({ isOpen: true, message: error.message || 'Failed to remove driver' });
+        } finally {
+          setLoading(false);
+        }
       }
-    } catch (error: any) {
-      setErrorModal({ isOpen: true, message: error.message || 'Failed to remove driver' });
-    } finally {
-      setLoading(false);
-    }
+    });
   };
 
   if (isOwner && !companyId) {
@@ -201,21 +346,25 @@ export const DriverInvitationManagement: React.FC<DriverInvitationManagementProp
         <>
           {/* Generate Invite Code Form */}
           <div className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 p-6">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-semibold text-slate-800 dark:text-slate-100 flex items-center gap-2">
-                <Key size={20} />
-                Generate Invite Code
-              </h3>
+            <div className="flex items-center justify-end mb-4">
               {!showInviteForm && (
                 <button
                   onClick={() => setShowInviteForm(true)}
-                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium flex items-center gap-2"
+                  className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium shadow-sm transition-colors"
                 >
-                  <Key size={16} />
+                  <Key size={18} />
                   Generate Code
                 </button>
               )}
             </div>
+            {showInviteForm && (
+              <div className="mb-4">
+                <h3 className="text-lg font-semibold text-slate-800 dark:text-slate-100 flex items-center gap-2 mb-4">
+                  <Key size={20} />
+                  Generate Invite Code
+                </h3>
+              </div>
+            )}
 
             {showInviteForm && (
               <form onSubmit={handleGenerateCode} className="space-y-4">
@@ -452,6 +601,22 @@ export const DriverInvitationManagement: React.FC<DriverInvitationManagementProp
           </div>
         </div>
       )}
+
+      <ErrorModal
+        isOpen={errorModal.isOpen}
+        message={errorModal.message}
+        onClose={() => setErrorModal({ isOpen: false, message: '' })}
+      />
+
+      <ConfirmModal
+        isOpen={confirmModal.isOpen}
+        message={confirmModal.message}
+        title="Confirm Action"
+        confirmText="Confirm"
+        cancelText="Cancel"
+        onConfirm={confirmModal.onConfirm}
+        onCancel={() => setConfirmModal({ isOpen: false, message: '', onConfirm: () => {} })}
+      />
     </div>
   );
 };

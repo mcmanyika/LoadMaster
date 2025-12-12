@@ -97,7 +97,8 @@ export const FleetManagement: React.FC<FleetManagementProps> = ({ user }) => {
       // companyId is handled automatically by createDriver service
       // transporterId is set to null for owners since they don't manage transporters
       const newD = await createDriver({ ...dForm, transporterId: null as any } as any);
-      setDrivers([...drivers, newD]);
+      // Refresh the driver list to include the new driver
+      await fetchData();
       setShowAddForm(false);
       setDForm({ name: '', phone: '', email: '' });
     } catch (e: any) {
@@ -244,8 +245,8 @@ export const FleetManagement: React.FC<FleetManagementProps> = ({ user }) => {
               {isOwner ? 'Manage your drivers and dispatchers' : 'Manage your carriers and drivers'}
             </p>
           </div>
-          {/* Add button - only show for owners, and not for dispatchers or drivers tabs (they use invite codes) */}
-          {isOwner && activeTab !== 'dispatchers' && activeTab !== 'drivers' && (
+          {/* Add button - show for owners on all tabs */}
+          {isOwner && (
             <button 
               onClick={() => setShowAddForm(true)}
               className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium shadow-sm transition-colors"
@@ -253,6 +254,7 @@ export const FleetManagement: React.FC<FleetManagementProps> = ({ user }) => {
               <Plus size={18} />
               Add {
                 activeTab === 'vehicles' ? 'Vehicle' : 
+                activeTab === 'drivers' ? 'Driver' :
                 'Dispatcher'
               }
             </button>
@@ -320,10 +322,29 @@ export const FleetManagement: React.FC<FleetManagementProps> = ({ user }) => {
                       <button type="submit" className="md:col-span-2 bg-blue-600 text-white py-2 rounded-lg font-medium hover:bg-blue-700">Register Vehicle</button>
                    </form>
                  ) : activeTab === 'drivers' ? (
-                   // Driver form removed - now using invite code system
-                   <div className="text-slate-500 dark:text-slate-400 text-sm">
-                     Drivers are now managed through invite codes. Use the "Generate Invite Code" section above.
-                   </div>
+                   <form onSubmit={handleAddDriver} className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                     <input 
+                       required 
+                       placeholder="Full Name" 
+                       className="p-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-white" 
+                       value={dForm.name} 
+                       onChange={e => setDForm({...dForm, name: e.target.value})} 
+                     />
+                     <input 
+                       placeholder="Phone (Optional)" 
+                       className="p-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-white" 
+                       value={dForm.phone} 
+                       onChange={e => setDForm({...dForm, phone: e.target.value})} 
+                     />
+                     <input 
+                       type="email"
+                       placeholder="Email (Optional)" 
+                       className="p-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-white md:col-span-2" 
+                       value={dForm.email} 
+                       onChange={e => setDForm({...dForm, email: e.target.value})} 
+                     />
+                     <button type="submit" className="md:col-span-2 bg-blue-600 text-white py-2 rounded-lg font-medium hover:bg-blue-700">Register Driver</button>
+                   </form>
                  ) : (
                    <form onSubmit={handleAddDispatcher} className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       {error && (

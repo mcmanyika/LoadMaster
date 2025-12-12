@@ -12,7 +12,9 @@ import {
 } from '../services/dispatcherAssociationService';
 import { formatInviteCode, normalizeInviteCode, validateInviteCodeFormat } from '../services/inviteCodeService';
 import { ErrorModal } from './ErrorModal';
+import { ConfirmModal } from './ConfirmModal';
 import { Mail, X, Check, DollarSign, Users, Clock, AlertCircle, Edit2, Trash2, Copy, Key, Building2 } from 'lucide-react';
+import { supabase } from '../services/supabaseClient';
 
 interface InvitationManagementProps {
   user: UserProfile;
@@ -30,6 +32,7 @@ export const InvitationManagement: React.FC<InvitationManagementProps> = ({
   const [activeDispatchers, setActiveDispatchers] = useState<DispatcherCompanyAssociation[]>([]);
   const [loading, setLoading] = useState(false);
   const [errorModal, setErrorModal] = useState<{ isOpen: boolean; message: string }>({ isOpen: false, message: '' });
+  const [confirmModal, setConfirmModal] = useState<{ isOpen: boolean; message: string; onConfirm: () => void }>({ isOpen: false, message: '', onConfirm: () => {} });
   const [showInviteForm, setShowInviteForm] = useState(false);
   const [inviteForm, setInviteForm] = useState({ feePercentage: '12', expiresInDays: '30' });
   const [generatedCode, setGeneratedCode] = useState<string | null>(null);
@@ -51,11 +54,112 @@ export const InvitationManagement: React.FC<InvitationManagementProps> = ({
     if (!companyId) return;
     setLoading(true);
     try {
-      const [dispatchers, codes] = await Promise.all([
+      const [dispatchersFromAssociations, codes] = await Promise.all([
         getCompanyDispatchers(companyId),
         getUnusedInviteCodes(companyId)
       ]);
-      setActiveDispatchers(dispatchers.filter(d => d.status === 'active' && d.dispatcherId));
+      
+      // Also fetch manually created dispatchers from the dispatchers table
+      let manuallyCreatedDispatchers: DispatcherCompanyAssociation[] = [];
+      try {
+        const { data: dispatchersData, error: dispatchersError } = await supabase
+          .from('dispatchers')
+          .select('*')
+          .eq('company_id', companyId);
+        
+        if (!dispatchersError && dispatchersData) {
+          // Convert manually created dispatchers to DispatcherCompanyAssociation format
+          manuallyCreatedDispatchers = dispatchersData.map((d: any) => ({
+            id: `manual-${d.id}`, // Use a prefix to distinguish from associations
+            dispatcherId: d.profile_id || d.id, // Use profile_id if available, otherwise dispatcher table id
+            companyId: d.company_id,
+            feePercentage: d.fee_percentage || 12,
+            status: 'active' as const,
+            joinedAt: d.created_at || new Date().toISOString(),
+            createdAt: d.created_at || new Date().toISOString(),
+            updatedAt: d.updated_at || new Date().toISOString(),
+            dispatcher: {
+              id: d.profile_id || d.id,
+              name: d.name,
+              email: d.email || '',
+              phone: d.phone || '',
+              role: 'dispatcher' as const,
+              status: 'active' as const
+            }
+          }));
+        }
+      } catch (error) {
+        console.error('Error fetching manually created dispatchers:', error);
+        // Continue without manually created dispatchers if there's an error
+      }
+      
+      // Combine dispatchers from associations and manually created ones
+      // Filter out duplicates (if a dispatcher exists in both, prefer the association version)
+      const associationDispatcherIds = new Set(
+        dispatchersFromAssociations
+          .filter(d => d.status === 'active' && d.dispatcherId)
+          .map(d => d.dispatcherId)
+      );
+      
+      // Also create a set of association dispatcher emails and names for additional deduplication
+      const associationDispatcherEmails = new Set(
+        dispatchersFromAssociations
+          .filter(d => d.status === 'active' && d.dispatcher?.email)
+          .map(d => d.dispatcher!.email!.toLowerCase().trim())
+      );
+      
+      const associationDispatcherNames = new Set(
+        dispatchersFromAssociations
+          .filter(d => d.status === 'active' && d.dispatcher?.name)
+          .map(d => d.dispatcher!.name!.toLowerCase().trim())
+      );
+      
+      // Deduplicate manually created dispatchers first (in case there are duplicates in the table)
+      const seenManualDispatchers = new Map<string, DispatcherCompanyAssociation>();
+      manuallyCreatedDispatchers.forEach(dispatcher => {
+        const key = dispatcher.dispatcher?.email 
+          ? dispatcher.dispatcher.email.toLowerCase().trim()
+          : dispatcher.dispatcher?.name?.toLowerCase().trim() || dispatcher.id;
+        
+        if (!seenManualDispatchers.has(key)) {
+          seenManualDispatchers.set(key, dispatcher);
+        }
+      });
+      const uniqueManualDispatchersList = Array.from(seenManualDispatchers.values());
+      
+      // Only include manually created dispatchers that don't have an association
+      // Check by dispatcherId, email, and name to catch all duplicates
+      const uniqueManualDispatchers = uniqueManualDispatchersList.filter(d => {
+        // Skip if dispatcherId matches an association
+        if (d.dispatcherId && associationDispatcherIds.has(d.dispatcherId)) {
+          return false;
+        }
+        
+        // Skip if email matches an association (and email exists)
+        if (d.dispatcher?.email) {
+          const emailKey = d.dispatcher.email.toLowerCase().trim();
+          if (emailKey && associationDispatcherEmails.has(emailKey)) {
+            return false;
+          }
+        }
+        
+        // Skip if name matches an association (and name exists, and no email to distinguish)
+        if (d.dispatcher?.name && !d.dispatcher?.email) {
+          const nameKey = d.dispatcher.name.toLowerCase().trim();
+          if (nameKey && associationDispatcherNames.has(nameKey)) {
+            return false;
+          }
+        }
+        
+        return true;
+      });
+      
+      const allActiveDispatchers = [
+        ...dispatchersFromAssociations.filter(d => d.status === 'active' && d.dispatcherId),
+        ...uniqueManualDispatchers
+      ];
+      
+      setActiveDispatchers(allActiveDispatchers);
       setUnusedCodes(codes);
     } catch (error: any) {
       setErrorModal({ isOpen: true, message: error.message || 'Failed to load dispatchers' });
@@ -148,37 +252,61 @@ export const InvitationManagement: React.FC<InvitationManagementProps> = ({
     }
   };
 
-  const handleRevokeCode = async (associationId: string) => {
-    if (!confirm('Are you sure you want to revoke this invite code?')) return;
-
-    setLoading(true);
-    try {
-      const result = await revokeInviteCode(associationId);
-      if (result.success) {
-        await loadOwnerData();
-        onUpdate?.();
-      } else {
-        setErrorModal({ isOpen: true, message: result.error || 'Failed to revoke invite code' });
+  const handleRevokeCode = (associationId: string) => {
+    setConfirmModal({
+      isOpen: true,
+      message: 'Are you sure you want to revoke this invite code?',
+      onConfirm: async () => {
+        setConfirmModal({ isOpen: false, message: '', onConfirm: () => {} });
+        setLoading(true);
+        try {
+          const result = await revokeInviteCode(associationId);
+          if (result.success) {
+            await loadOwnerData();
+            onUpdate?.();
+          } else {
+            setErrorModal({ isOpen: true, message: result.error || 'Failed to revoke invite code' });
+          }
+        } catch (error: any) {
+          setErrorModal({ isOpen: true, message: error.message || 'Failed to revoke invite code' });
+        } finally {
+          setLoading(false);
+        }
       }
-    } catch (error: any) {
-      setErrorModal({ isOpen: true, message: error.message || 'Failed to revoke invite code' });
-    } finally {
-      setLoading(false);
-    }
+    });
   };
 
 
   const handleUpdateFee = async (associationId: string) => {
     setLoading(true);
     try {
-      const result = await updateAssociationFee(associationId, parseFloat(editFeeValue));
-      if (result.success) {
-        setEditingFee(null);
-        setEditFeeValue('');
-        await loadOwnerData();
-        onUpdate?.();
+      // Check if this is a manually created dispatcher (has 'manual-' prefix)
+      if (associationId.startsWith('manual-')) {
+        const dispatcherId = associationId.replace('manual-', '');
+        const { error } = await supabase
+          .from('dispatchers')
+          .update({ fee_percentage: parseFloat(editFeeValue) })
+          .eq('id', dispatcherId);
+        
+        if (error) {
+          setErrorModal({ isOpen: true, message: error.message || 'Failed to update fee' });
+        } else {
+          setEditingFee(null);
+          setEditFeeValue('');
+          await loadOwnerData();
+          onUpdate?.();
+        }
       } else {
-        setErrorModal({ isOpen: true, message: result.error || 'Failed to update fee' });
+        // Handle association-based dispatcher
+        const result = await updateAssociationFee(associationId, parseFloat(editFeeValue));
+        if (result.success) {
+          setEditingFee(null);
+          setEditFeeValue('');
+          await loadOwnerData();
+          onUpdate?.();
+        } else {
+          setErrorModal({ isOpen: true, message: result.error || 'Failed to update fee' });
+        }
       }
     } catch (error: any) {
       setErrorModal({ isOpen: true, message: error.message || 'Failed to update fee' });
@@ -187,23 +315,45 @@ export const InvitationManagement: React.FC<InvitationManagementProps> = ({
     }
   };
 
-  const handleRemove = async (associationId: string) => {
-    if (!confirm('Are you sure you want to remove this dispatcher from your company?')) return;
-
-    setLoading(true);
-    try {
-      const result = await removeDispatcher(associationId);
-      if (result.success) {
-        await loadOwnerData();
-        onUpdate?.();
-      } else {
-        setErrorModal({ isOpen: true, message: result.error || 'Failed to remove dispatcher' });
+  const handleRemove = (associationId: string) => {
+    setConfirmModal({
+      isOpen: true,
+      message: 'Are you sure you want to remove this dispatcher from your company?',
+      onConfirm: async () => {
+        setConfirmModal({ isOpen: false, message: '', onConfirm: () => {} });
+        setLoading(true);
+        try {
+          // Check if this is a manually created dispatcher (has 'manual-' prefix)
+          if (associationId.startsWith('manual-')) {
+            const dispatcherId = associationId.replace('manual-', '');
+            const { error } = await supabase
+              .from('dispatchers')
+              .delete()
+              .eq('id', dispatcherId);
+            
+            if (error) {
+              setErrorModal({ isOpen: true, message: error.message || 'Failed to remove dispatcher' });
+            } else {
+              await loadOwnerData();
+              onUpdate?.();
+            }
+          } else {
+            // Handle association-based dispatcher
+            const result = await removeDispatcher(associationId);
+            if (result.success) {
+              await loadOwnerData();
+              onUpdate?.();
+            } else {
+              setErrorModal({ isOpen: true, message: result.error || 'Failed to remove dispatcher' });
+            }
+          }
+        } catch (error: any) {
+          setErrorModal({ isOpen: true, message: error.message || 'Failed to remove dispatcher' });
+        } finally {
+          setLoading(false);
+        }
       }
-    } catch (error: any) {
-      setErrorModal({ isOpen: true, message: error.message || 'Failed to remove dispatcher' });
-    } finally {
-      setLoading(false);
-    }
+    });
   };
 
   if (isOwner && !companyId) {
@@ -220,6 +370,16 @@ export const InvitationManagement: React.FC<InvitationManagementProps> = ({
         isOpen={errorModal.isOpen}
         message={errorModal.message}
         onClose={() => setErrorModal({ isOpen: false, message: '' })}
+      />
+
+      <ConfirmModal
+        isOpen={confirmModal.isOpen}
+        message={confirmModal.message}
+        title="Confirm Action"
+        confirmText="Confirm"
+        cancelText="Cancel"
+        onConfirm={confirmModal.onConfirm}
+        onCancel={() => setConfirmModal({ isOpen: false, message: '', onConfirm: () => {} })}
       />
 
       {isOwner ? (
