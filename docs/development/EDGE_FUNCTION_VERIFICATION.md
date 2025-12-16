@@ -27,21 +27,25 @@ Look for these messages:
 ```
 
 **If `sessionId` is `null` or missing:**
+
 - The redirect URL isn't including the session_id
 - Check the Edge Function success URL format
 
 **If `plan` or `interval` are missing:**
+
 - Check if localStorage has the data
 - Look for: `📦 Retrieved plan/interval from localStorage: ...`
 
 ### Step 2: Check Browser URL After Redirect
 
 The URL should look like:
+
 ```
 http://localhost:3000/?payment=success&plan=essential&interval=month&session_id=cs_xxx
 ```
 
 **Check for:**
+
 - ✅ `payment=success`
 - ✅ `plan=essential` (or professional)
 - ✅ `interval=month` (or year)
@@ -50,23 +54,26 @@ http://localhost:3000/?payment=success&plan=essential&interval=month&session_id=
 ### Step 3: Check User Authentication
 
 The save only works if user is authenticated. Check console for:
+
 - Is user loaded? (Should see user object)
 - Does `user.id` exist?
 
 ### Step 4: Check Save Attempt
 
 Look for:
+
 ```
 🔄 Attempting to save subscription from Checkout Session: {
   userId: 'xxx',
   plan: 'essential',
   interval: 'month',
-  amount: 99,
+  amount: 24.99,
   sessionId: 'cs_xxx'
 }
 ```
 
 Then either:
+
 - ✅ `✅ Subscription saved successfully!`
 - ❌ `❌ Failed to save subscription: ...`
 
@@ -90,6 +97,7 @@ Then either:
 **Cause:** URL parameters not passed correctly
 
 **Fix:** Check Edge Function creates success URL with plan and interval. Should see in logs:
+
 ```
 Creating checkout session with redirect URLs: {
   successUrl: 'http://localhost:3000/?payment=success&plan=essential&interval=month&session_id={CHECKOUT_SESSION_ID}'
@@ -107,6 +115,7 @@ Creating checkout session with redirect URLs: {
 **Cause:** Migration not run
 
 **Fix:** Run the migration:
+
 ```sql
 -- Run in Supabase SQL Editor
 -- File: supabase_migrations/003_create_subscriptions_table.sql
@@ -118,13 +127,13 @@ Run in browser console after payment:
 
 ```javascript
 // Check URL params
-console.log(new URLSearchParams(window.location.search).get('session_id'));
-console.log(new URLSearchParams(window.location.search).get('plan'));
-console.log(new URLSearchParams(window.location.search).get('interval'));
+console.log(new URLSearchParams(window.location.search).get("session_id"));
+console.log(new URLSearchParams(window.location.search).get("plan"));
+console.log(new URLSearchParams(window.location.search).get("interval"));
 
 // Check localStorage
-console.log(localStorage.getItem('pending_payment'));
-console.log(localStorage.getItem('pending_subscription'));
+console.log(localStorage.getItem("pending_payment"));
+console.log(localStorage.getItem("pending_subscription"));
 
 // Check user
 // (User should be visible in React DevTools or check auth state)
@@ -140,4 +149,3 @@ console.log(localStorage.getItem('pending_subscription'));
    - Whether `sessionId`, `plan`, `interval` are present
 
 This will help identify the exact issue!
-

@@ -387,7 +387,7 @@ export const LoadForm: React.FC<LoadFormProps> = ({ onClose, onSave, currentUser
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Drop Date</label>
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Pickup Date</label>
                   <input
                     required
                     name="dropDate"

@@ -34,12 +34,12 @@ const PRICE_IDS = {
 // Plan amounts in dollars
 const PLAN_AMOUNTS = {
   essential: {
-    monthly: 99,
-    annual: 1020, // 85 * 12
+    monthly: 24.99,
+    annual: 254.90, // $21.24/month × 12 = $254.90/year (15% discount)
   },
   professional: {
-    monthly: 199,
-    annual: 2040, // 170 * 12
+    monthly: 44.99,
+    annual: 458.90, // $38.24/month × 12 = $458.90/year (15% discount)
   },
 };
 

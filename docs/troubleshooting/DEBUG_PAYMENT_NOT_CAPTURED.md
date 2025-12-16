@@ -14,7 +14,7 @@ Open console immediately after payment redirect and look for:
 🔍 Payment redirect detected. URL params: {
   payment: 'success',
   plan: 'essential',      ← Should exist
-  interval: 'month',      ← Should exist  
+  interval: 'month',      ← Should exist
   sessionId: 'cs_xxx...', ← Should exist
   ...
 }
@@ -25,11 +25,13 @@ Open console immediately after payment redirect and look for:
 ### 2. Check Browser URL After Redirect
 
 Look at the address bar. It should show:
+
 ```
 http://localhost:3000/?payment=success&plan=essential&interval=month&session_id=cs_xxx
 ```
 
 **Check for:**
+
 - ✅ `payment=success`
 - ✅ `plan=essential` (or professional)
 - ✅ `interval=month` (or year)
@@ -40,10 +42,12 @@ http://localhost:3000/?payment=success&plan=essential&interval=month&session_id=
 **CRITICAL:** The save only works if user is authenticated!
 
 Check console for:
+
 - Is user loaded? (Should see user object in logs)
 - Does `user.id` exist?
 
 **If user is null:**
+
 - Must log in BEFORE making payment
 - The redirect happens after payment, so user must already be authenticated
 
@@ -56,18 +60,20 @@ Look for these messages in console:
   userId: 'xxx',
   plan: 'essential',
   interval: 'month',
-  amount: 99,
+  amount: 24.99,
   sessionId: 'cs_xxx'
 }
 ```
 
 Then either:
+
 - ✅ `✅ Subscription saved successfully!`
 - ❌ `❌ Failed to save subscription: ...` (with error details)
 
 ### 5. Check Database Errors
 
 If you see `❌ Failed to save subscription: ...`, check:
+
 - Is the `subscriptions` table created? (Run migration if not)
 - Are there any permission errors?
 - Check the error message for details
@@ -85,6 +91,7 @@ If you see `❌ Failed to save subscription: ...`, check:
 **Symptom:** Console shows `plan` or `interval` as `null`
 
 **Possible causes:**
+
 - Edge Function success_url not formatted correctly
 - Stripe not preserving query parameters
 
@@ -95,6 +102,7 @@ If you see `❌ Failed to save subscription: ...`, check:
 **Symptom:** Console shows `sessionId: null`
 
 **Possible causes:**
+
 - Stripe not appending session_id to redirect URL
 - Wrong redirect URL format
 
@@ -105,6 +113,7 @@ If you see `❌ Failed to save subscription: ...`, check:
 **Symptom:** Error says "table does not exist"
 
 **Fix:** Run the migration:
+
 ```sql
 -- In Supabase SQL Editor
 -- File: supabase_migrations/003_create_subscriptions_table.sql
@@ -117,14 +126,17 @@ Run these in browser console after payment:
 ```javascript
 // Check URL params
 const params = new URLSearchParams(window.location.search);
-console.log('Payment:', params.get('payment'));
-console.log('Plan:', params.get('plan'));
-console.log('Interval:', params.get('interval'));
-console.log('Session ID:', params.get('session_id'));
+console.log("Payment:", params.get("payment"));
+console.log("Plan:", params.get("plan"));
+console.log("Interval:", params.get("interval"));
+console.log("Session ID:", params.get("session_id"));
 
 // Check localStorage
-console.log('Pending Payment:', localStorage.getItem('pending_payment'));
-console.log('Pending Subscription:', localStorage.getItem('pending_subscription'));
+console.log("Pending Payment:", localStorage.getItem("pending_payment"));
+console.log(
+  "Pending Subscription:",
+  localStorage.getItem("pending_subscription")
+);
 ```
 
 ## What to Share
@@ -137,4 +149,3 @@ If still not working, share:
 4. **User authentication status** - Are you logged in?
 
 This will help identify the exact issue!
-

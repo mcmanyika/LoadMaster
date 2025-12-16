@@ -403,6 +403,27 @@ export const updateLoad = async (id: string, load: Omit<Load, 'id'>): Promise<Lo
   };
 };
 
+export const deleteLoad = async (id: string): Promise<void> => {
+  if (!isSupabaseConfigured || !supabase) {
+    const index = MOCK_LOADS.findIndex(l => l.id === id);
+    if (index === -1) {
+      throw new Error('Load not found');
+    }
+    MOCK_LOADS.splice(index, 1);
+    return;
+  }
+
+  const { error } = await supabase
+    .from('loads')
+    .delete()
+    .eq('id', id);
+
+  if (error) {
+    console.error("Error deleting load:", error);
+    throw error;
+  }
+};
+
 // --- FLEET OPERATIONS ---
 
 export const getDispatchers = async (companyId?: string): Promise<Dispatcher[]> => {

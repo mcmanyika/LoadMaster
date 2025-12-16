@@ -125,11 +125,6 @@ export const Subscriptions: React.FC<SubscriptionsProps> = ({ userId }) => {
 
   return (
     <div className="p-6 max-w-6xl mx-auto">
-      <div className="mb-6">
-        <h1 className="text-3xl font-bold text-slate-900 dark:text-slate-100 mb-2">My Subscriptions</h1>
-        <p className="text-slate-600 dark:text-slate-400">View your subscription history and manage your active plans</p>
-      </div>
-
       <div className="grid gap-6">
         {subscriptions.map((subscription) => (
           <div

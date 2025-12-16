@@ -25,14 +25,14 @@ export const ConfirmModal: React.FC<ConfirmModalProps> = ({
   return (
     <div className="fixed inset-0 bg-slate-900/60 dark:bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-[70] p-4">
       <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-xl w-full max-w-md overflow-hidden">
-        <div className="bg-amber-50 dark:bg-amber-900/20 px-6 py-4 flex justify-between items-center border-b border-amber-100 dark:border-amber-800/30">
-          <div className="flex items-center gap-2 text-amber-800 dark:text-amber-400">
-            <AlertTriangle size={20} className="text-amber-600 dark:text-amber-400" />
-            <h2 className="font-bold text-lg dark:text-amber-300">{title}</h2>
+        <div className="bg-slate-800 dark:bg-slate-800 px-6 py-4 flex justify-between items-center border-b border-slate-700 dark:border-slate-700">
+          <div className="flex items-center gap-2 text-amber-400 dark:text-amber-400">
+            <AlertTriangle size={20} className="text-amber-400 dark:text-amber-400" />
+            <h2 className="font-bold text-lg text-amber-300 dark:text-amber-300">{title}</h2>
           </div>
           <button 
             onClick={onCancel}
-            className="text-amber-400 dark:text-amber-500 hover:text-amber-600 dark:hover:text-amber-400 transition-colors"
+            className="text-slate-400 dark:text-slate-400 hover:text-slate-200 dark:hover:text-slate-200 transition-colors"
           >
             <X size={20} />
           </button>

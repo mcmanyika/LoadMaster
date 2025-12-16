@@ -94,32 +94,41 @@ serve(async (req) => {
                 );
             }
 
-            // Plan pricing in cents
-            const PLAN_PRICES: Record<string, Record<string, number>> = {
-                essential: {
-                    month: 9900,
-                    year: 102000,
-                },
-                professional: {
-                    month: 19900,
-                    year: 204000,
-                },
-                enterprise: {
-                    month: 49900,
-                    year: 510000,
-                },
-            };
+            // Get the actual amount from Stripe session (more reliable than hardcoded prices)
+            let amount = 0;
 
-            const amountInCents = PLAN_PRICES[planId]?.[interval];
-            if (!amountInCents) {
-                console.error(`Invalid plan/interval: ${planId}/${interval}`);
-                return new Response(
-                    JSON.stringify({ error: `Invalid plan/interval: ${planId}/${interval}` }),
-                    { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-                );
+            // Try to get amount from session line items
+            if (session.amount_total !== null && session.amount_total !== undefined) {
+                amount = session.amount_total / 100; // Convert from cents to dollars
+            } else if (session.amount_subtotal !== null && session.amount_subtotal !== undefined) {
+                amount = session.amount_subtotal / 100; // Convert from cents to dollars
+            } else {
+                // Fallback to hardcoded prices if Stripe doesn't provide amount
+                const PLAN_PRICES: Record<string, Record<string, number>> = {
+                    essential: {
+                        month: 2499, // $24.99/month
+                        year: 25490, // $254.90/year = $21.24/month (15% discount)
+                    },
+                    professional: {
+                        month: 4499, // $44.99/month
+                        year: 45890, // $458.90/year = $38.24/month (15% discount)
+                    },
+                    enterprise: {
+                        month: 49900, // $499/month
+                        year: 510000, // $5,100/year = $425/month
+                    },
+                };
+
+                const amountInCents = PLAN_PRICES[planId]?.[interval];
+                if (!amountInCents) {
+                    console.error(`Invalid plan/interval: ${planId}/${interval}`);
+                    return new Response(
+                        JSON.stringify({ error: `Invalid plan/interval: ${planId}/${interval}` }),
+                        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+                    );
+                }
+                amount = amountInCents / 100; // Convert to dollars
             }
-
-            const amount = amountInCents / 100; // Convert to dollars
 
             // Calculate next billing date
             const nextBillingDate = new Date();

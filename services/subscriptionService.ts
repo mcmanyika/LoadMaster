@@ -32,12 +32,12 @@ export interface CreateSubscriptionData {
 // Plan pricing
 const PLAN_PRICES: Record<string, Record<'month' | 'year', number>> = {
   essential: {
-    month: 99,
-    year: 85, // per month, billed annually
+    month: 24.99,
+    year: 21.24, // per month, billed annually (15% discount)
   },
   professional: {
-    month: 199,
-    year: 170, // per month, billed annually
+    month: 44.99,
+    year: 38.24, // per month, billed annually (15% discount)
   },
   enterprise: {
     month: 499,
@@ -60,7 +60,7 @@ export const saveSubscription = async (
 
   try {
     // Calculate amount if not provided
-    const amount = subscriptionData.amount || 
+    const amount = subscriptionData.amount ||
       PLAN_PRICES[subscriptionData.plan]?.[subscriptionData.interval] || 0;
 
     // Calculate next billing date
@@ -99,15 +99,15 @@ export const saveSubscription = async (
         details: error.details,
         hint: error.hint,
       });
-      
+
       // Check if table doesn't exist
       if (error.code === '42P01' || error.message?.includes('does not exist')) {
-        return { 
-          subscription: null, 
-          error: 'Subscriptions table not found. Please run the database migration: supabase_migrations/003_create_subscriptions_table.sql' 
+        return {
+          subscription: null,
+          error: 'Subscriptions table not found. Please run the database migration: supabase_migrations/003_create_subscriptions_table.sql'
         };
       }
-      
+
       return { subscription: null, error: error.message };
     }
 
@@ -228,7 +228,7 @@ export const getActiveSubscription = async (
   userId: string
 ): Promise<{ subscription: Subscription | null; error: string | null }> => {
   const { subscriptions, error } = await getUserSubscriptions(userId);
-  
+
   if (error) {
     return { subscription: null, error };
   }

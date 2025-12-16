@@ -9,12 +9,14 @@ I've successfully implemented the Payment Intent approach, replicating your othe
 ### 1. ✅ Backend API Endpoint (`backend-server/server.js`)
 
 Added `/api/create-subscription-intent` endpoint that:
+
 - Creates Stripe Checkout Sessions with metadata (planId, interval, userId)
 - Stores plan pricing in cents
 - Handles subscriptions with recurring billing
 - Returns `sessionId` and `url` for redirect
 
 **Key Features:**
+
 - Metadata stored in Stripe (like your Payment Intent approach)
 - Automatic redirect URLs with plan/interval parameters
 - Supports both monthly and annual subscriptions
@@ -22,6 +24,7 @@ Added `/api/create-subscription-intent` endpoint that:
 ### 2. ✅ Frontend Service (`services/paymentIntentService.ts`)
 
 Created service to:
+
 - Call backend API to create subscription checkout sessions
 - Handle errors gracefully
 - Return session URL for redirect
@@ -43,11 +46,13 @@ Created service to:
 ## 🚀 How It Works
 
 1. **User clicks "Start Free Trial"**
+
    - Frontend calls backend `/api/create-subscription-intent`
    - Backend creates Stripe Checkout Session with metadata
    - Returns `sessionId` and checkout `url`
 
 2. **User redirected to Stripe Checkout**
+
    - Direct redirect to Stripe Checkout Session URL
    - Plan info stored in localStorage as backup
 
@@ -69,7 +74,7 @@ Body: {
 Response: {
   sessionId: 'cs_xxx',
   url: 'https://checkout.stripe.com/...',
-  amount: 99,
+  amount: 24.99,
   planId: 'essential',
   interval: 'month'
 }
@@ -109,12 +114,14 @@ The server should run on port 3000 (or configured port).
 ### 2. Environment Variables
 
 **Frontend `.env.local`:**
+
 ```env
 VITE_BACKEND_API_URL=http://localhost:3000
 VITE_STRIPE_PUBLISHABLE_KEY=pk_test_...
 ```
 
 **Backend `backend-server/.env`:**
+
 ```env
 STRIPE_SECRET_KEY=sk_test_...
 PORT=3000
@@ -123,29 +130,32 @@ FRONTEND_URL=http://localhost:3000
 
 ## ✅ Benefits Over Payment Links
 
-| Feature | Payment Links | Payment Intents/Checkout Sessions |
-|---------|--------------|-----------------------------------|
-| Backend Required | ❌ No | ✅ Yes |
-| Data Capture | ⚠️ Limited | ✅ Full (metadata) |
-| Auto-save | ❌ Manual | ✅ Automatic |
-| Tracking | ⚠️ Session IDs | ✅ Session IDs + Metadata |
-| Flexibility | ⚠️ Limited | ✅ High |
-| Subscription Support | ⚠️ Basic | ✅ Full (recurring) |
+| Feature              | Payment Links  | Payment Intents/Checkout Sessions |
+| -------------------- | -------------- | --------------------------------- |
+| Backend Required     | ❌ No          | ✅ Yes                            |
+| Data Capture         | ⚠️ Limited     | ✅ Full (metadata)                |
+| Auto-save            | ❌ Manual      | ✅ Automatic                      |
+| Tracking             | ⚠️ Session IDs | ✅ Session IDs + Metadata         |
+| Flexibility          | ⚠️ Limited     | ✅ High                           |
+| Subscription Support | ⚠️ Basic       | ✅ Full (recurring)               |
 
 ## 🧪 Testing
 
 1. **Start backend server:**
+
    ```bash
    cd backend-server
    npm start
    ```
 
 2. **Start frontend:**
+
    ```bash
    npm run dev
    ```
 
 3. **Test payment flow:**
+
    - Navigate to Pricing page
    - Click "Start Free Trial" on any plan
    - Complete payment with test card: `4242 4242 4242 4242`
@@ -159,20 +169,24 @@ FRONTEND_URL=http://localhost:3000
 ## 🐛 Troubleshooting
 
 ### Backend not running
+
 - **Error:** "Failed to create payment intent" or Network error
 - **Fix:** Start backend server in `backend-server/` directory
 
 ### Missing environment variables
+
 - **Error:** "Stripe not initialized" or API errors
 - **Fix:** Add `VITE_STRIPE_PUBLISHABLE_KEY` to `.env.local`
 - **Fix:** Add `STRIPE_SECRET_KEY` to `backend-server/.env`
 
 ### Wrong backend URL
+
 - **Error:** Network error or 404
 - **Fix:** Check `VITE_BACKEND_API_URL` matches backend server port
 - **Default:** `http://localhost:3000`
 
 ### Subscription not saving
+
 - **Check:** Browser console for errors
 - **Check:** Supabase `subscriptions` table exists
 - **Check:** User is authenticated when payment completes
@@ -196,4 +210,3 @@ FRONTEND_URL=http://localhost:3000
 **The Payment Intent implementation is complete and ready to use!** 🎉
 
 All subscriptions will now be automatically captured and saved to Supabase when payments complete.
-

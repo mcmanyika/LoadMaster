@@ -25,7 +25,8 @@ import {
   FileBarChart,
   FileDown,
   Receipt,
-  TrendingUp
+  TrendingUp,
+  Trash
 } from 'lucide-react';
 import { Load, DispatcherName, CalculatedLoad, UserProfile, Driver } from './types';
 import { StatsCard } from './components/StatsCard';
@@ -43,13 +44,14 @@ import { ProfileSetup } from './components/ProfileSetup';
 import { Reports } from './components/reports/Reports';
 import { Expenses } from './components/Expenses';
 import { ErrorModal } from './components/ErrorModal';
+import { ConfirmModal } from './components/ConfirmModal';
 import { CompanySwitcher } from './components/CompanySwitcher';
 import { DispatcherCompaniesList } from './components/DispatcherCompaniesList';
 import { ThemeProvider, useTheme } from './contexts/ThemeContext';
 import { ThemeToggle } from './components/ThemeToggle';
 import { saveSubscription } from './services/subscriptionService';
 import { analyzeFleetPerformance } from './services/geminiService';
-import { getLoads, createLoad, updateLoad, getDrivers, getDispatchers } from './services/loadService';
+import { getLoads, createLoad, updateLoad, deleteLoad, getDrivers, getDispatchers } from './services/loadService';
 import { getCurrentUser, signOut } from './services/authService';
 import { getCompany, getDispatcherCompanies } from './services/companyService';
 import { getExpenseSummary } from './services/expenseService';
@@ -135,7 +137,31 @@ function App() {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedDriverId, setSelectedDriverId] = useState<string>('');
-  const [dateFilter, setDateFilter] = useState({ startDate: '', endDate: '' });
+  
+  // Helper function to get current week (Monday to Saturday)
+  const getCurrentWeekDates = () => {
+    const today = new Date();
+    const dayOfWeek = today.getDay(); // 0 = Sunday, 1 = Monday, ..., 6 = Saturday
+    const mondayOffset = dayOfWeek === 0 ? -6 : 1 - dayOfWeek; // If Sunday, go back 6 days; otherwise go to Monday
+    const monday = new Date(today);
+    monday.setDate(today.getDate() + mondayOffset);
+    monday.setHours(0, 0, 0, 0);
+    
+    const saturday = new Date(monday);
+    saturday.setDate(monday.getDate() + 5); // Saturday is 5 days after Monday
+    saturday.setHours(23, 59, 59, 999);
+    
+    return {
+      startDate: monday.toISOString().split('T')[0], // Format as YYYY-MM-DD
+      endDate: saturday.toISOString().split('T')[0]
+    };
+  };
+  
+  const [dateFilter, setDateFilter] = useState(() => {
+    // Initialize with current week dates for dashboard view
+    const weekDates = getCurrentWeekDates();
+    return { startDate: weekDates.startDate, endDate: weekDates.endDate };
+  });
   const [sortBy, setSortBy] = useState<keyof CalculatedLoad>('dropDate');
   const [errorModal, setErrorModal] = useState<{ isOpen: boolean; message: string }>({ isOpen: false, message: '' });
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
@@ -153,6 +179,10 @@ function App() {
   const [currentCompanyId, setCurrentCompanyId] = useState<string | null>(null);
   const [dispatcherCompanies, setDispatcherCompanies] = useState<Company[]>([]);
   const [pendingInvitations, setPendingInvitations] = useState<any[]>([]);
+  const [confirmDelete, setConfirmDelete] = useState<{ isOpen: boolean; loadId: string | null }>({
+    isOpen: false,
+    loadId: null
+  });
 
   // Check URL parameters for payment status on mount and auto-save subscription
   useEffect(() => {
@@ -204,8 +234,8 @@ function App() {
       // Auto-save subscription to Supabase
       const saveSubscriptionData = async () => {
         const PLAN_PRICES: Record<string, Record<'month' | 'year', number>> = {
-          essential: { month: 99, year: 85 },
-          professional: { month: 199, year: 170 },
+          essential: { month: 24.99, year: 21.24 },
+          professional: { month: 44.99, year: 38.24 },
           enterprise: { month: 499, year: 425 },
         };
         
@@ -260,8 +290,8 @@ function App() {
       // Auto-save subscription to Supabase
       const saveSubscriptionData = async () => {
         const PLAN_PRICES: Record<string, Record<'month' | 'year', number>> = {
-          essential: { month: 99, year: 85 },
-          professional: { month: 199, year: 170 },
+          essential: { month: 24.99, year: 21.24 },
+          professional: { month: 44.99, year: 38.24 },
           enterprise: { month: 499, year: 425 },
         };
         
@@ -311,8 +341,8 @@ function App() {
       if (user && plan && interval) {
         const saveSubscriptionData = async () => {
           const PLAN_PRICES: Record<string, Record<'month' | 'year', number>> = {
-            essential: { month: 99, year: 85 },
-            professional: { month: 199, year: 170 },
+            essential: { month: 24.99, year: 21.24 },
+            professional: { month: 44.99, year: 38.24 },
             enterprise: { month: 499, year: 425 },
           };
           
@@ -359,8 +389,8 @@ function App() {
             // Create async function to handle the save
             const saveFromLocalStorage = async () => {
               const PLAN_PRICES: Record<string, Record<'month' | 'year', number>> = {
-                essential: { month: 99, year: 85 },
-                professional: { month: 199, year: 170 },
+                essential: { month: 24.99, year: 21.24 },
+                professional: { month: 44.99, year: 38.24 },
                 enterprise: { month: 499, year: 425 },
               };
               
@@ -451,6 +481,14 @@ function App() {
       localStorage.removeItem('currentCompanyId');
     }
   }, [currentCompanyId]);
+
+  // Reset date filter to current week when switching to dashboard view
+  useEffect(() => {
+    if (view === 'dashboard') {
+      const weekDates = getCurrentWeekDates();
+      setDateFilter({ startDate: weekDates.startDate, endDate: weekDates.endDate });
+    }
+  }, [view]);
 
   // Fetch Data when User exists
   useEffect(() => {
@@ -688,6 +726,18 @@ function App() {
 
   const handleEditLoad = (load: Load) => {
     setLoadToEdit(load);
+  };
+
+  const handleDeleteLoad = async (loadId: string) => {
+    try {
+      await deleteLoad(loadId);
+      // Refresh loads after deletion
+      await fetchData();
+      setConfirmDelete({ isOpen: false, loadId: null });
+    } catch (error: any) {
+      console.error('Error deleting load:', error);
+      setErrorModal({ isOpen: true, message: error.message || 'Failed to delete load' });
+    }
   };
 
   const handleCloseModal = () => {
@@ -1342,12 +1392,15 @@ function App() {
                             </div>
                           </th>
                         )}
+                        <th className="bg-slate-50 dark:bg-slate-800 text-slate-500 dark:text-slate-400 p-4 font-semibold border-b border-slate-200 dark:border-slate-700 text-center w-20">
+                          Actions
+                        </th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
                       {dataLoading && sortedLoads.length === 0 ? (
                          <tr>
-                            <td colSpan={user.role === 'owner' ? 9 : 8} className="p-12 text-center text-slate-400 dark:text-slate-500">
+                            <td colSpan={user.role === 'owner' ? 10 : 9} className="p-12 text-center text-slate-400 dark:text-slate-500">
                                <div className="flex justify-center items-center gap-2">
                                  <div className="w-4 h-4 border-2 border-slate-400 dark:border-slate-500 border-t-transparent rounded-full animate-spin"></div>
                                  <span>Loading fleet data...</span>
@@ -1356,7 +1409,7 @@ function App() {
                          </tr>
                       ) : sortedLoads.length === 0 ? (
                          <tr>
-                            <td colSpan={user.role === 'owner' ? 9 : 8} className="p-8 text-center text-slate-400 dark:text-slate-500">
+                            <td colSpan={user.role === 'owner' ? 10 : 9} className="p-8 text-center text-slate-400 dark:text-slate-500">
                                No loads found. Add a new load to get started.
                             </td>
                          </tr>
@@ -1417,6 +1470,18 @@ function App() {
                                 </span>
                               </td>
                             )}
+                            <td className="p-4 text-center">
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setConfirmDelete({ isOpen: true, loadId: load.id });
+                                }}
+                                className="p-2 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
+                                title="Delete load"
+                              >
+                                <Trash size={16} />
+                              </button>
+                            </td>
                           </tr>
                         ))
                       )}
@@ -1506,6 +1571,19 @@ function App() {
         isOpen={errorModal.isOpen}
         message={errorModal.message}
         onClose={() => setErrorModal({ isOpen: false, message: '' })}
+      />
+      <ConfirmModal
+        isOpen={confirmDelete.isOpen}
+        title="Delete Load"
+        message="Are you sure you want to delete this load? This action cannot be undone."
+        confirmText="Delete"
+        cancelText="Cancel"
+        onConfirm={() => {
+          if (confirmDelete.loadId) {
+            handleDeleteLoad(confirmDelete.loadId);
+          }
+        }}
+        onCancel={() => setConfirmDelete({ isOpen: false, loadId: null })}
       />
     </div>
     </ThemeProvider>
