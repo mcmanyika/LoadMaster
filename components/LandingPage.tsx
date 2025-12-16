@@ -175,14 +175,15 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onSignIn
         </section>
 
         {/* Email subscription */}
-        <section className="space-y-4 rounded-2xl border border-slate-800 bg-slate-900/70 p-5">
-          <h2 className="text-lg font-semibold text-slate-50 md:text-xl">
-            Get LoadMaster updates in your inbox.
+        <section className="space-y-4">
+          <h2 className="text-xl font-semibold text-slate-50 md:text-2xl">
+            Get LoadMaster updates.
           </h2>
           <p className="text-xs text-slate-300 md:text-sm">
             Be the first to know when we ship new dispatcher tools, AI features, and pricing updates for fleets.
           </p>
-          <form
+          <div className="space-y-3 rounded-2xl border border-slate-800 bg-slate-900/70 p-5">
+            <form
             className="flex flex-col gap-3 md:flex-row md:items-center"
             onSubmit={(e) => {
               e.preventDefault();
@@ -193,35 +194,36 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onSignIn
               setEmailSubmitted(true);
               setTimeout(() => setEmailSubmitted(false), 4000);
             }}
-          >
-            <input
+            >
+              <input
               type="email"
               required
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder="you@fleetcompany.com"
               className="w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/40"
-            />
-            <button
+              />
+              <button
               type="submit"
               className="inline-flex items-center justify-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow-sm transition-colors hover:bg-blue-500 md:w-auto"
             >
               Subscribe
               <ArrowRight className="h-4 w-4" />
             </button>
-          </form>
-          {emailSubmitted && (
-            <p className="text-xs text-emerald-400">
-              Thanks! You&apos;re on the list. We&apos;ll email you LoadMaster updates.
-            </p>
-          )}
+            </form>
+            {emailSubmitted && (
+              <p className="text-xs text-emerald-400">
+                Thanks! You&apos;re on the list. We&apos;ll email you LoadMaster updates.
+              </p>
+            )}
+          </div>
         </section>
 
         {/* Pricing preview */}
         <section id="pricing" className="space-y-6">
           <div>
             <h2 className="text-xl font-semibold text-slate-50 md:text-2xl">
-              Simple pricing for growing fleets.
+              Simple pricing.
             </h2>
             <p className="text-xs text-slate-300 md:text-sm">
               Start with the plan that fits your fleet today. Upgrade as you add more trucks and dispatchers.
@@ -278,23 +280,6 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onSignIn
                 <li>• Custom onboarding & training</li>
                 <li>• Priority support</li>
               </ul>
-            </div>
-          </div>
-        </section>
-
-        {/* Testimonial / social proof */}
-        <section className="space-y-4">
-          <h2 className="text-xl font-semibold text-slate-50">Dispatchers who switched to LoadMaster say:</h2>
-          <div className="flex flex-col gap-4 rounded-2xl border border-slate-800 bg-slate-900/70 p-5 md:flex-row md:items-center md:justify-between">
-            <div className="max-w-xl space-y-2">
-              <p className="text-sm text-slate-200">
-                “Before LoadMaster, Fridays were a nightmare. Now I can show every owner exactly what I brought in for
-                them this week with one screenshot. It’s helped me raise my rates and still keep carriers happy.”
-              </p>
-              <p className="text-xs text-slate-400">Independent dispatcher · 8‑truck fleet</p>
-            </div>
-            <div className="text-xs text-slate-400">
-              Backed by clear metrics: weekly gross, RPM, miles and driver pay for every truck and dispatcher.
             </div>
           </div>
         </section>
