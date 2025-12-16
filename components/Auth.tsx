@@ -93,7 +93,7 @@ export const Auth: React.FC<AuthProps> = ({ onLogin }) => {
               )}
 
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">Email Address</label>
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Email Address</label>
                 <div className="relative">
                   <Mail className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-5 h-5" />
                   <input
@@ -108,7 +108,7 @@ export const Auth: React.FC<AuthProps> = ({ onLogin }) => {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">Password</label>
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Password</label>
                 <div className="relative">
                   <Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-5 h-5" />
                   <input

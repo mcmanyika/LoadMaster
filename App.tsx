@@ -139,6 +139,7 @@ function App() {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedDriverId, setSelectedDriverId] = useState<string>('');
   const [showAuth, setShowAuth] = useState(false);
+  const [pendingPlan, setPendingPlan] = useState<{ planId: 'essential' | 'professional'; interval: 'month' | 'year' } | null>(null);
   
   // Helper function to get current week (Monday to Saturday)
   const getCurrentWeekDates = () => {
@@ -499,6 +500,14 @@ function App() {
     }
   }, [user, view, currentCompanyId]);
 
+  // If user logs in with a pending plan from the landing page, send them to Pricing
+  useEffect(() => {
+    if (user && pendingPlan) {
+      setView('pricing');
+      setPendingPlan(null);
+    }
+  }, [user, pendingPlan]);
+
   // Redirect owners without a company to Settings page
   useEffect(() => {
     if (user && user.role === 'owner' && !authLoading) {
@@ -585,6 +594,8 @@ function App() {
     await signOut();
     setUser(null);
     setLoads([]);
+    setShowAuth(false);
+    setPendingPlan(null);
     // Force a page reload to ensure clean state
     window.location.href = '/';
   };
@@ -876,6 +887,10 @@ function App() {
           <LandingPage
             onGetStarted={() => setShowAuth(true)}
             onSignIn={() => setShowAuth(true)}
+            onSelectPlan={(planId, interval) => {
+              setPendingPlan({ planId, interval });
+              setShowAuth(true);
+            }}
           />
         )}
       </ThemeProvider>
