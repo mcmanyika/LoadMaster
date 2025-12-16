@@ -47,6 +47,7 @@ import { ErrorModal } from './components/ErrorModal';
 import { ConfirmModal } from './components/ConfirmModal';
 import { CompanySwitcher } from './components/CompanySwitcher';
 import { DispatcherCompaniesList } from './components/DispatcherCompaniesList';
+import { LandingPage } from './components/LandingPage';
 import { ThemeProvider, useTheme } from './contexts/ThemeContext';
 import { ThemeToggle } from './components/ThemeToggle';
 import { saveSubscription } from './services/subscriptionService';
@@ -137,6 +138,7 @@ function App() {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedDriverId, setSelectedDriverId] = useState<string>('');
+  const [showAuth, setShowAuth] = useState(false);
   
   // Helper function to get current week (Monday to Saturday)
   const getCurrentWeekDates = () => {
@@ -868,7 +870,14 @@ function App() {
     }
     return (
       <ThemeProvider>
-        <Auth onLogin={setUser} />
+        {showAuth ? (
+          <Auth onLogin={setUser} />
+        ) : (
+          <LandingPage
+            onGetStarted={() => setShowAuth(true)}
+            onSignIn={() => setShowAuth(true)}
+          />
+        )}
       </ThemeProvider>
     );
   }
