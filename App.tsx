@@ -1444,7 +1444,9 @@ function App() {
                             <td className="p-4 text-right text-sm text-rose-600 dark:text-rose-400">-${load.dispatchFee.toFixed(1)}</td>
                             <td className="p-4 text-right">
                               <div className="font-bold text-emerald-600 dark:text-emerald-400">${load.driverPay.toFixed(1)}</div>
-                              <div className="text-xs text-slate-400 dark:text-slate-500">Gas: ${load.gasAmount}</div>
+                              <div className="text-xs text-slate-400 dark:text-slate-500">
+                                Gas: ${ (load.gasAmount * 0.5).toFixed(1) }
+                              </div>
                             </td>
                             <td className="p-4">
                               <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
