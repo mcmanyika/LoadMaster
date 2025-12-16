@@ -24,7 +24,7 @@ const MOCK_DISPATCHERS: Dispatcher[] = [
 const MOCK_LOADS: Load[] = [
   {
     id: '1',
-    company: 'RXO',
+    company: 'Example Broker',
     gross: 2740,
     miles: 1158,
     gasAmount: 700,

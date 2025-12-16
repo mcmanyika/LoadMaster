@@ -383,7 +383,7 @@ export const LoadForm: React.FC<LoadFormProps> = ({ onClose, onSave, currentUser
                     value={formData.company}
                     onChange={handleChange}
                     className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
-                    placeholder="e.g. RXO"
+                    placeholder="e.g. Broker Inc"
                   />
                 </div>
                 <div>

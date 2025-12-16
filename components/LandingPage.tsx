@@ -1,13 +1,12 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   Truck,
   LayoutDashboard,
-  BarChart3,
-  ShieldCheck,
   ArrowRight,
   Users,
   BrainCircuit
 } from 'lucide-react';
+import { redirectToPaymentLink } from '../services/paymentLinksService';
 
 interface LandingPageProps {
   onGetStarted: () => void;
@@ -15,10 +14,23 @@ interface LandingPageProps {
 }
 
 export const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onSignIn }) => {
+  const [email, setEmail] = useState('');
+  const [emailSubmitted, setEmailSubmitted] = useState(false);
+  const [pricingError, setPricingError] = useState<string | null>(null);
+
   const scrollToPricing = () => {
     const el = document.getElementById('pricing');
     if (el) {
       el.scrollIntoView({ behavior: 'smooth' });
+    }
+  };
+
+  const handleLandingCheckout = (planId: 'essential' | 'professional') => {
+    setPricingError(null);
+    const { error } = redirectToPaymentLink(planId, 'month');
+    if (error) {
+      console.error('Landing pricing payment link error:', error);
+      setPricingError(error);
     }
   };
 
@@ -118,7 +130,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onSignIn
                 </div>
               </div>
               <div className="flex items-center justify-between border-t border-slate-800 px-4 py-3 text-[11px] text-slate-400">
-                <span>RXO · Fond du Lac, WI → Indianapolis, IN</span>
+                <span>Broker · Fond du Lac, WI → Indianapolis, IN</span>
                 <span className="font-semibold text-slate-200">$900</span>
               </div>
             </div>
@@ -163,25 +175,65 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onSignIn
           </div>
         </section>
 
-        {/* Pricing preview */}
-        <section id="pricing" className="space-y-6">
-          <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
-            <div>
-              <h2 className="text-xl font-semibold text-slate-50 md:text-2xl">
-                Simple pricing for growing fleets.
-              </h2>
-              <p className="text-xs text-slate-300 md:text-sm">
-                Start with the plan that fits your fleet today. Upgrade as you add more trucks and dispatchers.
-              </p>
-            </div>
+        {/* Email subscription */}
+        <section className="space-y-4 rounded-2xl border border-slate-800 bg-slate-900/70 p-5">
+          <h2 className="text-lg font-semibold text-slate-50 md:text-xl">
+            Get LoadMaster updates in your inbox.
+          </h2>
+          <p className="text-xs text-slate-300 md:text-sm">
+            Be the first to know when we ship new dispatcher tools, AI features, and pricing updates for fleets.
+          </p>
+          <form
+            className="flex flex-col gap-3 md:flex-row md:items-center"
+            onSubmit={(e) => {
+              e.preventDefault();
+              if (!email) return;
+              // Placeholder: hook this into your email marketing tool or Supabase
+              console.log('Email subscribed:', email);
+              setEmail('');
+              setEmailSubmitted(true);
+              setTimeout(() => setEmailSubmitted(false), 4000);
+            }}
+          >
+            <input
+              type="email"
+              required
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="you@fleetcompany.com"
+              className="w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/40"
+            />
             <button
-              onClick={onGetStarted}
-              className="inline-flex items-center gap-2 self-start rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow-sm transition-colors hover:bg-blue-500"
+              type="submit"
+              className="inline-flex items-center justify-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow-sm transition-colors hover:bg-blue-500 md:w-auto"
             >
-              Get started at www.loadmaster.sh
+              Subscribe
               <ArrowRight className="h-4 w-4" />
             </button>
+          </form>
+          {emailSubmitted && (
+            <p className="text-xs text-emerald-400">
+              Thanks! You&apos;re on the list. We&apos;ll email you LoadMaster updates.
+            </p>
+          )}
+        </section>
+
+        {/* Pricing preview */}
+        <section id="pricing" className="space-y-6">
+          <div>
+            <h2 className="text-xl font-semibold text-slate-50 md:text-2xl">
+              Simple pricing for growing fleets.
+            </h2>
+            <p className="text-xs text-slate-300 md:text-sm">
+              Start with the plan that fits your fleet today. Upgrade as you add more trucks and dispatchers.
+            </p>
           </div>
+
+          {pricingError && (
+            <p className="text-xs text-rose-400">
+              {pricingError}
+            </p>
+          )}
 
           <div className="grid gap-4 md:grid-cols-3">
             <div className="space-y-2 rounded-2xl border border-slate-800 bg-slate-900/70 p-4">
@@ -195,6 +247,13 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onSignIn
                 <li>• Load management & rate-con PDFs</li>
                 <li>• Driver pay & dispatch fee calculations</li>
               </ul>
+              <button
+                onClick={() => handleLandingCheckout('essential')}
+                className="mt-4 inline-flex items-center justify-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-xs font-medium text-white shadow-sm transition-colors hover:bg-blue-500 w-full"
+              >
+                Start Essential plan
+                <ArrowRight className="h-3 w-3" />
+              </button>
             </div>
             <div className="space-y-2 rounded-2xl border border-blue-500 bg-slate-900 p-4 shadow-lg">
               <p className="text-xs font-semibold uppercase text-blue-300">Professional</p>
@@ -207,6 +266,13 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onSignIn
                 <li>• AI analysis reports</li>
                 <li>• Advanced reporting by dispatcher & driver</li>
               </ul>
+              <button
+                onClick={() => handleLandingCheckout('professional')}
+                className="mt-4 inline-flex items-center justify-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-xs font-medium text-white shadow-sm transition-colors hover:bg-blue-500 w-full"
+              >
+                Start Professional plan
+                <ArrowRight className="h-3 w-3" />
+              </button>
             </div>
             <div className="space-y-2 rounded-2xl border border-slate-800 bg-slate-900/70 p-4">
               <p className="text-xs font-semibold uppercase text-emerald-300">Enterprise</p>

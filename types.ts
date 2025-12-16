@@ -89,7 +89,7 @@ export interface CompanyInvitation {
 
 export interface Load {
   id: string;
-  company: string; // The Broker (e.g. RXO)
+  company: string; // The Broker (e.g. Example Broker)
   gross: number;
   miles: number;
   gasAmount: number;
