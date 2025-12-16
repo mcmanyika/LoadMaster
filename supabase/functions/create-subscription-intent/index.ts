@@ -43,19 +43,19 @@ serve(async (req) => {
       );
     }
 
-    // Plan pricing in cents
+    // Plan pricing in cents (50% reduced)
     const PLAN_PRICES: Record<string, Record<string, number>> = {
       essential: {
-        month: 2499, // $24.99/month
-        year: 25490, // $21.24/month × 12 = $254.90/year (15% discount)
+        month: 1249, // $12.49/month
+        year: 12745, // $10.62/month × 12 = $127.45/year (15% discount)
       },
       professional: {
-        month: 4499, // $44.99/month
-        year: 45890, // $38.24/month × 12 = $458.90/year (15% discount)
+        month: 2249, // $22.49/month
+        year: 22945, // $19.12/month × 12 = $229.45/year (15% discount)
       },
       enterprise: {
-        month: 49900, // $499/month
-        year: 510000, // $425/month × 12 = $5,100/year
+        month: 249500, // $249.50/month
+        year: 255000, // $212.50/month × 12 = $2,550/year
       },
     };
 

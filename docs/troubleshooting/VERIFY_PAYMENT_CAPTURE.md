@@ -94,7 +94,7 @@ If everything works, you should see:
   userId: 'xxx',
   plan: 'essential',
   interval: 'month',
-  amount: 24.99,
+  amount: 12.49,
   sessionId: 'cs_xxx'
 }
 

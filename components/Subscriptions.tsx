@@ -11,6 +11,9 @@ export const Subscriptions: React.FC<SubscriptionsProps> = ({ userId }) => {
   const [subscriptions, setSubscriptions] = useState<Subscription[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 5;
+  const [selectedSubscription, setSelectedSubscription] = useState<Subscription | null>(null);
 
   useEffect(() => {
     fetchSubscriptions();
@@ -24,6 +27,7 @@ export const Subscriptions: React.FC<SubscriptionsProps> = ({ userId }) => {
       setError(err);
     } else {
       setSubscriptions(data);
+      setCurrentPage(1);
     }
     setLoading(false);
   };
@@ -123,102 +127,201 @@ export const Subscriptions: React.FC<SubscriptionsProps> = ({ userId }) => {
     );
   }
 
+  const totalPages = Math.ceil(subscriptions.length / itemsPerPage);
+  const paginatedSubscriptions = subscriptions.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
+  );
+
   return (
     <div className="p-6 max-w-6xl mx-auto">
-      <div className="grid gap-6">
-        {subscriptions.map((subscription) => (
+      <div className="grid gap-4">
+        {paginatedSubscriptions.map((subscription) => (
           <div
             key={subscription.id}
-            className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm hover:shadow-md transition-shadow p-6"
+            onClick={() => setSelectedSubscription(subscription)}
+            className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm hover:shadow-md transition-shadow p-4 md:p-5 cursor-pointer"
           >
             <div className="flex items-start justify-between mb-4">
               <div>
                 <div className="flex items-center gap-3 mb-2">
-                  <h3 className="text-xl font-semibold text-slate-900 dark:text-slate-100">
+                  <h3 className="text-base md:text-lg font-semibold text-slate-900 dark:text-slate-100">
                     {getPlanName(subscription.plan)}
                   </h3>
                   {getStatusBadge(subscription.status)}
                 </div>
-                <p className="text-sm text-slate-600 dark:text-slate-400">
+                <p className="text-xs md:text-sm text-slate-600 dark:text-slate-400">
                   {subscription.interval === 'month' ? 'Monthly' : 'Annual'} billing
                 </p>
               </div>
               <div className="text-right">
-                <p className="text-2xl font-bold text-slate-900 dark:text-slate-100">
+                <p className="text-lg md:text-2xl font-bold text-slate-900 dark:text-slate-100">
                   {formatCurrency(subscription.amount)}
                 </p>
-                <p className="text-sm text-slate-600 dark:text-slate-400">
+                <p className="text-xs md:text-sm text-slate-600 dark:text-slate-400">
                   /{subscription.interval === 'month' ? 'month' : 'year'}
                 </p>
               </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-4 border-t border-slate-200 dark:border-slate-700">
-              <div className="flex items-start gap-3">
-                <Calendar className="w-5 h-5 text-slate-400 dark:text-slate-500 mt-0.5" />
-                <div>
-                  <p className="text-xs text-slate-500 dark:text-slate-400 mb-1">Started</p>
-                  <p className="text-sm font-medium text-slate-900 dark:text-slate-100">
-                    {formatDate(subscription.startedAt)}
-                  </p>
-                </div>
-              </div>
-
-              {subscription.nextBillingDate && subscription.status === 'active' && (
-                <div className="flex items-start gap-3">
-                  <Clock className="w-5 h-5 text-slate-400 dark:text-slate-500 mt-0.5" />
-                  <div>
-                    <p className="text-xs text-slate-500 dark:text-slate-400 mb-1">Next Billing</p>
-                    <p className="text-sm font-medium text-slate-900 dark:text-slate-100">
-                      {formatDate(subscription.nextBillingDate)}
-                    </p>
-                  </div>
-                </div>
-              )}
-
-              {subscription.endedAt && (
-                <div className="flex items-start gap-3">
-                  <XCircle className="w-5 h-5 text-slate-400 dark:text-slate-500 mt-0.5" />
-                  <div>
-                    <p className="text-xs text-slate-500 dark:text-slate-400 mb-1">Ended</p>
-                    <p className="text-sm font-medium text-slate-900 dark:text-slate-100">
-                      {formatDate(subscription.endedAt)}
-                    </p>
-                  </div>
-                </div>
-              )}
-
-              {subscription.canceledAt && (
-                <div className="flex items-start gap-3">
-                  <XCircle className="w-5 h-5 text-slate-400 dark:text-slate-500 mt-0.5" />
-                  <div>
-                    <p className="text-xs text-slate-500 dark:text-slate-400 mb-1">Canceled</p>
-                    <p className="text-sm font-medium text-slate-900 dark:text-slate-100">
-                      {formatDate(subscription.canceledAt)}
-                    </p>
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {subscription.stripeSubscriptionId && (
-              <div className="mt-4 pt-4 border-t border-slate-200 dark:border-slate-700">
-                <p className="text-xs text-slate-500 dark:text-slate-400">
-                  Subscription ID: <span className="font-mono">{subscription.stripeSubscriptionId}</span>
-                </p>
-              </div>
-            )}
           </div>
         ))}
       </div>
 
-      {subscriptions.filter((s) => s.status === 'active').length > 0 && (
-        <div className="mt-6 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-900/30 rounded-lg p-4">
-          <p className="text-sm text-blue-800 dark:text-blue-300">
-            <strong>Active Subscription:</strong> You currently have{' '}
-            {subscriptions.filter((s) => s.status === 'active').length} active subscription
-            {subscriptions.filter((s) => s.status === 'active').length > 1 ? 's' : ''}.
+      {totalPages > 1 && (
+        <div className="mt-6 flex items-center justify-between border-t border-slate-200 dark:border-slate-700 pt-4">
+          <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400">
+            Showing{' '}
+            <span className="font-medium">
+              {(currentPage - 1) * itemsPerPage + 1}
+            </span>{' '}
+            to{' '}
+            <span className="font-medium">
+              {Math.min(currentPage * itemsPerPage, subscriptions.length)}
+            </span>{' '}
+            of{' '}
+            <span className="font-medium">{subscriptions.length}</span> subscriptions
           </p>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+              disabled={currentPage === 1}
+              className="px-2 py-1 text-xs rounded-lg border border-slate-200 dark:border-slate-600 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              Prev
+            </button>
+            <div className="flex items-center gap-1">
+              {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+                <button
+                  key={page}
+                  onClick={() => setCurrentPage(page)}
+                  className={`px-2 py-1 text-xs rounded-lg ${
+                    currentPage === page
+                      ? 'bg-blue-600 text-white'
+                      : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700'
+                  }`}
+                >
+                  {page}
+                </button>
+              ))}
+            </div>
+            <button
+              onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+              disabled={currentPage === totalPages}
+              className="px-2 py-1 text-xs rounded-lg border border-slate-200 dark:border-slate-600 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              Next
+            </button>
+          </div>
+        </div>
+      )}
+
+      {selectedSubscription && (
+        <div className="fixed inset-0 z-40 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm px-4">
+          <div className="w-full max-w-lg rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 shadow-2xl">
+            <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-700 px-5 py-4">
+              <div>
+                <p className="text-xs uppercase tracking-wide text-slate-500 dark:text-slate-400 mb-1">
+                  Subscription details
+                </p>
+                <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100">
+                  {getPlanName(selectedSubscription.plan)} · {selectedSubscription.interval === 'month' ? 'Monthly' : 'Annual'}
+                </h3>
+              </div>
+              <button
+                onClick={() => setSelectedSubscription(null)}
+                className="text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 text-sm"
+              >
+                Close
+              </button>
+            </div>
+
+            <div className="px-5 py-4 space-y-4 text-sm">
+              <div className="flex items-baseline justify-between">
+                <span className="text-slate-500 dark:text-slate-400">Amount</span>
+                <span className="font-semibold text-slate-900 dark:text-slate-100">
+                  {formatCurrency(selectedSubscription.amount)} /{' '}
+                  {selectedSubscription.interval === 'month' ? 'month' : 'year'}
+                </span>
+              </div>
+
+              <div className="space-y-4">
+                <div>
+                  <p className="text-[11px] text-slate-500 dark:text-slate-400 mb-0.5">Status</p>
+                  {getStatusBadge(selectedSubscription.status)}
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <p className="text-[11px] text-slate-500 dark:text-slate-400 mb-0.5">Started</p>
+                    <p className="font-medium text-slate-900 dark:text-slate-100">
+                      {formatDate(selectedSubscription.startedAt)}
+                    </p>
+                  </div>
+                  {selectedSubscription.nextBillingDate && (
+                    <div>
+                      <p className="text-[11px] text-slate-500 dark:text-slate-400 mb-0.5">Next billing</p>
+                      <p className="font-medium text-slate-900 dark:text-slate-100">
+                        {formatDate(selectedSubscription.nextBillingDate)}
+                      </p>
+                    </div>
+                  )}
+                </div>
+                {selectedSubscription.canceledAt && (
+                  <div>
+                    <p className="text-[11px] text-slate-500 dark:text-slate-400 mb-0.5">Canceled</p>
+                    <p className="font-medium text-slate-900 dark:text-slate-100">
+                      {formatDate(selectedSubscription.canceledAt)}
+                    </p>
+                  </div>
+                )}
+                {selectedSubscription.endedAt && (
+                  <div>
+                    <p className="text-[11px] text-slate-500 dark:text-slate-400 mb-0.5">Ended</p>
+                    <p className="font-medium text-slate-900 dark:text-slate-100">
+                      {formatDate(selectedSubscription.endedAt)}
+                    </p>
+                  </div>
+                )}
+              </div>
+
+              {(selectedSubscription.stripeSubscriptionId ||
+                selectedSubscription.stripeCustomerId ||
+                selectedSubscription.stripeSessionId) && (
+                <div className="mt-2 rounded-lg bg-slate-50 dark:bg-slate-800/60 p-3 space-y-1">
+                  <p className="text-[11px] font-medium text-slate-500 dark:text-slate-400 mb-1">
+                    Stripe references
+                  </p>
+                  {selectedSubscription.stripeSubscriptionId && (
+                    <p className="text-[11px] text-slate-600 dark:text-slate-300">
+                      Subscription ID:{' '}
+                      <span className="font-mono break-all">{selectedSubscription.stripeSubscriptionId}</span>
+                    </p>
+                  )}
+                  {selectedSubscription.stripeCustomerId && (
+                    <p className="text-[11px] text-slate-600 dark:text-slate-300">
+                      Customer ID:{' '}
+                      <span className="font-mono break-all">{selectedSubscription.stripeCustomerId}</span>
+                    </p>
+                  )}
+                  {selectedSubscription.stripeSessionId && (
+                    <p className="text-[11px] text-slate-600 dark:text-slate-300">
+                      Checkout Session ID:{' '}
+                      <span className="font-mono break-all">{selectedSubscription.stripeSessionId}</span>
+                    </p>
+                  )}
+                </div>
+              )}
+            </div>
+
+            <div className="flex justify-end border-t border-slate-200 dark:border-slate-700 px-5 py-3">
+              <button
+                onClick={() => setSelectedSubscription(null)}
+                className="px-4 py-1.5 text-xs md:text-sm rounded-lg border border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800"
+              >
+                Close
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>

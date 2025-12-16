@@ -237,9 +237,9 @@ function App() {
       // Auto-save subscription to Supabase
       const saveSubscriptionData = async () => {
         const PLAN_PRICES: Record<string, Record<'month' | 'year', number>> = {
-          essential: { month: 24.99, year: 21.24 },
-          professional: { month: 44.99, year: 38.24 },
-          enterprise: { month: 499, year: 425 },
+          essential: { month: 12.49, year: 10.62 },
+          professional: { month: 22.49, year: 19.12 },
+          enterprise: { month: 249.5, year: 212.5 },
         };
         
         const amount = PLAN_PRICES[plan]?.[interval] || 0;
@@ -293,9 +293,9 @@ function App() {
       // Auto-save subscription to Supabase
       const saveSubscriptionData = async () => {
         const PLAN_PRICES: Record<string, Record<'month' | 'year', number>> = {
-          essential: { month: 24.99, year: 21.24 },
-          professional: { month: 44.99, year: 38.24 },
-          enterprise: { month: 499, year: 425 },
+          essential: { month: 12.49, year: 10.62 },
+          professional: { month: 22.49, year: 19.12 },
+          enterprise: { month: 249.5, year: 212.5 },
         };
         
         const amount = PLAN_PRICES[plan]?.[interval] || 0;
@@ -344,9 +344,9 @@ function App() {
       if (user && plan && interval) {
         const saveSubscriptionData = async () => {
           const PLAN_PRICES: Record<string, Record<'month' | 'year', number>> = {
-            essential: { month: 24.99, year: 21.24 },
-            professional: { month: 44.99, year: 38.24 },
-            enterprise: { month: 499, year: 425 },
+            essential: { month: 12.49, year: 10.62 },
+            professional: { month: 22.49, year: 19.12 },
+            enterprise: { month: 249.5, year: 212.5 },
           };
           
           const amount = PLAN_PRICES[plan]?.[interval] || 0;
@@ -391,11 +391,11 @@ function App() {
             
             // Create async function to handle the save
             const saveFromLocalStorage = async () => {
-              const PLAN_PRICES: Record<string, Record<'month' | 'year', number>> = {
-                essential: { month: 24.99, year: 21.24 },
-                professional: { month: 44.99, year: 38.24 },
-                enterprise: { month: 499, year: 425 },
-              };
+            const PLAN_PRICES: Record<string, Record<'month' | 'year', number>> = {
+              essential: { month: 12.49, year: 10.62 },
+              professional: { month: 22.49, year: 19.12 },
+              enterprise: { month: 249.5, year: 212.5 },
+            };
               
               const amount = PLAN_PRICES[plan]?.[interval] || 0;
               
@@ -945,34 +945,34 @@ function App() {
           </div>
           
           <nav className="space-y-2">
-            <button 
+            <button
               onClick={() => setView('dashboard')}
-              className={`w-full flex items-center justify-center group-hover:justify-start gap-3 px-4 py-3 rounded-xl transition-colors ${view === 'dashboard' ? 'bg-blue-600/10 text-blue-400 font-medium' : 'text-slate-300 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'}`}
+              className={`w-full flex items-center justify-center group-hover:justify-start gap-3 px-4 py-3 rounded-xl transition-colors ${view === 'dashboard' ? 'bg-blue-600/10 text-blue-400 font-medium' : 'text-slate-300 dark:text-slate-300 hover:bg-slate-800'}`}
               title="Dashboard"
             >
               <LayoutDashboard size={20} className="flex-shrink-0" />
               <span className="opacity-0 group-hover:opacity-100 transition-opacity duration-300 whitespace-nowrap overflow-hidden text-slate-300 dark:text-slate-300">Dashboard</span>
             </button>
-            <button 
+            <button
               onClick={() => setView('loads')}
-              className={`w-full flex items-center justify-center group-hover:justify-start gap-3 px-4 py-3 rounded-xl transition-colors ${view === 'loads' ? 'bg-blue-600/10 text-blue-400 font-medium' : 'text-slate-300 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'}`}
+              className={`w-full flex items-center justify-center group-hover:justify-start gap-3 px-4 py-3 rounded-xl transition-colors ${view === 'loads' ? 'bg-blue-600/10 text-blue-400 font-medium' : 'text-slate-300 dark:text-slate-300 hover:bg-slate-800'}`}
               title="All Loads"
             >
               <FileText size={20} className="flex-shrink-0" />
               <span className="opacity-0 group-hover:opacity-100 transition-opacity duration-300 whitespace-nowrap overflow-hidden text-slate-300 dark:text-slate-300">All Loads</span>
             </button>
-            <button 
+            <button
               onClick={() => setView('fleet')}
-              className={`w-full flex items-center justify-center group-hover:justify-start gap-3 px-4 py-3 rounded-xl transition-colors ${view === 'fleet' ? 'bg-blue-600/10 text-blue-400 font-medium' : 'text-slate-300 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'}`}
+              className={`w-full flex items-center justify-center group-hover:justify-start gap-3 px-4 py-3 rounded-xl transition-colors ${view === 'fleet' ? 'bg-blue-600/10 text-blue-400 font-medium' : 'text-slate-300 dark:text-slate-300 hover:bg-slate-800'}`}
               title="Fleet & Drivers"
             >
               <Users size={20} className="flex-shrink-0" />
               <span className="opacity-0 group-hover:opacity-100 transition-opacity duration-300 whitespace-nowrap overflow-hidden text-slate-300 dark:text-slate-300">Fleet & Drivers</span>
             </button>
             {user.role === 'owner' && (
-              <button 
+              <button
                 onClick={() => setView('reports')}
-                className={`w-full flex items-center justify-center group-hover:justify-start gap-3 px-4 py-3 rounded-xl transition-colors ${view === 'reports' ? 'bg-blue-600/10 text-blue-400 font-medium' : 'text-slate-300 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'}`}
+                className={`w-full flex items-center justify-center group-hover:justify-start gap-3 px-4 py-3 rounded-xl transition-colors ${view === 'reports' ? 'bg-blue-600/10 text-blue-400 font-medium' : 'text-slate-300 dark:text-slate-300 hover:bg-slate-800'}`}
                 title="Reports"
               >
                 <FileBarChart size={20} className="flex-shrink-0" />
@@ -980,7 +980,7 @@ function App() {
               </button>
             )}
             {user.role === 'owner' && (
-              <button 
+              <button
                 onClick={() => setView('expenses')}
                 className={`w-full flex items-center justify-center group-hover:justify-start gap-3 px-4 py-3 rounded-xl transition-colors ${view === 'expenses' ? 'bg-blue-600/10 text-blue-400 font-medium' : 'text-slate-300 dark:text-slate-300 hover:bg-slate-800'}`}
                 title="Expenses"
@@ -990,7 +990,7 @@ function App() {
               </button>
             )}
             {user.email === 'partsonmanyika@gmail.com' && (
-              <button 
+              <button
                 onClick={() => setView('marketing')}
                 className={`w-full flex items-center justify-center group-hover:justify-start gap-3 px-4 py-3 rounded-xl transition-colors ${view === 'marketing' ? 'bg-blue-600/10 text-blue-400 font-medium' : 'text-slate-300 dark:text-slate-300 hover:bg-slate-800'}`}
                 title="Marketing"
@@ -1000,7 +1000,7 @@ function App() {
               </button>
             )}
             {user.role === 'owner' && (
-              <button 
+              <button
                 onClick={() => setView('pricing')}
                 className={`w-full flex items-center justify-center group-hover:justify-start gap-3 px-4 py-3 rounded-xl transition-colors ${view === 'pricing' ? 'bg-blue-600/10 text-blue-400 font-medium' : 'text-slate-300 dark:text-slate-300 hover:bg-slate-800'}`}
                 title="Pricing"
@@ -1010,7 +1010,7 @@ function App() {
               </button>
             )}
             {user.role === 'owner' && (
-              <button 
+              <button
                 onClick={() => setView('subscriptions')}
                 className={`w-full flex items-center justify-center group-hover:justify-start gap-3 px-4 py-3 rounded-xl transition-colors ${view === 'subscriptions' ? 'bg-blue-600/10 text-blue-400 font-medium' : 'text-slate-300 dark:text-slate-300 hover:bg-slate-800'}`}
                 title="My Subscriptions"
@@ -1020,7 +1020,7 @@ function App() {
               </button>
             )}
             {user.role === 'owner' && (
-              <button 
+              <button
                 onClick={() => setView('company')}
                 className={`w-full flex items-center justify-center group-hover:justify-start gap-3 px-4 py-3 rounded-xl transition-colors ${view === 'company' ? 'bg-blue-600/10 text-blue-400 font-medium' : 'text-slate-300 dark:text-slate-300 hover:bg-slate-800'}`}
                 title="Company Settings"

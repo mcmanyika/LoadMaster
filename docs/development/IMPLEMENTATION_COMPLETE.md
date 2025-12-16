@@ -74,7 +74,7 @@ Body: {
 Response: {
   sessionId: 'cs_xxx',
   url: 'https://checkout.stripe.com/...',
-  amount: 24.99,
+  amount: 12.49,
   planId: 'essential',
   interval: 'month'
 }

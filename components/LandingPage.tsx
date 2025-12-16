@@ -232,7 +232,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onSignIn
             <div className="space-y-2 rounded-2xl border border-slate-800 bg-slate-900/70 p-4">
               <p className="text-xs font-semibold uppercase text-blue-300">Essential</p>
               <p className="text-2xl font-bold">
-                $24.99<span className="text-xs text-slate-400"> / month</span>
+                $12.49<span className="text-xs text-slate-400"> / month</span>
               </p>
               <p className="text-xs text-slate-300">Perfect for solo owners and small dispatch operations.</p>
               <ul className="mt-2 space-y-1 text-xs text-slate-300">
@@ -251,7 +251,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onSignIn
             <div className="space-y-2 rounded-2xl border border-blue-500 bg-slate-900 p-4 shadow-lg">
               <p className="text-xs font-semibold uppercase text-blue-300">Professional</p>
               <p className="text-2xl font-bold">
-                $44.99<span className="text-xs text-slate-400"> / month</span>
+                $22.49<span className="text-xs text-slate-400"> / month</span>
               </p>
               <p className="text-xs text-slate-300">For dispatchers and fleets that want serious visibility.</p>
               <ul className="mt-2 space-y-1 text-xs text-slate-300">

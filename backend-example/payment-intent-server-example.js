@@ -31,15 +31,15 @@ const PRICE_IDS = {
   },
 };
 
-// Plan amounts in dollars
+// Plan amounts in dollars (50% reduced)
 const PLAN_AMOUNTS = {
   essential: {
-    monthly: 24.99,
-    annual: 254.90, // $21.24/month × 12 = $254.90/year (15% discount)
+    monthly: 12.49,
+    annual: 127.45, // $10.62/month × 12 = $127.45/year (15% discount)
   },
   professional: {
-    monthly: 44.99,
-    annual: 458.90, // $38.24/month × 12 = $458.90/year (15% discount)
+    monthly: 22.49,
+    annual: 229.45, // $19.12/month × 12 = $229.45/year (15% discount)
   },
 };
 
