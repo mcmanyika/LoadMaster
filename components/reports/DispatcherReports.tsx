@@ -33,8 +33,21 @@ export const DispatcherReports: React.FC<DispatcherReportsProps> = ({
     const totalLoads = reports.reduce((sum, r) => sum + r.totalLoads, 0);
     const totalFees = reports.reduce((sum, r) => sum + r.totalFees, 0);
     const avgFeePerLoad = totalLoads > 0 ? totalFees / totalLoads : 0;
+    const totalRevenue = reports.reduce((sum, r) => sum + (r.totalRevenue || 0), 0);
+    const netProfitGenerated = reports.reduce((sum, r) => sum + (r.netProfitGenerated || 0), 0);
+    const avgRevenuePerLoad = totalLoads > 0 ? totalRevenue / totalLoads : 0;
+    const avgLoadsPerDispatcher = totalDispatchers > 0 ? totalLoads / totalDispatchers : 0;
 
-    return { totalDispatchers, totalLoads, totalFees, avgFeePerLoad };
+    return { 
+      totalDispatchers, 
+      totalLoads, 
+      totalFees, 
+      avgFeePerLoad,
+      totalRevenue,
+      netProfitGenerated,
+      avgRevenuePerLoad,
+      avgLoadsPerDispatcher
+    };
   }, [reports]);
 
   // Sort reports
@@ -141,6 +154,31 @@ export const DispatcherReports: React.FC<DispatcherReportsProps> = ({
           icon={<DollarSign className="w-5 h-5 text-slate-600 dark:text-slate-400" />}
         />
       </div>
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <ReportCard
+          title="Total Revenue Generated"
+          value={`$${summary.totalRevenue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
+          icon={<DollarSign className="w-5 h-5 text-blue-600 dark:text-blue-400" />}
+          colorClass="bg-blue-100 dark:bg-blue-900/30"
+        />
+        <ReportCard
+          title="Avg Revenue per Load"
+          value={`$${summary.avgRevenuePerLoad.toFixed(2)}`}
+          icon={<DollarSign className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />}
+          colorClass="bg-indigo-100 dark:bg-indigo-900/30"
+        />
+        <ReportCard
+          title="Net Profit Generated"
+          value={`$${summary.netProfitGenerated.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
+          icon={<DollarSign className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />}
+          colorClass="bg-emerald-100 dark:bg-emerald-900/30"
+        />
+        <ReportCard
+          title="Loads per Dispatcher"
+          value={summary.avgLoadsPerDispatcher.toFixed(1)}
+          icon={<FileText className="w-5 h-5 text-slate-600 dark:text-slate-400" />}
+        />
+      </div>
 
       {/* Export Buttons */}
       <div className="flex justify-end gap-3">
@@ -202,13 +240,40 @@ export const DispatcherReports: React.FC<DispatcherReportsProps> = ({
                     {getSortIcon('avgFeePerLoad')}
                   </div>
                 </th>
+                <th
+                  className="bg-slate-50 dark:bg-slate-800 p-4 font-semibold border-b border-slate-200 dark:border-slate-700 text-right cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors select-none text-slate-500 dark:text-slate-400"
+                  onClick={() => handleSort('totalRevenue')}
+                >
+                  <div className="flex items-center justify-end">
+                    Total Revenue
+                    {getSortIcon('totalRevenue')}
+                  </div>
+                </th>
+                <th
+                  className="bg-slate-50 dark:bg-slate-800 p-4 font-semibold border-b border-slate-200 dark:border-slate-700 text-right cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors select-none text-slate-500 dark:text-slate-400"
+                  onClick={() => handleSort('revenuePerLoad')}
+                >
+                  <div className="flex items-center justify-end">
+                    Revenue/Load
+                    {getSortIcon('revenuePerLoad')}
+                  </div>
+                </th>
+                <th
+                  className="bg-slate-50 dark:bg-slate-800 p-4 font-semibold border-b border-slate-200 dark:border-slate-700 text-right cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors select-none text-slate-500 dark:text-slate-400"
+                  onClick={() => handleSort('netProfitGenerated')}
+                >
+                  <div className="flex items-center justify-end">
+                    Net Profit
+                    {getSortIcon('netProfitGenerated')}
+                  </div>
+                </th>
                 <th className="bg-slate-50 dark:bg-slate-800 p-4 font-semibold border-b border-slate-200 dark:border-slate-700 text-center text-slate-500 dark:text-slate-400">Status</th>
               </tr>
             </thead>
             <tbody>
               {paginatedReports.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="p-8 text-center text-slate-400 dark:text-slate-500">
+                  <td colSpan={8} className="p-8 text-center text-slate-400 dark:text-slate-500">
                     No dispatcher data available for the selected date range
                   </td>
                 </tr>
@@ -231,6 +296,19 @@ export const DispatcherReports: React.FC<DispatcherReportsProps> = ({
                     </td>
                     <td className="p-4 text-right text-slate-600 dark:text-slate-300">
                       ${report.avgFeePerLoad.toFixed(2)}
+                    </td>
+                    <td className="p-4 text-right">
+                      <span className="font-semibold text-slate-800 dark:text-slate-100">
+                        ${(report.totalRevenue || 0).toFixed(2)}
+                      </span>
+                    </td>
+                    <td className="p-4 text-right text-slate-600 dark:text-slate-300">
+                      ${(report.revenuePerLoad || 0).toFixed(2)}
+                    </td>
+                    <td className="p-4 text-right">
+                      <span className="font-semibold text-emerald-600 dark:text-emerald-400">
+                        ${(report.netProfitGenerated || 0).toFixed(2)}
+                      </span>
                     </td>
                     <td className="p-4 text-center">
                       <div className="flex flex-col gap-1 text-xs">

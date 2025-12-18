@@ -63,28 +63,66 @@ export const generateDriverReports = (
     }
   }
 
-  // Group loads by driverId
-  const loadsByDriver = new Map<string, CalculatedLoad[]>();
+  // Group loads by driver name (normalized) to handle duplicate driver IDs
+  // First, create a map of driverId to normalized name
+  const driverIdToName = new Map<string, string>();
+  drivers.forEach(driver => {
+    driverIdToName.set(driver.id, driver.name.toLowerCase().trim());
+  });
+
+  // Group loads by normalized driver name
+  const loadsByDriverName = new Map<string, CalculatedLoad[]>();
+  const driverNameToId = new Map<string, string>(); // Track the primary driver ID for each name
   
   filteredLoads.forEach(load => {
     if (load.driverId) {
-      if (!loadsByDriver.has(load.driverId)) {
-        loadsByDriver.set(load.driverId, []);
+      // Get the driver name from the map, or try to get it from the load
+      let driverName = driverIdToName.get(load.driverId);
+      
+      // If not found in map, try to get from driverMap
+      if (!driverName) {
+        const name = driverMap.get(load.driverId);
+        driverName = name ? name.toLowerCase().trim() : 'unknown driver';
       }
-      loadsByDriver.get(load.driverId)!.push(load);
+      
+      // Use normalized name as key
+      if (!loadsByDriverName.has(driverName)) {
+        loadsByDriverName.set(driverName, []);
+        // Store the first driver ID we encounter for this name
+        driverNameToId.set(driverName, load.driverId);
+      }
+      loadsByDriverName.get(driverName)!.push(load);
     }
   });
 
-  // Generate report for each driver
+  // Generate report for each driver (by name)
   const reports: DriverReport[] = [];
 
-  loadsByDriver.forEach((driverLoads, driverId) => {
-    const driverName = driverMap.get(driverId) || 'Unknown Driver';
+  loadsByDriverName.forEach((driverLoads, normalizedName) => {
+    // Get the primary driver ID for this name
+    const primaryDriverId = driverNameToId.get(normalizedName) || '';
+    
+    // Get the actual driver name (not normalized) from the first load or driver map
+    let driverName = 'Unknown Driver';
+    if (driverLoads.length > 0 && driverLoads[0].driverId) {
+      const nameFromMap = driverMap.get(driverLoads[0].driverId);
+      if (nameFromMap) {
+        driverName = nameFromMap;
+      } else if (driverLoads[0].driverName) {
+        driverName = driverLoads[0].driverName;
+      }
+    }
     
     const totalLoads = driverLoads.length;
     const totalPay = driverLoads.reduce((sum, load) => sum + load.driverPay, 0);
     const totalMiles = driverLoads.reduce((sum, load) => sum + load.miles, 0);
     const avgRatePerMile = totalMiles > 0 ? totalPay / totalMiles : 0;
+    
+    // Calculate new metrics
+    const totalRevenue = driverLoads.reduce((sum, load) => sum + load.gross, 0);
+    const totalNetProfit = driverLoads.reduce((sum, load) => sum + load.netProfit, 0);
+    const revenuePerLoad = totalLoads > 0 ? totalRevenue / totalLoads : 0;
+    const profitMargin = totalRevenue > 0 ? (totalNetProfit / totalRevenue) * 100 : 0;
 
     // Count loads by status
     const loadsByStatus = {
@@ -100,12 +138,15 @@ export const generateDriverReports = (
     };
 
     reports.push({
-      driverId,
+      driverId: primaryDriverId,
       driverName,
       totalLoads,
       totalPay,
       totalMiles,
       avgRatePerMile,
+      totalNetProfit,
+      revenuePerLoad,
+      profitMargin,
       loadsByStatus,
       payoutStatus,
       loads: driverLoads

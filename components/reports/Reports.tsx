@@ -6,6 +6,7 @@ import { getCompanyDispatchers } from '../../services/dispatcherAssociationServi
 import { supabase } from '../../services/supabaseClient';
 import { DriverReports } from './DriverReports';
 import { DispatcherReports } from './DispatcherReports';
+import { FinancialOverview } from './FinancialOverview';
 import { generateDriverReports } from '../../services/reports/driverReportService';
 import { generateDispatcherReports } from '../../services/reports/dispatcherReportService';
 import { ReportFilters } from '../../types/reports';
@@ -307,10 +308,28 @@ export const Reports: React.FC<ReportsProps> = ({ user, companyId }) => {
     );
   }
 
+  // Show message if no loads
+  if (processedLoads.length === 0) {
+    return (
+      <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm p-12">
+        <div className="flex flex-col items-center justify-center">
+          <FileBarChart className="w-16 h-16 text-slate-400 dark:text-slate-500 mb-4" />
+          <p className="text-lg font-semibold text-slate-800 dark:text-slate-200 mb-2">No Load Data Available</p>
+          <p className="text-slate-600 dark:text-slate-400 text-center max-w-md">
+            Start adding loads to see detailed reports, financial metrics, and performance charts.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       {/* Debug: Uncomment to verify component is rendering */}
       {/* <div className="bg-yellow-100 p-4 rounded">Reports component loaded</div> */}
+      
+      {/* Financial Overview */}
+      <FinancialOverview processedLoads={processedLoads} dateFilter={dateFilter} />
       
       {/* Filters */}
       <div className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 p-4">

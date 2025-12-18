@@ -66,6 +66,11 @@ export const generateDispatcherReports = (
     const totalLoads = dispatcherLoads.length;
     const totalFees = dispatcherLoads.reduce((sum, load) => sum + load.dispatchFee, 0);
     const avgFeePerLoad = totalLoads > 0 ? totalFees / totalLoads : 0;
+    
+    // Calculate new metrics
+    const totalRevenue = dispatcherLoads.reduce((sum, load) => sum + load.gross, 0);
+    const netProfitGenerated = dispatcherLoads.reduce((sum, load) => sum + load.netProfit, 0);
+    const revenuePerLoad = totalLoads > 0 ? totalRevenue / totalLoads : 0;
 
     // Count loads by status
     const loadsByStatus = {
@@ -79,6 +84,9 @@ export const generateDispatcherReports = (
       totalLoads,
       totalFees,
       avgFeePerLoad,
+      totalRevenue,
+      revenuePerLoad,
+      netProfitGenerated,
       loadsByStatus,
       loads: dispatcherLoads
     });

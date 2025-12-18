@@ -1,6 +1,8 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { DriverReport, DispatcherReport } from '../../types/reports';
 import { X, Calendar, DollarSign, MapPin, FileText, Truck, Users } from 'lucide-react';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import { groupLoadsByTimePeriod, calculateDispatcherTrend } from '../../services/reports/chartDataService';
 
 interface ReportDetailModalProps {
   isOpen: boolean;
@@ -21,11 +23,59 @@ export const ReportDetailModal: React.FC<ReportDetailModalProps> = ({
   const driverReport = isDriver ? (report as DriverReport) : null;
   const dispatcherReport = !isDriver ? (report as DispatcherReport) : null;
 
+  // Calculate trend data for charts
+  const driverTrendData = useMemo(() => {
+    if (!isDriver || !driverReport) return [];
+    return groupLoadsByTimePeriod(driverReport.loads);
+  }, [isDriver, driverReport]);
+
+  const dispatcherTrendData = useMemo(() => {
+    if (isDriver || !dispatcherReport) return [];
+    return calculateDispatcherTrend(dispatcherReport.loads, dispatcherReport.dispatcherName);
+  }, [isDriver, dispatcherReport]);
+
+  const currencyFormatter = (value: number) => {
+    return `$${value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  };
+
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
-      <div className="bg-white dark:bg-slate-800 rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+    <>
+      {/* Backdrop */}
+      <div 
+        className="fixed bg-black bg-opacity-50 z-50" 
+        style={{ 
+          top: 0, 
+          left: 0, 
+          right: 0, 
+          bottom: 0, 
+          margin: 0, 
+          padding: 0
+        }}
+      />
+      {/* Modal Content */}
+      <div 
+        className="fixed bg-white dark:bg-slate-800 z-[60] flex flex-col" 
+        style={{ 
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          margin: 0, 
+          padding: 0,
+          height: '100vh',
+          width: '100vw'
+        }}
+      >
         {/* Header */}
-        <div className="sticky top-0 bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 px-6 py-4 flex items-center justify-between">
+        <div 
+          className="bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 px-6 py-4 flex items-center justify-between flex-shrink-0" 
+          style={{ 
+            margin: 0, 
+            marginTop: 0,
+            paddingTop: '1rem',
+            paddingBottom: '1rem'
+          }}
+        >
           <div className="flex items-center gap-3">
             {isDriver ? (
               <Truck className="w-6 h-6 text-slate-600 dark:text-slate-400" />
@@ -45,7 +95,7 @@ export const ReportDetailModal: React.FC<ReportDetailModalProps> = ({
         </div>
 
         {/* Content */}
-        <div className="p-6 space-y-6">
+        <div className="p-6 space-y-6 overflow-y-auto flex-1">
           {/* Summary Stats */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <div className="bg-slate-50 dark:bg-slate-700 rounded-lg p-4">
@@ -120,6 +170,120 @@ export const ReportDetailModal: React.FC<ReportDetailModalProps> = ({
               </>
             )}
           </div>
+
+          {/* Additional Metrics */}
+          {!isDriver && dispatcherReport && (
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+              <div className="bg-slate-50 dark:bg-slate-700 rounded-lg p-4">
+                <div className="flex items-center gap-2 mb-2">
+                  <DollarSign className="w-5 h-5 text-slate-400 dark:text-slate-300" />
+                  <span className="text-sm text-slate-600 dark:text-slate-400">Total Revenue</span>
+                </div>
+                <p className="text-xl font-bold text-blue-600 dark:text-blue-400">
+                  ${(dispatcherReport.totalRevenue || 0).toFixed(2)}
+                </p>
+              </div>
+              <div className="bg-slate-50 dark:bg-slate-700 rounded-lg p-4">
+                <div className="flex items-center gap-2 mb-2">
+                  <DollarSign className="w-5 h-5 text-slate-400 dark:text-slate-300" />
+                  <span className="text-sm text-slate-600 dark:text-slate-400">Revenue/Load</span>
+                </div>
+                <p className="text-xl font-bold text-slate-800 dark:text-slate-100">
+                  ${(dispatcherReport.revenuePerLoad || 0).toFixed(2)}
+                </p>
+              </div>
+              <div className="bg-slate-50 dark:bg-slate-700 rounded-lg p-4">
+                <div className="flex items-center gap-2 mb-2">
+                  <DollarSign className="w-5 h-5 text-slate-400 dark:text-slate-300" />
+                  <span className="text-sm text-slate-600 dark:text-slate-400">Net Profit</span>
+                </div>
+                <p className="text-xl font-bold text-emerald-600 dark:text-emerald-400">
+                  ${(dispatcherReport.netProfitGenerated || 0).toFixed(2)}
+                </p>
+              </div>
+            </div>
+          )}
+
+          {/* Performance Chart */}
+          {(isDriver ? driverTrendData.length > 0 : dispatcherTrendData.length > 0) && (
+            <div className="bg-slate-50 dark:bg-slate-700 rounded-lg p-4">
+              <h3 className="font-semibold text-slate-800 dark:text-slate-100 mb-4">
+                {isDriver ? 'Driver Performance Trend' : 'Dispatcher Performance Trend'}
+              </h3>
+              <ResponsiveContainer width="100%" height={200}>
+                <LineChart data={isDriver ? driverTrendData : dispatcherTrendData}>
+                  <CartesianGrid strokeDasharray="3 3" className="stroke-slate-300 dark:stroke-slate-600" />
+                  <XAxis 
+                    dataKey="date" 
+                    className="text-slate-600 dark:text-slate-400"
+                    tick={{ fill: 'currentColor', fontSize: 12 }}
+                  />
+                  <YAxis 
+                    className="text-slate-600 dark:text-slate-400"
+                    tick={{ fill: 'currentColor', fontSize: 12 }}
+                    tickFormatter={currencyFormatter}
+                  />
+                  <Tooltip 
+                    contentStyle={{
+                      backgroundColor: 'var(--tw-bg-white)',
+                      border: '1px solid var(--tw-border-slate-200)',
+                      borderRadius: '0.5rem'
+                    }}
+                    formatter={(value: number) => currencyFormatter(value)}
+                  />
+                  <Line 
+                    type="monotone" 
+                    dataKey="revenue" 
+                    name="Revenue" 
+                    stroke="#3b82f6" 
+                    strokeWidth={2}
+                    dot={{ r: 3 }}
+                  />
+                  <Line 
+                    type="monotone" 
+                    dataKey="profit" 
+                    name={isDriver ? "Net Profit" : "Fees"} 
+                    stroke={isDriver ? "#10b981" : "#8b5cf6"} 
+                    strokeWidth={2}
+                    dot={{ r: 3 }}
+                  />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+          )}
+
+          {/* Additional Metrics */}
+          {isDriver && driverReport && (
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <div className="bg-slate-50 dark:bg-slate-700 rounded-lg p-4">
+                <div className="flex items-center gap-2 mb-2">
+                  <DollarSign className="w-5 h-5 text-slate-400 dark:text-slate-300" />
+                  <span className="text-sm text-slate-600 dark:text-slate-400">Net Profit</span>
+                </div>
+                <p className="text-xl font-bold text-emerald-600 dark:text-emerald-400">
+                  ${(driverReport.totalNetProfit || 0).toFixed(2)}
+                </p>
+              </div>
+              <div className="bg-slate-50 dark:bg-slate-700 rounded-lg p-4">
+                <div className="flex items-center gap-2 mb-2">
+                  <DollarSign className="w-5 h-5 text-slate-400 dark:text-slate-300" />
+                  <span className="text-sm text-slate-600 dark:text-slate-400">Revenue/Load</span>
+                </div>
+                <p className="text-xl font-bold text-slate-800 dark:text-slate-100">
+                  ${(driverReport.revenuePerLoad || 0).toFixed(2)}
+                </p>
+              </div>
+              <div className="bg-slate-50 dark:bg-slate-700 rounded-lg p-4">
+                <div className="flex items-center gap-2 mb-2">
+                  <FileText className="w-5 h-5 text-slate-400 dark:text-slate-300" />
+                  <span className="text-sm text-slate-600 dark:text-slate-400">Profit Margin</span>
+                </div>
+                <p className="text-xl font-bold text-slate-800 dark:text-slate-100">
+                  {(driverReport.profitMargin || 0).toFixed(1)}%
+                </p>
+              </div>
+            </div>
+          )}
 
           {/* Status Breakdown */}
           {isDriver && (
@@ -258,7 +422,7 @@ export const ReportDetailModal: React.FC<ReportDetailModalProps> = ({
           </div>
         </div>
       </div>
-    </div>
+    </>
   );
 };
 

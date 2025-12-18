@@ -7,6 +7,9 @@ export interface DriverReport {
   totalPay: number;
   totalMiles: number;
   avgRatePerMile: number;
+  totalNetProfit?: number; // Net profit from driver's loads
+  revenuePerLoad?: number; // Average revenue per load
+  profitMargin?: number; // Profit margin percentage
   loadsByStatus: {
     factored: number;
     notFactored: number;
@@ -25,6 +28,9 @@ export interface DispatcherReport {
   totalLoads: number;
   totalFees: number;
   avgFeePerLoad: number;
+  totalRevenue?: number; // Gross revenue from dispatcher's loads
+  revenuePerLoad?: number; // Average revenue per load
+  netProfitGenerated?: number; // Company profit from dispatcher's loads
   loadsByStatus: {
     factored: number;
     notFactored: number;

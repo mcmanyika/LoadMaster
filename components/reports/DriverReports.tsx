@@ -4,7 +4,7 @@ import { ReportCard } from './ReportCard';
 import { ReportDetailModal } from './ReportDetailModal';
 import { exportToCSV, exportToPDF } from '../../services/reports/reportService';
 import { ErrorModal } from '../ErrorModal';
-import { Truck, DollarSign, MapPin, FileText, Download, FileDown, ArrowUpDown, ArrowUp, ArrowDown, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Truck, DollarSign, MapPin, FileText, Download, FileDown, ArrowUpDown, ArrowUp, ArrowDown, ChevronLeft, ChevronRight, FileBarChart } from 'lucide-react';
 
 interface DriverReportsProps {
   reports: DriverReport[];
@@ -34,8 +34,35 @@ export const DriverReports: React.FC<DriverReportsProps> = ({
     const totalPay = reports.reduce((sum, r) => sum + r.totalPay, 0);
     const totalMiles = reports.reduce((sum, r) => sum + r.totalMiles, 0);
     const avgRPM = totalMiles > 0 ? totalPay / totalMiles : 0;
+    const totalNetProfit = reports.reduce((sum, r) => sum + (r.totalNetProfit || 0), 0);
+    const totalRevenue = reports.reduce((sum, r) => {
+      const revenue = r.loads.reduce((s, l) => s + l.gross, 0);
+      return sum + revenue;
+    }, 0);
+    const avgRevenuePerLoad = totalLoads > 0 ? totalRevenue / totalLoads : 0;
+    const avgProfitMargin = totalRevenue > 0 ? (totalNetProfit / totalRevenue) * 100 : 0;
+    
+    // Calculate loads per week (assuming average period)
+    const allLoads = reports.flatMap(r => r.loads);
+    if (allLoads.length > 0) {
+      const dates = allLoads.map(l => new Date(l.dropDate).getTime());
+      const minDate = Math.min(...dates);
+      const maxDate = Math.max(...dates);
+      const daysDiff = Math.ceil((maxDate - minDate) / (1000 * 60 * 60 * 24)) || 1;
+      const weeks = daysDiff / 7;
+      const loadsPerWeek = weeks > 0 ? totalLoads / weeks : totalLoads;
+    }
 
-    return { totalDrivers, totalLoads, totalPay, totalMiles, avgRPM };
+    return { 
+      totalDrivers, 
+      totalLoads, 
+      totalPay, 
+      totalMiles, 
+      avgRPM,
+      totalNetProfit,
+      avgRevenuePerLoad,
+      avgProfitMargin
+    };
   }, [reports]);
 
   // Sort reports
@@ -123,7 +150,7 @@ export const DriverReports: React.FC<DriverReportsProps> = ({
   return (
     <div className="space-y-6">
       {/* Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <ReportCard
           title="Total Drivers"
           value={summary.totalDrivers}
@@ -143,6 +170,26 @@ export const DriverReports: React.FC<DriverReportsProps> = ({
           title="Total Miles"
           value={summary.totalMiles.toLocaleString()}
           icon={<MapPin className="w-5 h-5 text-slate-600 dark:text-slate-400" />}
+        />
+      </div>
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <ReportCard
+          title="Net Profit Contribution"
+          value={`$${summary.totalNetProfit.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
+          icon={<DollarSign className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />}
+          colorClass="bg-emerald-100 dark:bg-emerald-900/30"
+        />
+        <ReportCard
+          title="Revenue per Load"
+          value={`$${summary.avgRevenuePerLoad.toFixed(2)}`}
+          icon={<DollarSign className="w-5 h-5 text-blue-600 dark:text-blue-400" />}
+          colorClass="bg-blue-100 dark:bg-blue-900/30"
+        />
+        <ReportCard
+          title="Profit Margin"
+          value={`${summary.avgProfitMargin.toFixed(1)}%`}
+          icon={<FileBarChart className="w-5 h-5 text-purple-600 dark:text-purple-400" />}
+          colorClass="bg-purple-100 dark:bg-purple-900/30"
         />
         <ReportCard
           title="Avg Rate/Mile"
@@ -221,6 +268,33 @@ export const DriverReports: React.FC<DriverReportsProps> = ({
                     {getSortIcon('avgRatePerMile')}
                   </div>
                 </th>
+                <th
+                  className="bg-slate-50 dark:bg-slate-800 p-4 font-semibold border-b border-slate-200 dark:border-slate-700 text-right cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors select-none text-slate-500 dark:text-slate-400"
+                  onClick={() => handleSort('totalNetProfit')}
+                >
+                  <div className="flex items-center justify-end">
+                    Net Profit
+                    {getSortIcon('totalNetProfit')}
+                  </div>
+                </th>
+                <th
+                  className="bg-slate-50 dark:bg-slate-800 p-4 font-semibold border-b border-slate-200 dark:border-slate-700 text-right cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors select-none text-slate-500 dark:text-slate-400"
+                  onClick={() => handleSort('revenuePerLoad')}
+                >
+                  <div className="flex items-center justify-end">
+                    Revenue/Load
+                    {getSortIcon('revenuePerLoad')}
+                  </div>
+                </th>
+                <th
+                  className="bg-slate-50 dark:bg-slate-800 p-4 font-semibold border-b border-slate-200 dark:border-slate-700 text-right cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors select-none text-slate-500 dark:text-slate-400"
+                  onClick={() => handleSort('profitMargin')}
+                >
+                  <div className="flex items-center justify-end">
+                    Profit Margin %
+                    {getSortIcon('profitMargin')}
+                  </div>
+                </th>
                 <th className="bg-slate-50 dark:bg-slate-800 p-4 font-semibold border-b border-slate-200 dark:border-slate-700 text-center text-slate-500 dark:text-slate-400">Status</th>
                 <th className="bg-slate-50 dark:bg-slate-800 p-4 font-semibold border-b border-slate-200 dark:border-slate-700 text-center text-slate-500 dark:text-slate-400">Payout</th>
               </tr>
@@ -228,7 +302,7 @@ export const DriverReports: React.FC<DriverReportsProps> = ({
             <tbody>
               {paginatedReports.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="p-8 text-center text-slate-400 dark:text-slate-500">
+                  <td colSpan={10} className="p-8 text-center text-slate-400 dark:text-slate-500">
                     No driver data available for the selected date range
                   </td>
                 </tr>
@@ -254,6 +328,17 @@ export const DriverReports: React.FC<DriverReportsProps> = ({
                     </td>
                     <td className="p-4 text-right text-slate-600 dark:text-slate-300">
                       ${report.avgRatePerMile.toFixed(2)}
+                    </td>
+                    <td className="p-4 text-right">
+                      <span className="font-semibold text-emerald-600 dark:text-emerald-400">
+                        ${(report.totalNetProfit || 0).toFixed(2)}
+                      </span>
+                    </td>
+                    <td className="p-4 text-right text-slate-600 dark:text-slate-300">
+                      ${(report.revenuePerLoad || 0).toFixed(2)}
+                    </td>
+                    <td className="p-4 text-right text-slate-600 dark:text-slate-300">
+                      {(report.profitMargin || 0).toFixed(1)}%
                     </td>
                     <td className="p-4 text-center">
                       <div className="flex flex-col gap-1 text-xs">
