@@ -108,8 +108,14 @@ const DashboardChart: React.FC<{ chartData: any[]; userRole: string }> = ({ char
               borderRadius: '8px', 
               border: theme === 'dark' ? '1px solid #334155' : 'none', 
               backgroundColor: theme === 'dark' ? '#1e293b' : '#ffffff',
-              color: theme === 'dark' ? '#f1f5f9' : '#1e293b',
+              color: theme === 'dark' ? '#ffffff' : '#1e293b',
               boxShadow: theme === 'dark' ? '0 4px 6px -1px rgb(0 0 0 / 0.3)' : '0 4px 6px -1px rgb(0 0 0 / 0.1)'
+            }}
+            labelStyle={{
+              color: theme === 'dark' ? '#ffffff' : '#1e293b'
+            }}
+            itemStyle={{
+              color: theme === 'dark' ? '#ffffff' : '#1e293b'
             }}
           />
           <Bar dataKey="gross" radius={[6, 6, 0, 0]}>
