@@ -207,6 +207,7 @@ export const FleetManagement: React.FC<FleetManagementProps> = ({ user }) => {
   const handleAddDispatcher = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
+    let newDispatcher: Dispatcher | null = null;
     try {
       const feePercentage = parseFloat(dispForm.feePercentage) || 12;
       
@@ -215,7 +216,7 @@ export const FleetManagement: React.FC<FleetManagementProps> = ({ user }) => {
         return;
       }
       
-      const newDispatcher = await createDispatcher({
+      newDispatcher = await createDispatcher({
         name: dispForm.name,
         email: dispForm.email || undefined,
         phone: dispForm.phone || undefined,
@@ -223,15 +224,44 @@ export const FleetManagement: React.FC<FleetManagementProps> = ({ user }) => {
         companyId: '' // Will be set by service
       });
       
-      // Refetch dispatchers to ensure we have the latest data from the database
-      const dispatchersData = await getDispatchers();
-      setDispatchers(dispatchersData);
+      // Immediately add the new dispatcher to the list (optimistic update)
+      setDispatchers(prev => [...prev, newDispatcher!]);
+      
+      // Close form and reset immediately for instant UI feedback
       setShowAddForm(false);
       setDispForm({ name: '', email: '', phone: '', feePercentage: '12' });
       setError(null);
+      
+      // Refetch in the background to ensure data consistency
+      // Use companyId from state, or from newDispatcher, or fetch company
+      const refetchCompanyId = companyId || newDispatcher.companyId;
+      if (refetchCompanyId) {
+        // Refetch without blocking - update state when complete
+        getDispatchers(refetchCompanyId).then(dispatchersData => {
+          setDispatchers(dispatchersData);
+        }).catch(err => {
+          console.error('Error refetching dispatchers:', err);
+          // Keep the optimistic update even if refetch fails
+        });
+      } else {
+        // Fallback: get company and then refetch
+        const companyData = await getCompany();
+        if (companyData) {
+          setCompanyId(companyData.id);
+          getDispatchers(companyData.id).then(dispatchersData => {
+            setDispatchers(dispatchersData);
+          }).catch(err => {
+            console.error('Error refetching dispatchers:', err);
+          });
+        }
+      }
     } catch (e: any) {
       console.error('Error creating dispatcher:', e);
       setError(e.message || 'Failed to create dispatcher');
+      // Remove the optimistic update if creation failed
+      if (newDispatcher) {
+        setDispatchers(prev => prev.filter(d => d.id !== newDispatcher!.id));
+      }
     }
   };
 

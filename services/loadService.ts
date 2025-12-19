@@ -431,47 +431,70 @@ export const getDispatchers = async (companyId?: string): Promise<Dispatcher[]> 
     return MOCK_DISPATCHERS;
   }
 
-  // If companyId is provided, get dispatchers from associations (already filtered by active status)
+  // If companyId is provided, get dispatchers from both associations AND dispatchers table
   if (companyId) {
+    const results: Dispatcher[] = [];
+    
+    // 1. Get dispatchers from associations (invited dispatchers with profiles)
     try {
       const associations = await getCompanyDispatchers(companyId);
-      // getCompanyDispatchers already filters by status='active', so no need to filter again
-      const dispatcherIds = associations.map(a => a.dispatcherId);
+      const dispatcherIds = associations.map(a => a.dispatcherId).filter(Boolean);
 
-      if (dispatcherIds.length === 0) {
-        return [];
+      if (dispatcherIds.length > 0) {
+        const { data: profiles, error: profilesError } = await supabase
+          .from('profiles')
+          .select('id, name, email, phone')
+          .in('id', dispatcherIds)
+          .eq('role', 'dispatcher');
+
+        if (!profilesError && profiles && profiles.length > 0) {
+          // Map profiles to dispatchers with fee from associations
+          const associationDispatchers = profiles.map((profile: any) => {
+            const association = associations.find(a => a.dispatcherId === profile.id);
+            return {
+              id: profile.id,
+              name: profile.name,
+              email: profile.email,
+              phone: profile.phone,
+              feePercentage: association?.feePercentage || 12,
+              companyId: companyId
+            };
+          });
+          results.push(...associationDispatchers);
+        }
       }
-
-      const { data: profiles, error: profilesError } = await supabase
-        .from('profiles')
-        .select('id, name, email, phone')
-        .in('id', dispatcherIds)
-        .eq('role', 'dispatcher');
-
-      if (profilesError) {
-        console.error('Error fetching dispatcher profiles:', profilesError);
-        return []; // Return empty array instead of falling back to dispatchers table
-      } else if (profiles && profiles.length > 0) {
-        // Map profiles to dispatchers with fee from associations
-        return profiles.map((profile: any) => {
-          const association = associations.find(a => a.dispatcherId === profile.id);
-          return {
-            id: profile.id,
-            name: profile.name,
-            email: profile.email,
-            phone: profile.phone,
-            feePercentage: association?.feePercentage || 12,
-            companyId: companyId
-          };
-        });
-      }
-      
-      // If no profiles found, return empty array
-      return [];
     } catch (error) {
       console.error('Error fetching dispatchers from associations:', error);
-      return []; // Return empty array instead of falling back to dispatchers table
     }
+
+    // 2. Get manually added dispatchers from dispatchers table
+    try {
+      const { data: manualDispatchers, error: dispatchersError } = await supabase
+        .from('dispatchers')
+        .select('*')
+        .eq('company_id', companyId);
+
+      if (!dispatchersError && manualDispatchers) {
+        const manualDispatchersList = manualDispatchers.map((d: any) => ({
+          id: d.id,
+          name: d.name,
+          email: d.email,
+          phone: d.phone,
+          feePercentage: d.fee_percentage || 12,
+          companyId: d.company_id
+        }));
+        results.push(...manualDispatchersList);
+      }
+    } catch (error) {
+      console.error('Error fetching dispatchers from dispatchers table:', error);
+    }
+
+    // Remove duplicates (in case a dispatcher exists in both)
+    const uniqueDispatchers = results.filter((d, index, self) => 
+      index === self.findIndex(t => t.id === d.id)
+    );
+
+    return uniqueDispatchers;
   }
 
   // Fallback: Get from dispatchers table (backward compatibility - only when companyId is not provided)
@@ -736,22 +759,117 @@ export const getDrivers = async (companyId?: string): Promise<Driver[]> => {
     return mockDrivers;
   }
 
-  let query = supabase.from('drivers').select('*');
-  
-  // Filter by company_id if provided
+  // If companyId is provided, get drivers from both associations AND drivers table
   if (companyId) {
-    query = query.eq('company_id', companyId);
+    const results: Driver[] = [];
+    
+    // 1. Get drivers from associations (invited drivers with profiles)
+    try {
+      const { getCompanyDrivers } = await import('./driverAssociationService');
+      const associations = await getCompanyDrivers(companyId);
+      const activeAssociations = associations.filter(a => a.status === 'active' && a.driverId && a.driver);
+
+      for (const association of activeAssociations) {
+        const profileId = association.driverId!;
+        const driverProfile = association.driver;
+        
+        if (!driverProfile) continue;
+
+        // Check if driver record exists for this profile
+        const { data: existingDriver } = await supabase
+          .from('drivers')
+          .select('*')
+          .eq('profile_id', profileId)
+          .eq('company_id', companyId)
+          .maybeSingle();
+
+        if (existingDriver) {
+          // Use existing driver record
+          results.push({
+            id: existingDriver.id,
+            name: existingDriver.name,
+            transporterId: existingDriver.transporter_id || '',
+            phone: existingDriver.phone || '',
+            email: existingDriver.email || '',
+            companyId: existingDriver.company_id
+          });
+        } else {
+          // Create driver record for this profile if it doesn't exist
+          try {
+            const { data: newDriver, error: createError } = await supabase
+              .from('drivers')
+              .insert([{
+                name: driverProfile.name || driverProfile.email || 'Unknown',
+                phone: driverProfile.phone || null,
+                email: driverProfile.email || null,
+                profile_id: profileId,
+                company_id: companyId,
+                transporter_id: null
+              }])
+              .select('*')
+              .single();
+
+            if (!createError && newDriver) {
+              results.push({
+                id: newDriver.id,
+                name: newDriver.name,
+                transporterId: newDriver.transporter_id || '',
+                phone: newDriver.phone || '',
+                email: newDriver.email || '',
+                companyId: newDriver.company_id
+              });
+            }
+          } catch (createError) {
+            console.error('Error creating driver record for association:', createError);
+            // Continue without this driver
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching drivers from associations:', error);
+    }
+
+    // 2. Get manually added drivers from drivers table (those without profile_id)
+    try {
+      const { data: manualDrivers, error: driversError } = await supabase
+        .from('drivers')
+        .select('*')
+        .eq('company_id', companyId)
+        .is('profile_id', null); // Only get manually added drivers (no profile_id)
+
+      if (!driversError && manualDrivers) {
+        const manualDriversList = manualDrivers.map((d: any) => ({
+          id: d.id,
+          name: d.name,
+          transporterId: d.transporter_id || '',
+          phone: d.phone || '',
+          email: d.email || '',
+          companyId: d.company_id
+        }));
+        results.push(...manualDriversList);
+      }
+    } catch (error) {
+      console.error('Error fetching drivers from drivers table:', error);
+    }
+
+    // Remove duplicates (in case a driver exists in both)
+    const uniqueDrivers = results.filter((d, index, self) => 
+      index === self.findIndex(t => t.id === d.id)
+    );
+
+    return uniqueDrivers;
   }
 
-  const { data, error } = await query;
+  // Fallback: Get from drivers table (backward compatibility - only when companyId is not provided)
+  const { data, error } = await supabase.from('drivers').select('*');
   if (error) throw error;
 
   return (data || []).map((d: any) => ({
     id: d.id,
     name: d.name,
-    transporterId: d.transporter_id,
-    phone: d.phone,
-    email: d.email,
+    transporterId: d.transporter_id || '',
+    phone: d.phone || '',
+    email: d.email || '',
     companyId: d.company_id
   }));
 };

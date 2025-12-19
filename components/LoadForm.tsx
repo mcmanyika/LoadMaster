@@ -4,6 +4,7 @@ import { X, Calculator, Upload, FileText, AlertCircle } from 'lucide-react';
 import { getCompany } from '../services/companyService';
 import { getCompanyDispatchers } from '../services/dispatcherAssociationService';
 import { getCompanyDrivers } from '../services/driverAssociationService';
+import { getDispatchers, getDrivers } from '../services/loadService';
 import { uploadRateConfirmationPdf } from '../services/storageService';
 import { PlacesAutocomplete } from './PlacesAutocomplete';
 import { calculateDistance } from '../services/distanceService';
@@ -59,101 +60,17 @@ export const LoadForm: React.FC<LoadFormProps> = ({ onClose, onSave, currentUser
         const targetCompanyId = companyId || companyData?.id;
         
         // Fetch dispatchers and drivers only if we have companyData
-        // Use getCompanyDispatchers and getCompanyDrivers directly (like InvitationManagement does) to avoid RLS issues
+        // Use getDispatchers which queries both dispatcher_company_associations and dispatchers tables
         if (companyData) {
-          // Fetch dispatchers from associations
-          const dispatcherAssociations = await getCompanyDispatchers(companyData.id);
-          // Filter to only active dispatchers with dispatcherId set, then map to Dispatcher format
-          const activeDispatcherAssociations = dispatcherAssociations.filter(a => a.status === 'active' && a.dispatcherId && a.dispatcher);
-          const dispatchersData: Dispatcher[] = activeDispatcherAssociations.map(association => ({
-            id: association.dispatcherId!,
-            name: association.dispatcher?.name || association.dispatcher?.email || 'Unknown',
-            email: association.dispatcher?.email || '',
-            phone: association.dispatcher?.phone || '',
-            feePercentage: association.feePercentage || 12,
-            companyId: association.companyId
-          }));
-          
+          // Fetch dispatchers from both associations and dispatchers table
+          const dispatchersData = await getDispatchers(companyData.id);
           setDispatchers(dispatchersData);
           
-          // Fetch drivers from associations
-          const driverAssociations = await getCompanyDrivers(companyData.id);
-          // Filter to only active drivers with driverId set
-          const activeDriverAssociations = driverAssociations.filter(a => a.status === 'active' && a.driverId && a.driver);
-          
-          // For each association, ensure a driver record exists in the drivers table
-          // The loads table references drivers.id, not profiles.id
-          const driversData: Driver[] = await Promise.all(
-            activeDriverAssociations.map(async (association) => {
-              const profileId = association.driverId!;
-              const driverProfile = association.driver;
-              
-              if (!driverProfile) {
-                return null;
-              }
-              
-              // Check if driver record exists for this profile
-              const { data: existingDriver } = await supabase
-                .from('drivers')
-                .select('id, name, phone, email, transporter_id, company_id')
-                .eq('profile_id', profileId)
-                .eq('company_id', companyData.id)
-                .maybeSingle();
-              
-              if (existingDriver) {
-                // Use existing driver record
-                return {
-                  id: existingDriver.id,
-                  name: existingDriver.name,
-                  email: existingDriver.email || driverProfile.email || '',
-                  phone: existingDriver.phone || driverProfile.phone || '',
-                  transporterId: existingDriver.transporter_id || '',
-                  companyId: existingDriver.company_id
-                };
-              } else {
-                // Create driver record for this profile
-                const { data: newDriver, error: createError } = await supabase
-                  .from('drivers')
-                  .insert([{
-                    name: driverProfile.name || driverProfile.email || 'Unknown',
-                    phone: driverProfile.phone || null,
-                    email: driverProfile.email || null,
-                    profile_id: profileId,
-                    company_id: companyData.id,
-                    transporter_id: null
-                  }])
-                  .select('id, name, phone, email, transporter_id, company_id')
-                  .single();
-                
-                if (createError || !newDriver) {
-                  console.error('Error creating driver record:', createError);
-                  // Fallback: return driver with profile ID (may cause issues with loads table)
-                  return {
-                    id: profileId, // This might not work if loads table expects drivers.id
-                    name: driverProfile.name || driverProfile.email || 'Unknown',
-                    email: driverProfile.email || '',
-                    phone: driverProfile.phone || '',
-                    transporterId: '',
-                    companyId: association.companyId
-                  };
-                }
-                
-                return {
-                  id: newDriver.id,
-                  name: newDriver.name,
-                  email: newDriver.email || driverProfile.email || '',
-                  phone: newDriver.phone || driverProfile.phone || '',
-                  transporterId: newDriver.transporter_id || '',
-                  companyId: newDriver.company_id
-                };
-              }
-            })
-          );
-          
-          // Filter out any null values
-          let finalDriversData = driversData.filter((d): d is Driver => d !== null);
+          // Fetch drivers from both associations and drivers table
+          const driversData = await getDrivers(companyData.id);
           
           // If in edit mode and loadToEdit has a driverId, ensure that driver is in the list
+          let finalDriversData = driversData;
           if (isEditMode && loadToEdit?.driverId) {
             const existingDriverInList = finalDriversData.find(d => d.id === loadToEdit.driverId);
             
