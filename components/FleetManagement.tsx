@@ -24,7 +24,13 @@ export const FleetManagement: React.FC<FleetManagementProps> = ({ user }) => {
   const [error, setError] = useState<string | null>(null);
   const [errorModal, setErrorModal] = useState<{ isOpen: boolean; message: string }>({ isOpen: false, message: '' });
   const [editingDriverId, setEditingDriverId] = useState<string | null>(null);
-  const [editDriverForm, setEditDriverForm] = useState({ name: '', phone: '', email: '' });
+  const [editDriverForm, setEditDriverForm] = useState({ 
+    name: '', 
+    phone: '', 
+    email: '',
+    payType: 'percentage_of_net' as 'percentage_of_gross' | 'percentage_of_net',
+    payPercentage: '50'
+  });
   const [editingVehicleId, setEditingVehicleId] = useState<string | null>(null);
   const [editVehicleForm, setEditVehicleForm] = useState({ name: '', registrationNumber: '', mcNumber: '' });
   const [editingDispatcherId, setEditingDispatcherId] = useState<string | null>(null);
@@ -32,7 +38,13 @@ export const FleetManagement: React.FC<FleetManagementProps> = ({ user }) => {
 
   // Form States
   const [tForm, setTForm] = useState({ name: '', mcNumber: '', registrationNumber: '', contactPhone: '', contactEmail: '' });
-  const [dForm, setDForm] = useState({ name: '', phone: '', email: '' });
+  const [dForm, setDForm] = useState({ 
+    name: '', 
+    phone: '', 
+    email: '',
+    payType: 'percentage_of_net' as 'percentage_of_gross' | 'percentage_of_net',
+    payPercentage: '50'
+  });
   const [dispForm, setDispForm] = useState({ name: '', email: '', phone: '', feePercentage: '12' });
 
   useEffect(() => {
@@ -94,13 +106,24 @@ export const FleetManagement: React.FC<FleetManagementProps> = ({ user }) => {
   const handleAddDriver = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
+      const payPercentage = parseFloat(dForm.payPercentage) || 50;
+      if (payPercentage < 0 || payPercentage > 100) {
+        setErrorModal({ isOpen: true, message: 'Pay percentage must be between 0 and 100' });
+        return;
+      }
+      
       // companyId is handled automatically by createDriver service
       // transporterId is set to null for owners since they don't manage transporters
-      const newD = await createDriver({ ...dForm, transporterId: null as any } as any);
+      const newD = await createDriver({ 
+        ...dForm, 
+        transporterId: null as any,
+        payType: dForm.payType,
+        payPercentage: payPercentage
+      } as any);
       // Refresh the driver list to include the new driver
       await fetchData();
       setShowAddForm(false);
-      setDForm({ name: '', phone: '', email: '' });
+      setDForm({ name: '', phone: '', email: '', payType: 'percentage_of_net', payPercentage: '50' });
     } catch (e: any) {
       console.error('Error creating driver:', e);
       setErrorModal({ isOpen: true, message: e.message || 'Failed to create driver' });
@@ -109,20 +132,38 @@ export const FleetManagement: React.FC<FleetManagementProps> = ({ user }) => {
 
   const handleEditDriver = (driver: Driver) => {
     setEditingDriverId(driver.id);
-    setEditDriverForm({ name: driver.name, phone: driver.phone || '', email: driver.email || '' });
+    setEditDriverForm({ 
+      name: driver.name, 
+      phone: driver.phone || '', 
+      email: driver.email || '',
+      payType: driver.payType || 'percentage_of_net',
+      payPercentage: (driver.payPercentage || 50).toString()
+    });
   };
 
   const handleCancelEditDriver = () => {
     setEditingDriverId(null);
-    setEditDriverForm({ name: '', phone: '', email: '' });
+    setEditDriverForm({ name: '', phone: '', email: '', payType: 'percentage_of_net', payPercentage: '50' });
   };
 
   const handleSaveDriver = async (driverId: string) => {
     try {
-      const updated = await updateDriver(driverId, editDriverForm);
+      const payPercentage = parseFloat(editDriverForm.payPercentage) || 50;
+      if (payPercentage < 0 || payPercentage > 100) {
+        setErrorModal({ isOpen: true, message: 'Pay percentage must be between 0 and 100' });
+        return;
+      }
+      
+      const updated = await updateDriver(driverId, {
+        name: editDriverForm.name,
+        phone: editDriverForm.phone || undefined,
+        email: editDriverForm.email || undefined,
+        payType: editDriverForm.payType,
+        payPercentage: payPercentage
+      });
       setDrivers(drivers.map(d => d.id === driverId ? updated : d));
       setEditingDriverId(null);
-      setEditDriverForm({ name: '', phone: '', email: '' });
+      setEditDriverForm({ name: '', phone: '', email: '', payType: 'percentage_of_net', payPercentage: '50' });
     } catch (e: any) {
       console.error('Error updating driver:', e);
       setErrorModal({ isOpen: true, message: e.message || 'Failed to update driver' });
@@ -369,10 +410,33 @@ export const FleetManagement: React.FC<FleetManagementProps> = ({ user }) => {
                      <input 
                        type="email"
                        placeholder="Email (Optional)" 
-                       className="p-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-white md:col-span-2" 
+                       className="p-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-white" 
                        value={dForm.email} 
                        onChange={e => setDForm({...dForm, email: e.target.value})} 
                      />
+                     <select
+                       className="p-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-white"
+                       value={dForm.payType}
+                       onChange={e => setDForm({...dForm, payType: e.target.value as 'percentage_of_gross' | 'percentage_of_net'})}
+                     >
+                       <option value="percentage_of_net">% of (Gross - Dispatch Fee)</option>
+                       <option value="percentage_of_gross">% of Gross</option>
+                     </select>
+                     <input 
+                       type="number"
+                       min="0"
+                       max="100"
+                       step="0.01"
+                       placeholder="Pay Percentage (%)" 
+                       className="p-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-white" 
+                       value={dForm.payPercentage} 
+                       onChange={e => setDForm({...dForm, payPercentage: e.target.value})} 
+                     />
+                     <div className="md:col-span-2 text-xs text-slate-500 dark:text-slate-400">
+                       {dForm.payType === 'percentage_of_gross' 
+                         ? `Driver will receive ${dForm.payPercentage || 50}% of the total gross revenue per load. Owner covers all expenses (gas, etc.).`
+                         : `Driver will receive ${dForm.payPercentage || 50}% of (Gross - Dispatch Fee) per load. Gas expenses shared 50-50.`}
+                     </div>
                      <button type="submit" className="md:col-span-2 bg-blue-600 text-white py-2 rounded-lg font-medium hover:bg-blue-700">Register Driver</button>
                    </form>
                  ) : (

@@ -172,6 +172,7 @@ function App() {
   const itemsPerPage = 10;
   const [aiAnalysis, setAiAnalysis] = useState<string | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [showAIModal, setShowAIModal] = useState(false);
   const [view, setView] = useState<'dashboard' | 'loads' | 'fleet' | 'pricing' | 'subscriptions' | 'marketing' | 'company' | 'reports' | 'expenses'>('dashboard');
   const [paymentStatus, setPaymentStatus] = useState<'success' | 'cancel' | null>(null);
   const [paymentPlan, setPaymentPlan] = useState<string | null>(null);
@@ -554,15 +555,16 @@ function App() {
         getDispatchers(companyData?.id) // Filter dispatchers by company
       ]);
       
-      // Deduplicate drivers by name for the dropdown (keep unique names only)
-      const driversByName = new Map<string, Driver>();
+      // Deduplicate drivers by ID (not name) to ensure all driver pay configs are preserved
+      // This is important because loads reference drivers by ID, and we need the pay config for each unique driver ID
+      const driversById = new Map<string, Driver>();
       driversData.forEach(driver => {
-        const key = driver.name.toLowerCase().trim();
-        if (!driversByName.has(key)) {
-          driversByName.set(key, driver);
+        // Keep the first occurrence of each driver ID
+        if (!driversById.has(driver.id)) {
+          driversById.set(driver.id, driver);
         }
       });
-      const uniqueDrivers = Array.from(driversByName.values());
+      const uniqueDrivers = Array.from(driversById.values());
       
       setLoads(loadsData);
       setDrivers(uniqueDrivers);
@@ -618,18 +620,64 @@ function App() {
     return map;
   }, [dispatchers]);
 
+  // Create driver pay configuration mapping
+  const driverPayConfigMap = useMemo(() => {
+    const map = new Map<string, { payType: string, payPercentage: number }>();
+    drivers.forEach(driver => {
+      map.set(driver.id, {
+        payType: driver.payType || 'percentage_of_net',
+        payPercentage: driver.payPercentage || 50
+      });
+    });
+    // Debug: Log driver pay configs to help troubleshoot
+    if (drivers.length > 0) {
+      console.log('Driver Pay Config Map:', Array.from(map.entries()).map(([id, config]) => ({
+        driverId: id,
+        payType: config.payType,
+        payPercentage: config.payPercentage
+      })));
+    }
+    return map;
+  }, [drivers]);
+
   // Logic to process loads with calculated fields
   const processedLoads: CalculatedLoad[] = useMemo(() => {
     return loads.map(load => {
       const feePercentage = dispatcherFeeMap.get(load.dispatcher) || 12; // Default to 12% if dispatcher not found
       const dispatchFee = load.gross * (feePercentage / 100);
-      // Gas expenses are shared 50-50 between driver and company
-      const driverGasShare = load.gasAmount * 0.5;
-      const companyGasShare = load.gasAmount * 0.5;
-      // Driver pay: 50% of (Gross - Dispatch Fee) minus driver's share of gas
-      const driverPay = (load.gross - dispatchFee) * 0.5 - driverGasShare;
-      // Net profit: 50% of (Gross - Dispatch Fee) minus company's share of gas
-      const netProfit = (load.gross - dispatchFee) * 0.5 - companyGasShare;
+      
+      // Get driver pay configuration
+      const driverConfig = load.driverId ? driverPayConfigMap.get(load.driverId) : null;
+      const payType = driverConfig?.payType || 'percentage_of_net';
+      const payPercentage = driverConfig?.payPercentage || 50;
+      
+      // Debug: Log if driver config not found
+      if (load.driverId && !driverConfig) {
+        console.warn(`⚠️ Driver pay config not found for driverId: ${load.driverId}. Available driver IDs:`, Array.from(driverPayConfigMap.keys()));
+      }
+      
+      // Gas expense allocation depends on pay type:
+      // - percentage_of_gross: Owner covers all expenses (100% company, 0% driver)
+      // - percentage_of_net: Shared 50-50 between driver and company
+      let driverGasShare: number;
+      let companyGasShare: number;
+      let driverPay: number;
+      
+      if (payType === 'percentage_of_gross') {
+        // Percentage of gross: Owner covers all expenses
+        driverGasShare = 0; // Driver pays no gas
+        companyGasShare = load.gasAmount; // Company covers 100% of gas
+        driverPay = load.gross * (payPercentage / 100); // No gas deduction from driver pay
+      } else {
+        // Percentage of net: Shared expenses (50-50)
+        driverGasShare = load.gasAmount * 0.5;
+        companyGasShare = load.gasAmount * 0.5;
+        driverPay = (load.gross - dispatchFee) * (payPercentage / 100) - driverGasShare;
+      }
+      
+      // Net profit calculation
+      const netProfit = load.gross - dispatchFee - driverPay - companyGasShare;
+      
       const driverName = load.driverId ? driverMap.get(load.driverId) : undefined;
       return {
         ...load,
@@ -639,7 +687,7 @@ function App() {
         driverName
       };
     }).sort((a, b) => new Date(b.dropDate).getTime() - new Date(a.dropDate).getTime());
-  }, [loads, driverMap, dispatcherFeeMap]);
+  }, [loads, driverMap, dispatcherFeeMap, driverPayConfigMap]);
 
   // Filter loads based on search, driver, and date filters
   const filteredLoads = useMemo(() => {
@@ -1079,6 +1127,13 @@ function App() {
               )}
             </div>
             <div className="flex items-center gap-4">
+              <button
+                onClick={() => setShowAIModal(true)}
+                className="flex items-center gap-2 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 px-4 py-2.5 rounded-lg text-sm font-medium transition-all"
+              >
+                <BrainCircuit size={18} />
+                AI Analyst
+              </button>
               <ThemeToggle />
               {dataLoading && <span className="text-sm text-slate-400 dark:text-slate-500 animate-pulse">Syncing...</span>}
                {view !== 'fleet' && view !== 'pricing' && view !== 'subscriptions' && view !== 'marketing' && view !== 'company' && view !== 'expenses' && (
@@ -1204,64 +1259,66 @@ function App() {
                     <DashboardChart chartData={chartData} userRole={user.role} />
                   </div>
 
-                  {/* AI Insights Section */}
-                  <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm flex flex-col">
-                    <div className="flex items-center justify-between mb-6">
-                      <div className="flex items-center gap-2">
-                        <BrainCircuit className="text-slate-600 dark:text-slate-400" size={24} />
-                        <h3 className="text-lg font-bold text-slate-800 dark:text-slate-100">AI Analyst</h3>
+                  {/* Summary Statistics & Top Performers Card */}
+                  {chartData.length > 0 && (
+                    <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm flex flex-col">
+                      <div className="flex items-center gap-2 mb-6">
+                        <FileBarChart className="text-slate-600 dark:text-slate-400" size={24} />
+                        <h3 className="text-lg font-bold text-slate-800 dark:text-slate-100">Performance Summary</h3>
                       </div>
-                      {!aiAnalysis && (
-                        <button 
-                          onClick={handleGenerateAIReport}
-                          disabled={isAnalyzing}
-                          className="text-sm text-slate-600 dark:text-slate-400 font-medium hover:text-slate-800 dark:hover:text-slate-200 disabled:opacity-50"
-                        >
-                          {isAnalyzing ? 'Thinking...' : 'Generate Report'}
-                        </button>
-                      )}
+                      
+                      {/* Summary Statistics */}
+                      <div className="grid grid-cols-2 gap-4 mb-6">
+                        <div className="text-center p-3 rounded-lg bg-slate-50 dark:bg-slate-700/50">
+                          <p className="text-xs text-slate-500 dark:text-slate-400 mb-1">Total {user.role === 'dispatcher' ? 'Drivers' : 'Dispatchers'}</p>
+                          <p className="text-xl font-bold text-slate-800 dark:text-slate-100">{chartData.length}</p>
+                        </div>
+                        <div className="text-center p-3 rounded-lg bg-slate-50 dark:bg-slate-700/50">
+                          <p className="text-xs text-slate-500 dark:text-slate-400 mb-1">Total Revenue</p>
+                          <p className="text-xl font-bold text-slate-800 dark:text-slate-100">
+                            ${chartData.reduce((sum, item) => sum + item.gross, 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                          </p>
+                        </div>
+                        <div className="text-center p-3 rounded-lg bg-slate-50 dark:bg-slate-700/50">
+                          <p className="text-xs text-slate-500 dark:text-slate-400 mb-1">Total Loads</p>
+                          <p className="text-xl font-bold text-slate-800 dark:text-slate-100">
+                            {chartData.reduce((sum, item) => sum + (item.loads || 0), 0)}
+                          </p>
+                        </div>
+                        <div className="text-center p-3 rounded-lg bg-slate-50 dark:bg-slate-700/50">
+                          <p className="text-xs text-slate-500 dark:text-slate-400 mb-1">Avg per {user.role === 'dispatcher' ? 'Driver' : 'Dispatcher'}</p>
+                          <p className="text-xl font-bold text-slate-800 dark:text-slate-100">
+                            ${chartData.length > 0 ? (chartData.reduce((sum, item) => sum + item.gross, 0) / chartData.length).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '0.00'}
+                          </p>
+                        </div>
+                      </div>
+                      
+                      {/* Top Performers List */}
+                      <div className="flex-1">
+                        <h4 className="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-3">Top Performers</h4>
+                        <div className="space-y-2 max-h-[300px] overflow-y-auto">
+                          {chartData
+                            .sort((a, b) => b.gross - a.gross)
+                            .slice(0, 5)
+                            .map((item, index) => (
+                              <div key={item.name} className="flex items-center justify-between p-2 rounded-lg bg-slate-50 dark:bg-slate-700/50">
+                                <div className="flex items-center gap-2">
+                                  <span className="text-xs font-medium text-slate-500 dark:text-slate-400 w-4">#{index + 1}</span>
+                                  <span className="text-sm font-medium text-slate-800 dark:text-slate-200">{item.name}</span>
+                                </div>
+                                <div className="flex items-center gap-4">
+                                  <span className="text-xs text-slate-500 dark:text-slate-400">{item.loads || 0} loads</span>
+                                  <span className="text-sm font-semibold text-slate-800 dark:text-slate-100">
+                                    ${item.gross.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                  </span>
+                                </div>
+                              </div>
+                            ))}
+                        </div>
+                      </div>
                     </div>
-                    
-                    <div className="flex-1 bg-slate-50 dark:bg-slate-700/50 rounded-xl p-4 border border-slate-100 dark:border-slate-600 overflow-y-auto max-h-[300px]">
-                      {isAnalyzing ? (
-                        <div className="flex flex-col items-center justify-center h-full text-slate-400 dark:text-slate-500 space-y-3">
-                          <div className="w-6 h-6 border-2 border-slate-500 dark:border-slate-400 border-t-transparent rounded-full animate-spin"></div>
-                          <span className="text-sm">Analyzing market data...</span>
-                        </div>
-                      ) : aiAnalysis ? (
-                        <div className="prose prose-sm prose-slate dark:prose-invert">
-                          <div className="whitespace-pre-wrap text-slate-600 dark:text-slate-300 text-sm leading-relaxed font-medium">
-                            {aiAnalysis}
-                          </div>
-                          <div className="mt-4 flex items-center gap-3">
-                            <button
-                              onClick={() => {
-                                const result = exportAIAnalysisToPDF(aiAnalysis, `ai-analysis-${new Date().toISOString().split('T')[0]}`);
-                                if (!result.success && result.error) {
-                                  setErrorModal({ isOpen: true, message: result.error });
-                                }
-                              }}
-                              className="flex items-center gap-2 px-3 py-2 text-sm text-slate-600 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors"
-                            >
-                              <FileDown size={16} />
-                              Export PDF
-                            </button>
-                            <button 
-                              onClick={() => setAiAnalysis(null)} 
-                              className="text-xs text-slate-400 dark:text-slate-500 underline hover:text-slate-600 dark:hover:text-slate-300"
-                            >
-                              Clear Report
-                            </button>
-                          </div>
-                        </div>
-                      ) : (
-                        <div className="flex flex-col items-center justify-center h-full text-center">
-                          <p className="text-slate-400 text-sm mb-2">No active analysis</p>
-                          <p className="text-slate-400 text-xs px-4">Click "Generate Report" to have AI analyze your dispatchers and RPM trends.</p>
-                        </div>
-                      )}
-                    </div>
-                  </div>
+                  )}
+
                 </div>
                 </>
               )}
@@ -1611,6 +1668,93 @@ function App() {
         }}
         onCancel={() => setConfirmDelete({ isOpen: false, loadId: null })}
       />
+
+      {/* AI Analyst Full Screen Modal */}
+      {showAIModal && (
+        <div className="fixed inset-0 bg-slate-900/95 dark:bg-slate-900/95 backdrop-blur-sm z-[100] flex flex-col">
+          <div className="flex-shrink-0 border-b border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-6 py-4 flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <BrainCircuit className="text-blue-600 dark:text-blue-400" size={24} />
+              <h2 className="text-xl font-bold text-slate-800 dark:text-white">AI Analyst</h2>
+            </div>
+            <button
+              onClick={() => {
+                setShowAIModal(false);
+                setAiAnalysis(null);
+              }}
+              className="p-2 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors"
+            >
+              <X className="w-5 h-5 text-slate-600 dark:text-slate-300" />
+            </button>
+          </div>
+
+          <div className="flex-1 overflow-y-auto p-6 bg-slate-50 dark:bg-slate-900">
+            <div className="max-w-4xl mx-auto">
+              {!aiAnalysis && !isAnalyzing && (
+                <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-8 text-center">
+                  <BrainCircuit className="w-16 h-16 text-blue-600 dark:text-blue-400 mx-auto mb-4" />
+                  <h3 className="text-xl font-bold text-slate-800 dark:text-white mb-2">AI Fleet Analysis</h3>
+                  <p className="text-slate-600 dark:text-slate-400 mb-6">
+                    Get AI-powered insights about your fleet performance, dispatcher trends, and revenue per mile analysis.
+                  </p>
+                  <button
+                    onClick={handleGenerateAIReport}
+                    disabled={isAnalyzing}
+                    className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {isAnalyzing ? 'Analyzing...' : 'Generate Analysis'}
+                  </button>
+                </div>
+              )}
+
+              {isAnalyzing && (
+                <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-12 flex flex-col items-center justify-center text-center">
+                  <div className="w-12 h-12 border-4 border-blue-600 dark:border-blue-500 border-t-transparent rounded-full animate-spin mb-4"></div>
+                  <h3 className="text-lg font-semibold text-slate-800 dark:text-white mb-2">Analyzing Fleet Data</h3>
+                  <p className="text-slate-600 dark:text-slate-400">AI is processing your loads, dispatchers, and performance metrics...</p>
+                </div>
+              )}
+
+              {aiAnalysis && !isAnalyzing && (
+                <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-8">
+                  <div className="flex items-center justify-between mb-6">
+                    <h3 className="text-lg font-bold text-slate-800 dark:text-white">Analysis Results</h3>
+                    <div className="flex items-center gap-3">
+                      <button
+                        onClick={() => {
+                          const result = exportAIAnalysisToPDF(aiAnalysis, `ai-analysis-${new Date().toISOString().split('T')[0]}`);
+                          if (!result.success && result.error) {
+                            setErrorModal({ isOpen: true, message: result.error });
+                          }
+                        }}
+                        className="flex items-center gap-2 px-4 py-2 text-sm bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 text-slate-700 dark:text-white rounded-lg transition-colors"
+                      >
+                        <FileDown size={16} />
+                        Export PDF
+                      </button>
+                      <button
+                        onClick={() => {
+                          setAiAnalysis(null);
+                          handleGenerateAIReport();
+                        }}
+                        className="px-4 py-2 text-sm bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
+                      >
+                        Regenerate
+                      </button>
+                    </div>
+                  </div>
+                  
+                  <div className="prose prose-slate dark:prose-invert max-w-none">
+                    <div className="whitespace-pre-wrap text-slate-700 dark:text-slate-300 text-base leading-relaxed bg-slate-50 dark:bg-slate-900/50 rounded-xl p-6 border border-slate-200 dark:border-slate-700">
+                      {aiAnalysis}
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
     </ThemeProvider>
   );

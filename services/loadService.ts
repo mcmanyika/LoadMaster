@@ -759,105 +759,50 @@ export const getDrivers = async (companyId?: string): Promise<Driver[]> => {
     return mockDrivers;
   }
 
-  // If companyId is provided, get drivers from both associations AND drivers table
+  // If companyId is provided, get ALL drivers from the drivers table for this company
+  // This ensures we have pay config for all drivers that have loads, regardless of association status
   if (companyId) {
-    const results: Driver[] = [];
-    
-    // 1. Get drivers from associations (invited drivers with profiles)
     try {
-      const { getCompanyDrivers } = await import('./driverAssociationService');
-      const associations = await getCompanyDrivers(companyId);
-      const activeAssociations = associations.filter(a => a.status === 'active' && a.driverId && a.driver);
-
-      for (const association of activeAssociations) {
-        const profileId = association.driverId!;
-        const driverProfile = association.driver;
-        
-        if (!driverProfile) continue;
-
-        // Check if driver record exists for this profile
-        const { data: existingDriver } = await supabase
-          .from('drivers')
-          .select('*')
-          .eq('profile_id', profileId)
-          .eq('company_id', companyId)
-          .maybeSingle();
-
-        if (existingDriver) {
-          // Use existing driver record
-          results.push({
-            id: existingDriver.id,
-            name: existingDriver.name,
-            transporterId: existingDriver.transporter_id || '',
-            phone: existingDriver.phone || '',
-            email: existingDriver.email || '',
-            companyId: existingDriver.company_id
-          });
-        } else {
-          // Create driver record for this profile if it doesn't exist
-          try {
-            const { data: newDriver, error: createError } = await supabase
-              .from('drivers')
-              .insert([{
-                name: driverProfile.name || driverProfile.email || 'Unknown',
-                phone: driverProfile.phone || null,
-                email: driverProfile.email || null,
-                profile_id: profileId,
-                company_id: companyId,
-                transporter_id: null
-              }])
-              .select('*')
-              .single();
-
-            if (!createError && newDriver) {
-              results.push({
-                id: newDriver.id,
-                name: newDriver.name,
-                transporterId: newDriver.transporter_id || '',
-                phone: newDriver.phone || '',
-                email: newDriver.email || '',
-                companyId: newDriver.company_id
-              });
-            }
-          } catch (createError) {
-            console.error('Error creating driver record for association:', createError);
-            // Continue without this driver
-          }
-        }
-      }
-    } catch (error) {
-      console.error('Error fetching drivers from associations:', error);
-    }
-
-    // 2. Get manually added drivers from drivers table (those without profile_id)
-    try {
-      const { data: manualDrivers, error: driversError } = await supabase
+      // Get ALL drivers from drivers table for this company (both with and without profile_id)
+      // This is the source of truth for driver pay configuration
+      const { data: allDrivers, error: driversError } = await supabase
         .from('drivers')
         .select('*')
-        .eq('company_id', companyId)
-        .is('profile_id', null); // Only get manually added drivers (no profile_id)
+        .eq('company_id', companyId);
 
-      if (!driversError && manualDrivers) {
-        const manualDriversList = manualDrivers.map((d: any) => ({
-          id: d.id,
-          name: d.name,
-          transporterId: d.transporter_id || '',
-          phone: d.phone || '',
-          email: d.email || '',
-          companyId: d.company_id
-        }));
-        results.push(...manualDriversList);
+      if (driversError) {
+        console.error('Error fetching drivers from drivers table:', driversError);
+        throw driversError;
       }
+
+      if (!allDrivers || allDrivers.length === 0) {
+        return [];
+      }
+
+      // Map all drivers to Driver interface
+      const driversList = allDrivers.map((d: any) => ({
+        id: d.id,
+        name: d.name,
+        transporterId: d.transporter_id || '',
+        phone: d.phone || '',
+        email: d.email || '',
+        companyId: d.company_id,
+        payType: d.pay_type || 'percentage_of_net',
+        payPercentage: d.pay_percentage || 50
+      }));
+
+      // Remove duplicates by ID (shouldn't happen, but just in case)
+      const uniqueDrivers = driversList.filter((d, index, self) => 
+        index === self.findIndex(t => t.id === d.id)
+      );
+
+      console.log(`✅ Loaded ${uniqueDrivers.length} drivers for company ${companyId}`);
+      return uniqueDrivers;
     } catch (error) {
-      console.error('Error fetching drivers from drivers table:', error);
+      console.error('Error fetching drivers:', error);
+      // Fallback: return empty array
+      return [];
     }
-
-    // Remove duplicates (in case a driver exists in both)
-    const uniqueDrivers = results.filter((d, index, self) => 
-      index === self.findIndex(t => t.id === d.id)
-    );
-
-    return uniqueDrivers;
   }
 
   // Fallback: Get from drivers table (backward compatibility - only when companyId is not provided)
@@ -870,7 +815,9 @@ export const getDrivers = async (companyId?: string): Promise<Driver[]> => {
     transporterId: d.transporter_id || '',
     phone: d.phone || '',
     email: d.email || '',
-    companyId: d.company_id
+    companyId: d.company_id,
+    payType: d.pay_type || 'percentage_of_net',
+    payPercentage: d.pay_percentage || 50
   }));
 };
 
@@ -924,7 +871,9 @@ export const createDriver = async (d: Omit<Driver, 'id'>): Promise<Driver> => {
       transporter_id: d.transporterId || null,
       phone: d.phone,
       email: d.email,
-      company_id: companyId
+      company_id: companyId,
+      pay_type: d.payType || 'percentage_of_net',
+      pay_percentage: d.payPercentage || 50
     }])
     .select()
     .single();
@@ -937,7 +886,9 @@ export const createDriver = async (d: Omit<Driver, 'id'>): Promise<Driver> => {
     transporterId: data.transporter_id,
     phone: data.phone,
     email: data.email,
-    companyId: data.company_id
+    companyId: data.company_id,
+    payType: data.pay_type || 'percentage_of_net',
+    payPercentage: data.pay_percentage || 50
   };
 };
 
@@ -957,6 +908,8 @@ export const updateDriver = async (id: string, d: Partial<Omit<Driver, 'id' | 'c
   if (d.phone !== undefined) updateData.phone = d.phone;
   if (d.email !== undefined) updateData.email = d.email;
   if (d.transporterId !== undefined) updateData.transporter_id = d.transporterId || null;
+  if (d.payType !== undefined) updateData.pay_type = d.payType;
+  if (d.payPercentage !== undefined) updateData.pay_percentage = d.payPercentage;
 
   const { data, error } = await supabase
     .from('drivers')
@@ -976,6 +929,8 @@ export const updateDriver = async (id: string, d: Partial<Omit<Driver, 'id' | 'c
     transporterId: data.transporter_id,
     phone: data.phone,
     email: data.email,
-    companyId: data.company_id
+    companyId: data.company_id,
+    payType: data.pay_type || 'percentage_of_net',
+    payPercentage: data.pay_percentage || 50
   };
 };

@@ -29,6 +29,8 @@ export interface Driver {
   phone?: string;
   email?: string;
   companyId: string;
+  payType?: 'percentage_of_gross' | 'percentage_of_net'; // Pay calculation method
+  payPercentage?: number; // Pay percentage (e.g., 30, 50)
 }
 
 export interface Dispatcher {

@@ -236,16 +236,46 @@ export const Reports: React.FC<ReportsProps> = ({ user, companyId }) => {
       driverMap.set(driver.id, driver.name);
     });
 
+    // Create driver pay configuration map
+    const driverPayConfigMap = new Map<string, { payType: string, payPercentage: number }>();
+    drivers.forEach(driver => {
+      driverPayConfigMap.set(driver.id, {
+        payType: driver.payType || 'percentage_of_net',
+        payPercentage: driver.payPercentage || 50
+      });
+    });
+
     return loads.map(load => {
       const feePercentage = dispatcherFeeMap.get(load.dispatcher) || 12; // Default to 12% if dispatcher not found
       const dispatchFee = load.gross * (feePercentage / 100);
-      // Gas expenses are shared 50-50 between driver and company
-      const driverGasShare = load.gasAmount * 0.5;
-      const companyGasShare = load.gasAmount * 0.5;
-      // Driver pay: 50% of (Gross - Dispatch Fee) minus driver's share of gas
-      const driverPay = (load.gross - dispatchFee) * 0.5 - driverGasShare;
-      // Net profit: 50% of (Gross - Dispatch Fee) minus company's share of gas
-      const netProfit = (load.gross - dispatchFee) * 0.5 - companyGasShare;
+      
+      // Get driver pay configuration
+      const driverConfig = load.driverId ? driverPayConfigMap.get(load.driverId) : null;
+      const payType = driverConfig?.payType || 'percentage_of_net';
+      const payPercentage = driverConfig?.payPercentage || 50;
+      
+      // Gas expense allocation depends on pay type:
+      // - percentage_of_gross: Owner covers all expenses (100% company, 0% driver)
+      // - percentage_of_net: Shared 50-50 between driver and company
+      let driverGasShare: number;
+      let companyGasShare: number;
+      let driverPay: number;
+      
+      if (payType === 'percentage_of_gross') {
+        // Percentage of gross: Owner covers all expenses
+        driverGasShare = 0; // Driver pays no gas
+        companyGasShare = load.gasAmount; // Company covers 100% of gas
+        driverPay = load.gross * (payPercentage / 100); // No gas deduction from driver pay
+      } else {
+        // Percentage of net: Shared expenses (50-50)
+        driverGasShare = load.gasAmount * 0.5;
+        companyGasShare = load.gasAmount * 0.5;
+        driverPay = (load.gross - dispatchFee) * (payPercentage / 100) - driverGasShare;
+      }
+      
+      // Net profit calculation
+      const netProfit = load.gross - dispatchFee - driverPay - companyGasShare;
+      
       const driverName = load.driverId ? driverMap.get(load.driverId) : undefined;
 
       return {

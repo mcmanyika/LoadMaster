@@ -178,8 +178,21 @@ export const LoadForm: React.FC<LoadFormProps> = ({ onClose, onSave, currentUser
   const selectedDispatcher = dispatchers.find(d => d.name === formData.dispatcher);
   const feePercentage = selectedDispatcher?.feePercentage || 12; // Default to 12% if not set
   const dispatchFee = gross * (feePercentage / 100);
-  // Driver pay: 50% of (Gross - Dispatch Fee)
-  const driverPay = (gross - dispatchFee) * 0.5;
+  
+  // Get selected driver's pay configuration
+  const selectedDriver = drivers.find(d => d.id === formData.driverId);
+  const driverPayType = selectedDriver?.payType || 'percentage_of_net';
+  const driverPayPercentage = selectedDriver?.payPercentage || 50;
+  
+  // Calculate driver pay based on driver's pay configuration
+  let driverPay: number;
+  if (driverPayType === 'percentage_of_gross') {
+    // Percentage of gross (e.g., 30% of gross)
+    driverPay = gross * (driverPayPercentage / 100);
+  } else {
+    // Percentage of net (gross - dispatch fee) - default behavior
+    driverPay = (gross - dispatchFee) * (driverPayPercentage / 100);
+  }
 
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
@@ -522,7 +535,11 @@ export const LoadForm: React.FC<LoadFormProps> = ({ onClose, onSave, currentUser
                   </div>
                   <div>
                     <p className="text-xs font-semibold text-blue-800 dark:text-blue-300 uppercase">Estimated Driver Pay</p>
-                    <p className="text-xs text-blue-600 dark:text-blue-400">50% of (Gross - Dispatch Fee)</p>
+                    <p className="text-xs text-blue-600 dark:text-blue-400">
+                      {selectedDriver 
+                        ? `${driverPayPercentage}% of ${driverPayType === 'percentage_of_gross' ? 'Gross' : '(Gross - Dispatch Fee)'}`
+                        : '50% of (Gross - Dispatch Fee)'}
+                    </p>
                   </div>
                 </div>
                 <div className="text-right">

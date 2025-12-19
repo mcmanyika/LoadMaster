@@ -12,8 +12,10 @@ import {
 import { formatInviteCode, normalizeInviteCode, validateInviteCodeFormat } from '../services/inviteCodeService';
 import { ErrorModal } from './ErrorModal';
 import { ConfirmModal } from './ConfirmModal';
-import { Mail, X, Check, Users, Clock, AlertCircle, Trash2, Copy, Key, Building2 } from 'lucide-react';
+import { Mail, X, Check, Users, Clock, AlertCircle, Trash2, Copy, Key, Building2, Edit2 } from 'lucide-react';
 import { supabase } from '../services/supabaseClient';
+import { updateDriver, getDrivers } from '../services/loadService';
+import { Driver } from '../types';
 
 interface DriverInvitationManagementProps {
   user: UserProfile;
@@ -40,6 +42,13 @@ export const DriverInvitationManagement: React.FC<DriverInvitationManagementProp
   const [codeInput, setCodeInput] = useState('');
   const [codePreview, setCodePreview] = useState<{ company?: Company; expiresAt?: string } | null>(null);
   const [previewLoading, setPreviewLoading] = useState(false);
+  
+  // Driver edit state
+  const [editingDriverId, setEditingDriverId] = useState<string | null>(null);
+  const [editDriverForm, setEditDriverForm] = useState({
+    payType: 'percentage_of_net' as 'percentage_of_gross' | 'percentage_of_net',
+    payPercentage: '50'
+  });
 
   useEffect(() => {
     if (isOwner && companyId) {
@@ -511,6 +520,27 @@ export const DriverInvitationManagement: React.FC<DriverInvitationManagementProp
                       )}
                     </div>
                     <div className="flex items-center gap-4">
+                      {isOwner && association.id.startsWith('manual-') && (
+                        <button
+                          onClick={async () => {
+                            const driverId = association.id.replace('manual-', '');
+                            // Fetch driver to get current pay config
+                            const drivers = await getDrivers(companyId);
+                            const driver = drivers.find(d => d.id === driverId);
+                            if (driver) {
+                              setEditingDriverId(driverId);
+                              setEditDriverForm({
+                                payType: driver.payType || 'percentage_of_net',
+                                payPercentage: (driver.payPercentage || 50).toString()
+                              });
+                            }
+                          }}
+                          className="p-2 text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded transition-colors"
+                          title="Edit pay configuration"
+                        >
+                          <Edit2 size={16} />
+                        </button>
+                      )}
                       <button
                         onClick={() => handleRemove(association.id)}
                         className="p-2 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/30 rounded transition-colors"
@@ -524,6 +554,98 @@ export const DriverInvitationManagement: React.FC<DriverInvitationManagementProp
               </div>
             )}
           </div>
+          
+          {/* Edit Driver Pay Configuration Modal */}
+          {editingDriverId && (
+            <div className="fixed inset-0 bg-slate-900/50 dark:bg-slate-900/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+              <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-xl w-full max-w-md">
+                <div className="px-6 py-4 border-b border-slate-200 dark:border-slate-700 flex justify-between items-center">
+                  <h3 className="text-lg font-bold text-slate-800 dark:text-slate-100">Edit Driver Pay Configuration</h3>
+                  <button
+                    onClick={() => {
+                      setEditingDriverId(null);
+                      setEditDriverForm({ payType: 'percentage_of_net', payPercentage: '50' });
+                    }}
+                    className="p-2 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-full transition-colors"
+                  >
+                    <X className="w-5 h-5 text-slate-600 dark:text-slate-400" />
+                  </button>
+                </div>
+                <div className="p-6 space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                      Pay Calculation Method
+                    </label>
+                    <select
+                      className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-white"
+                      value={editDriverForm.payType}
+                      onChange={e => setEditDriverForm({ ...editDriverForm, payType: e.target.value as 'percentage_of_gross' | 'percentage_of_net' })}
+                    >
+                      <option value="percentage_of_net">% of (Gross - Dispatch Fee)</option>
+                      <option value="percentage_of_gross">% of Gross</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                      Pay Percentage (%)
+                    </label>
+                    <input
+                      type="number"
+                      min="0"
+                      max="100"
+                      step="0.01"
+                      className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-white"
+                      value={editDriverForm.payPercentage}
+                      onChange={e => setEditDriverForm({ ...editDriverForm, payPercentage: e.target.value })}
+                      placeholder="50"
+                    />
+                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                      {editDriverForm.payType === 'percentage_of_gross' 
+                        ? 'Percentage of total gross revenue per load. Owner covers all expenses (gas, etc.).'
+                        : 'Percentage of (Gross - Dispatch Fee) per load. Gas expenses shared 50-50.'}
+                    </p>
+                  </div>
+                  <div className="flex gap-3 pt-4">
+                    <button
+                      onClick={async () => {
+                        try {
+                          const payPercentage = parseFloat(editDriverForm.payPercentage) || 50;
+                          if (payPercentage < 0 || payPercentage > 100) {
+                            setErrorModal({ isOpen: true, message: 'Pay percentage must be between 0 and 100' });
+                            return;
+                          }
+                          
+                          await updateDriver(editingDriverId, {
+                            payType: editDriverForm.payType,
+                            payPercentage: payPercentage
+                          });
+                          
+                          setEditingDriverId(null);
+                          setEditDriverForm({ payType: 'percentage_of_net', payPercentage: '50' });
+                          await loadOwnerData();
+                          onUpdate?.();
+                        } catch (error: any) {
+                          setErrorModal({ isOpen: true, message: error.message || 'Failed to update driver pay configuration' });
+                        }
+                      }}
+                      className="flex-1 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium transition-colors"
+                    >
+                      Save
+                    </button>
+                    <button
+                      onClick={() => {
+                        setEditingDriverId(null);
+                        setEditDriverForm({ payType: 'percentage_of_net', payPercentage: '50' });
+                      }}
+                      className="flex-1 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-300 px-4 py-2 rounded-lg font-medium transition-colors"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
         </>
       ) : (
         /* Driver View - Enter Invite Code */
