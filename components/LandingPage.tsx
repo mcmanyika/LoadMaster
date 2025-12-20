@@ -192,8 +192,10 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onSignIn
         {/* Hero Section */}
         <section ref={heroRef} data-section="hero" className="relative overflow-hidden bg-gradient-to-b from-slate-950 via-slate-900/80 to-slate-900">
           <div className="absolute inset-0 bg-gradient-to-br from-blue-600/10 via-transparent to-emerald-600/10" />
-          <div className="absolute top-0 right-0 w-96 h-96 bg-blue-600/5 rounded-full blur-3xl" />
-          <div className="absolute bottom-0 left-0 w-96 h-96 bg-emerald-600/5 rounded-full blur-3xl" />
+          <div className="absolute top-0 right-0 w-96 h-96 bg-blue-600/5 rounded-full blur-3xl animate-pulse-slow" />
+          <div className="absolute bottom-0 left-0 w-96 h-96 bg-emerald-600/5 rounded-full blur-3xl animate-pulse-slow" style={{ animationDelay: '1s' }} />
+          {/* Animated grid pattern */}
+          <div className="absolute inset-0 bg-[linear-gradient(to_right,#1e293b_1px,transparent_1px),linear-gradient(to_bottom,#1e293b_1px,transparent_1px)] bg-[size:4rem_4rem] opacity-20"></div>
           {/* Smooth transition to next section */}
           <div className="absolute bottom-0 left-0 right-0 h-48 bg-gradient-to-b from-transparent via-slate-900/40 to-slate-900 pointer-events-none" />
           
@@ -202,20 +204,20 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onSignIn
               {/* Left Column - Text Content */}
               <div className="space-y-8">
                 {/* Headline */}
-                <h1 className={`text-5xl md:text-6xl lg:text-7xl font-bold leading-tight ${visibleSections.has('hero') ? 'animate-fade-in-up delay-100' : 'opacity-0'}`}>
-                  <span className="text-white">
+                <h1 className={`text-5xl md:text-6xl lg:text-7xl font-extrabold leading-tight tracking-tight ${visibleSections.has('hero') ? 'animate-fade-in-up delay-100' : 'opacity-0'}`}>
+                  <span className="text-white drop-shadow-lg">
                     Manage your fleet
                   </span>
                   <br />
-                  <span className="bg-gradient-to-r from-emerald-400 to-teal-400 bg-clip-text text-transparent">
+                  <span className="bg-gradient-to-r from-emerald-400 via-teal-400 to-emerald-400 bg-clip-text text-transparent bg-[length:200%_100%] animate-gradient-x">
                     the modern way
                   </span>
                 </h1>
                 
                 {/* Description */}
-                <p className={`text-xl md:text-2xl text-slate-300 leading-relaxed ${visibleSections.has('hero') ? 'animate-fade-in-up delay-200' : 'opacity-0'}`}>
-                  LoadMaster gives you real-time visibility into every load, driver, and dispatcher. 
-                  Make data-driven decisions and grow your trucking business with confidence.
+                <p className={`text-xl md:text-2xl text-slate-300 leading-relaxed max-w-2xl ${visibleSections.has('hero') ? 'animate-fade-in-up delay-200' : 'opacity-0'}`}>
+                  LoadMaster gives you <span className="text-white font-semibold">real-time visibility</span> into every load, driver, and dispatcher. 
+                  Make <span className="text-emerald-400 font-semibold">data-driven decisions</span> and grow your trucking business with confidence.
                 </p>
                 
                 {/* CTA Buttons */}
@@ -299,13 +301,14 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onSignIn
           {/* Smooth transition to email section */}
           <div className="absolute bottom-0 left-0 right-0 h-48 bg-gradient-to-t from-slate-900 via-slate-900/95 to-slate-900 pointer-events-none" />
           <div className="relative max-w-7xl mx-auto px-6">
-            <div className="text-center mb-16">
-              <h2 className={`text-4xl md:text-5xl font-bold mb-4 ${visibleSections.has('features') ? 'animate-fade-in-up delay-100' : 'opacity-0'}`}>
+            <div className="text-center mb-20">
+              <h2 className={`text-4xl md:text-5xl lg:text-6xl font-extrabold mb-6 tracking-tight ${visibleSections.has('features') ? 'animate-fade-in-up delay-100' : 'opacity-0'}`}>
                 Everything you need to
-                <span className="bg-gradient-to-r from-blue-400 to-emerald-400 bg-clip-text text-transparent"> run your fleet</span>
+                <br />
+                <span className="bg-gradient-to-r from-blue-400 via-emerald-400 to-blue-400 bg-clip-text text-transparent bg-[length:200%_100%] animate-gradient-x">run your fleet</span>
               </h2>
-              <p className={`text-xl text-slate-400 max-w-2xl mx-auto ${visibleSections.has('features') ? 'animate-fade-in-up delay-200' : 'opacity-0'}`}>
-                Powerful tools designed specifically for trucking operations
+              <p className={`text-xl text-slate-400 max-w-2xl mx-auto leading-relaxed ${visibleSections.has('features') ? 'animate-fade-in-up delay-200' : 'opacity-0'}`}>
+                Powerful tools designed specifically for <span className="text-slate-300 font-medium">trucking operations</span>
               </p>
             </div>
 
@@ -350,15 +353,22 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onSignIn
               ].map((feature, index) => (
                 <div
                   key={index}
-                  className={`feature-card group relative p-8 rounded-2xl bg-slate-800/40 border border-slate-700/40 hover:border-slate-600/60 hover:bg-slate-800/60 transition-all duration-500 hover:shadow-2xl hover:shadow-blue-600/10 hover:-translate-y-2 ${visibleSections.has('features') ? 'animate-fade-in-up' : 'opacity-0'}`}
+                  className={`feature-card group relative p-8 rounded-3xl bg-gradient-to-br from-slate-800/50 via-slate-800/40 to-slate-900/50 border border-slate-700/50 hover:border-slate-600/70 hover:from-slate-800/70 hover:via-slate-800/60 hover:to-slate-900/70 transition-all duration-500 hover:shadow-2xl hover:shadow-blue-600/20 hover:-translate-y-2 overflow-hidden ${visibleSections.has('features') ? 'animate-fade-in-up' : 'opacity-0'}`}
                   style={{ animationDelay: `${(index + 3) * 0.1}s` }}
                 >
-                  <div className={`inline-flex p-4 rounded-2xl bg-gradient-to-br ${feature.color} mb-5 group-hover:scale-110 group-hover:shadow-lg group-hover:shadow-blue-600/30 transition-all duration-300`}>
-                    <feature.icon className="h-7 w-7 text-white" />
+                  {/* Animated background gradient */}
+                  <div className="absolute inset-0 rounded-3xl bg-gradient-to-br from-blue-600/0 via-emerald-600/0 to-blue-600/0 group-hover:from-blue-600/10 group-hover:via-emerald-600/10 group-hover:to-blue-600/10 transition-all duration-500 pointer-events-none"></div>
+                  
+                  {/* Shine effect on hover */}
+                  <div className="absolute inset-0 rounded-3xl bg-gradient-to-r from-transparent via-white/0 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000 pointer-events-none"></div>
+                  
+                  <div className="relative z-10">
+                    <div className={`inline-flex p-4 rounded-2xl bg-gradient-to-br ${feature.color} mb-5 group-hover:scale-110 group-hover:rotate-3 group-hover:shadow-xl group-hover:shadow-blue-600/40 transition-all duration-300`}>
+                      <feature.icon className="h-7 w-7 text-white" />
+                    </div>
+                    <h3 className="text-xl font-extrabold mb-3 text-white group-hover:text-transparent group-hover:bg-gradient-to-r group-hover:from-blue-400 group-hover:to-emerald-400 group-hover:bg-clip-text transition-all duration-300">{feature.title}</h3>
+                    <p className="text-slate-400 leading-relaxed group-hover:text-slate-200 transition-colors duration-300">{feature.description}</p>
                   </div>
-                  <h3 className="text-xl font-bold mb-3 text-white group-hover:text-blue-300 transition-colors duration-300">{feature.title}</h3>
-                  <p className="text-slate-400 leading-relaxed group-hover:text-slate-200 transition-colors duration-300">{feature.description}</p>
-                  <div className="absolute inset-0 rounded-2xl bg-gradient-to-br from-blue-600/0 via-emerald-600/0 to-blue-600/0 group-hover:from-blue-600/5 group-hover:via-emerald-600/5 group-hover:to-blue-600/5 transition-all duration-500 pointer-events-none"></div>
                 </div>
               ))}
             </div>
@@ -372,11 +382,15 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onSignIn
           {/* Smooth transition to pricing */}
           <div className="absolute bottom-0 left-0 right-0 h-48 bg-gradient-to-t from-slate-900 via-slate-900/95 to-transparent pointer-events-none" />
           <div className="max-w-4xl mx-auto px-6">
-            <div className={`text-center space-y-6 p-10 rounded-3xl bg-gradient-to-br from-slate-800/40 via-slate-800/30 to-slate-900/40 border border-slate-700/40 hover:border-slate-600/60 hover:bg-slate-800/50 transition-all duration-500 hover:shadow-2xl hover:shadow-blue-600/10 ${visibleSections.has('email') ? 'animate-fade-in-up delay-200' : 'opacity-0'}`}>
-              <h2 className="text-3xl md:text-4xl font-bold">
+            <div className={`text-center space-y-8 p-12 rounded-3xl bg-gradient-to-br from-slate-800/50 via-slate-800/40 to-slate-900/50 border border-slate-700/50 hover:border-slate-600/70 hover:bg-slate-800/60 transition-all duration-500 hover:shadow-2xl hover:shadow-blue-600/20 hover:-translate-y-1 ${visibleSections.has('email') ? 'animate-fade-in-up delay-200' : 'opacity-0'}`}>
+              <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-blue-600/10 border border-blue-500/20 mb-2">
+                <Mail className="h-4 w-4 text-blue-400" />
+                <span className="text-sm text-blue-300 font-medium">Newsletter</span>
+              </div>
+              <h2 className="text-3xl md:text-4xl lg:text-5xl font-extrabold">
                 Stay ahead of the curve
               </h2>
-              <p className="text-lg text-slate-300">
+              <p className="text-lg md:text-xl text-slate-300 max-w-xl mx-auto leading-relaxed">
                 Get the latest LoadMaster updates, new features, and fleet management tips delivered to your inbox.
               </p>
               <form
@@ -396,7 +410,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onSignIn
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="Enter your email"
-                  className="flex-1 px-4 py-3 rounded-lg bg-slate-900/50 border border-slate-700 text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200"
+                  className="flex-1 px-5 py-3.5 rounded-xl bg-slate-900/60 border border-slate-700/50 text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 focus:bg-slate-900/80 transition-all duration-300 backdrop-blur-sm"
                 />
                 <button
                   type="submit"
@@ -425,13 +439,14 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onSignIn
           {/* Smooth transition to contact */}
           <div className="absolute bottom-0 left-0 right-0 h-48 bg-gradient-to-t from-slate-900 via-slate-900/95 to-slate-900 pointer-events-none" />
           <div className="max-w-7xl mx-auto px-6">
-            <div className="text-center mb-16">
-              <h2 className={`text-4xl md:text-5xl font-bold mb-4 ${visibleSections.has('pricing') ? 'animate-fade-in-up delay-100' : 'opacity-0'}`}>
+            <div className="text-center mb-20">
+              <h2 className={`text-4xl md:text-5xl lg:text-6xl font-extrabold mb-6 tracking-tight ${visibleSections.has('pricing') ? 'animate-fade-in-up delay-100' : 'opacity-0'}`}>
                 Simple, transparent
-                <span className="bg-gradient-to-r from-blue-400 to-emerald-400 bg-clip-text text-transparent"> pricing</span>
+                <br />
+                <span className="bg-gradient-to-r from-blue-400 via-emerald-400 to-blue-400 bg-clip-text text-transparent bg-[length:200%_100%] animate-gradient-x">pricing</span>
               </h2>
-              <p className={`text-xl text-slate-400 ${visibleSections.has('pricing') ? 'animate-fade-in-up delay-200' : 'opacity-0'}`}>
-                Choose the plan that fits your fleet. Upgrade or downgrade anytime.
+              <p className={`text-xl text-slate-400 max-w-2xl mx-auto leading-relaxed ${visibleSections.has('pricing') ? 'animate-fade-in-up delay-200' : 'opacity-0'}`}>
+                Choose the plan that fits your fleet. <span className="text-slate-300 font-medium">Upgrade or downgrade anytime.</span>
               </p>
             </div>
 
@@ -491,46 +506,52 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onSignIn
               ].map((plan, index) => (
                 <div
                   key={index}
-                  className={`pricing-card relative p-8 rounded-2xl border-2 ${
+                  className={`pricing-card relative p-10 rounded-3xl border-2 transition-all duration-500 ${
                     plan.popular
-                      ? 'border-blue-500 bg-gradient-to-br from-slate-800 to-slate-900 scale-105 shadow-2xl shadow-blue-500/20'
-                      : 'border-slate-700 bg-slate-800/50 hover:border-slate-600'
+                      ? 'border-blue-500/60 bg-slate-800/90 scale-105 hover:scale-110 hover:border-blue-400'
+                      : 'border-slate-700/30 bg-slate-800/40 hover:border-slate-600/50 hover:bg-slate-800/60 hover:scale-105'
                   } ${visibleSections.has('pricing') ? 'animate-scale-in' : 'opacity-0'}`}
                   style={{ animationDelay: `${(index + 3) * 0.15}s` }}
                 >
                   {plan.popular && (
-                    <div className="absolute -top-4 left-1/2 -translate-x-1/2 px-4 py-1 bg-gradient-to-r from-blue-600 to-blue-700 text-white text-sm font-semibold rounded-full">
+                    <div className="absolute -top-5 left-1/2 -translate-x-1/2 px-5 py-1.5 bg-gradient-to-r from-blue-600 via-blue-600 to-blue-700 text-white text-sm font-bold rounded-full shadow-lg shadow-blue-600/50">
                       Most Popular
                     </div>
                   )}
-                  <div className="mb-6 group-hover:scale-105 transition-transform duration-300">
-                    <h3 className="text-2xl font-bold mb-2">{plan.name}</h3>
+                  {/* Shine effect on hover */}
+                  <div className="absolute inset-0 rounded-3xl bg-gradient-to-r from-transparent via-white/5 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000 pointer-events-none"></div>
+                  
+                  <div className="relative z-10 mb-6 group-hover:scale-105 transition-transform duration-300">
+                    <h3 className="text-2xl font-extrabold mb-2 text-white">{plan.name}</h3>
                     <div className="flex items-baseline gap-1">
-                      <span className="text-4xl font-bold">{plan.price}</span>
-                      <span className="text-slate-400">{plan.period}</span>
+                      <span className="text-4xl font-extrabold bg-gradient-to-r from-blue-400 to-emerald-400 bg-clip-text text-transparent">{plan.price}</span>
+                      <span className="text-slate-400 font-medium">{plan.period}</span>
                     </div>
-                    <p className="text-slate-400 mt-2">{plan.description}</p>
+                    <p className="text-slate-400 mt-2 leading-relaxed">{plan.description}</p>
                   </div>
-                  <ul className="space-y-3 mb-8">
+                  <ul className="relative z-10 space-y-3 mb-8">
                     {plan.features.map((feature, i) => (
-                      <li key={i} className="flex items-start gap-3 group/item hover:translate-x-2 transition-transform duration-300">
-                        <Check className="h-5 w-5 text-emerald-400 flex-shrink-0 mt-0.5 group-hover/item:scale-125 transition-transform duration-300" />
+                      <li key={i} className="flex items-start gap-3 group/item hover:translate-x-2 transition-all duration-300 hover:text-white">
+                        <Check className="h-5 w-5 text-emerald-400 flex-shrink-0 mt-0.5 group-hover/item:scale-125 group-hover/item:text-emerald-300 transition-all duration-300" />
                         <span className="text-slate-300 group-hover/item:text-white transition-colors duration-300">{feature}</span>
                       </li>
                     ))}
                   </ul>
                   <button
                     onClick={() => plan.planId ? handleLandingCheckout(plan.planId) : scrollToContact()}
-                    className={`btn-primary w-full py-3 rounded-lg font-semibold group ${
+                    className={`relative z-10 btn-primary w-full py-3.5 rounded-xl font-bold group overflow-hidden transition-all duration-300 ${
                       plan.popular
-                        ? 'bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white shadow-lg shadow-blue-600/25'
-                        : 'bg-slate-700 hover:bg-slate-600 text-white'
+                        ? 'bg-gradient-to-r from-blue-600 via-blue-600 to-blue-700 hover:from-blue-700 hover:via-blue-700 hover:to-blue-800 text-white shadow-xl shadow-blue-600/30 hover:shadow-blue-600/40 hover:scale-105'
+                        : 'bg-slate-700/80 hover:bg-slate-600/90 text-white hover:scale-105'
                     }`}
                   >
-                    <span className="flex items-center justify-center gap-2">
+                    <span className="relative z-10 flex items-center justify-center gap-2">
                       {plan.cta}
                       {plan.planId && <ArrowRight className="h-4 w-4 group-hover:translate-x-1 transition-transform duration-300" />}
                     </span>
+                    {plan.popular && (
+                      <div className="absolute inset-0 bg-gradient-to-r from-blue-500/0 via-blue-400/20 to-blue-500/0 group-hover:from-blue-500/20 group-hover:via-blue-400/40 group-hover:to-blue-500/20 transition-all duration-500 -translate-x-full group-hover:translate-x-full"></div>
+                    )}
                   </button>
                 </div>
               ))}
@@ -550,16 +571,16 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onSignIn
           {/* Smooth transition to footer */}
           <div className="absolute bottom-0 left-0 right-0 h-48 bg-gradient-to-t from-slate-950 via-slate-900/95 to-slate-900 pointer-events-none" />
           <div className="max-w-4xl mx-auto px-6">
-            <div className={`text-center mb-12 ${visibleSections.has('contact') ? 'animate-fade-in-up delay-100' : 'opacity-0'}`}>
-              <h2 className="text-4xl md:text-5xl font-bold mb-4">
+            <div className={`text-center mb-16 ${visibleSections.has('contact') ? 'animate-fade-in-up delay-100' : 'opacity-0'}`}>
+              <h2 className="text-4xl md:text-5xl lg:text-6xl font-extrabold mb-6 tracking-tight">
                 Get in touch
               </h2>
-              <p className="text-xl text-slate-400">
-                Have questions? Want to learn more? We're here to help.
+              <p className="text-xl md:text-2xl text-slate-400 max-w-2xl mx-auto leading-relaxed">
+                Have questions? Want to learn more? <span className="text-slate-300 font-medium">We're here to help.</span>
               </p>
             </div>
 
-            <div className={`bg-slate-800/50 border border-slate-700 rounded-2xl p-8 hover:border-slate-600 transition-all duration-300 ${visibleSections.has('contact') ? 'animate-scale-in delay-200' : 'opacity-0'}`}>
+            <div className={`bg-gradient-to-br from-slate-800/60 via-slate-800/50 to-slate-900/60 border border-slate-700/50 rounded-3xl p-10 hover:border-slate-600/70 hover:bg-slate-800/70 transition-all duration-500 hover:shadow-2xl hover:shadow-blue-600/10 ${visibleSections.has('contact') ? 'animate-scale-in delay-200' : 'opacity-0'}`}>
               <form onSubmit={handleContactSubmit} className="space-y-6">
                 <div className="grid md:grid-cols-2 gap-6">
                   <div>
@@ -571,7 +592,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onSignIn
                       required
                       value={contactForm.name}
                       onChange={(e) => setContactForm({ ...contactForm, name: e.target.value })}
-                      className="w-full px-4 py-3 rounded-lg bg-slate-900/50 border border-slate-700 text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200"
+                      className="w-full px-5 py-3.5 rounded-xl bg-slate-900/60 border border-slate-700/50 text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 focus:bg-slate-900/80 transition-all duration-300 backdrop-blur-sm"
                       placeholder="John Doe"
                     />
                   </div>
@@ -584,7 +605,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onSignIn
                       required
                       value={contactForm.email}
                       onChange={(e) => setContactForm({ ...contactForm, email: e.target.value })}
-                      className="w-full px-4 py-3 rounded-lg bg-slate-900/50 border border-slate-700 text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200"
+                      className="w-full px-5 py-3.5 rounded-xl bg-slate-900/60 border border-slate-700/50 text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 focus:bg-slate-900/80 transition-all duration-300 backdrop-blur-sm"
                       placeholder="john@company.com"
                     />
                   </div>
@@ -598,7 +619,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onSignIn
                       type="text"
                       value={contactForm.company}
                       onChange={(e) => setContactForm({ ...contactForm, company: e.target.value })}
-                      className="w-full px-4 py-3 rounded-lg bg-slate-900/50 border border-slate-700 text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200"
+                      className="w-full px-5 py-3.5 rounded-xl bg-slate-900/60 border border-slate-700/50 text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 focus:bg-slate-900/80 transition-all duration-300 backdrop-blur-sm"
                       placeholder="Your Company"
                     />
                   </div>
@@ -610,7 +631,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onSignIn
                       type="tel"
                       value={contactForm.phone}
                       onChange={(e) => setContactForm({ ...contactForm, phone: e.target.value })}
-                      className="w-full px-4 py-3 rounded-lg bg-slate-900/50 border border-slate-700 text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200"
+                      className="w-full px-5 py-3.5 rounded-xl bg-slate-900/60 border border-slate-700/50 text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 focus:bg-slate-900/80 transition-all duration-300 backdrop-blur-sm"
                       placeholder="(555) 123-4567"
                     />
                   </div>
@@ -624,7 +645,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onSignIn
                     rows={5}
                     value={contactForm.message}
                     onChange={(e) => setContactForm({ ...contactForm, message: e.target.value })}
-                    className="w-full px-4 py-3 rounded-lg bg-slate-900/50 border border-slate-700 text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none transition-all duration-200"
+                    className="w-full px-5 py-3.5 rounded-xl bg-slate-900/60 border border-slate-700/50 text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 focus:bg-slate-900/80 resize-none transition-all duration-300 backdrop-blur-sm"
                     placeholder="Tell us about your fleet or ask any questions..."
                   />
                 </div>
@@ -801,8 +822,19 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onSignIn
             background-position: 100% 50%;
           }
         }
+        @keyframes pulse-slow {
+          0%, 100% {
+            opacity: 0.4;
+          }
+          50% {
+            opacity: 0.6;
+          }
+        }
         .animate-gradient-x {
           animation: gradient-x 3s ease infinite;
+        }
+        .animate-pulse-slow {
+          animation: pulse-slow 4s ease-in-out infinite;
         }
         .animate-fade-in-up {
           animation: fadeInUp 0.8s ease-out forwards;
