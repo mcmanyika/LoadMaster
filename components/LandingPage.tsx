@@ -21,9 +21,11 @@ interface LandingPageProps {
   onGetStarted: () => void;
   onSignIn: () => void;
   onSelectPlan?: (planId: 'essential' | 'professional', interval: 'month' | 'year') => void;
+  onPrivacyClick?: () => void;
+  onTermsClick?: () => void;
 }
 
-export const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onSignIn, onSelectPlan }) => {
+export const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onSignIn, onSelectPlan, onPrivacyClick, onTermsClick }) => {
   const [email, setEmail] = useState('');
   const [emailSubmitted, setEmailSubmitted] = useState(false);
   const [visibleSections, setVisibleSections] = useState<Set<string>>(new Set());
@@ -740,14 +742,20 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onSignIn
               <h3 className="font-semibold mb-4">Legal</h3>
               <ul className="space-y-2 text-sm text-slate-400">
                 <li>
-                  <a href="#" className="hover:text-white transition-colors">
+                  <button 
+                    onClick={onPrivacyClick}
+                    className="hover:text-white transition-colors text-left"
+                  >
                     Privacy Policy
-                  </a>
+                  </button>
                 </li>
                 <li>
-                  <a href="#" className="hover:text-white transition-colors">
+                  <button 
+                    onClick={onTermsClick}
+                    className="hover:text-white transition-colors text-left"
+                  >
                     Terms of Service
-                  </a>
+                  </button>
                 </li>
               </ul>
             </div>

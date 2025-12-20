@@ -48,6 +48,8 @@ import { ConfirmModal } from './components/ConfirmModal';
 import { CompanySwitcher } from './components/CompanySwitcher';
 import { DispatcherCompaniesList } from './components/DispatcherCompaniesList';
 import { LandingPage } from './components/LandingPage';
+import { PrivacyPolicy } from './components/PrivacyPolicy';
+import { TermsOfService } from './components/TermsOfService';
 import { ThemeProvider, useTheme } from './contexts/ThemeContext';
 import { ThemeToggle } from './components/ThemeToggle';
 import { saveSubscription } from './services/subscriptionService';
@@ -195,6 +197,7 @@ function App() {
   const [paymentPlan, setPaymentPlan] = useState<string | null>(null);
   const [paymentSessionId, setPaymentSessionId] = useState<string | null>(null);
   const [paymentInterval, setPaymentInterval] = useState<'month' | 'year' | null>(null);
+  const [legalPage, setLegalPage] = useState<'privacy' | 'terms' | null>(null);
   
   // Multi-company dispatcher context
   const [currentCompanyId, setCurrentCompanyId] = useState<string | null>(null);
@@ -944,6 +947,24 @@ function App() {
         />
       );
     }
+    
+    // Show legal pages if requested
+    if (legalPage === 'privacy') {
+      return (
+        <ThemeProvider>
+          <PrivacyPolicy onBack={() => setLegalPage(null)} />
+        </ThemeProvider>
+      );
+    }
+    
+    if (legalPage === 'terms') {
+      return (
+        <ThemeProvider>
+          <TermsOfService onBack={() => setLegalPage(null)} />
+        </ThemeProvider>
+      );
+    }
+    
     return (
       <ThemeProvider>
         {showAuth ? (
@@ -956,6 +977,8 @@ function App() {
               setPendingPlan({ planId, interval });
               setShowAuth(true);
             }}
+            onPrivacyClick={() => setLegalPage('privacy')}
+            onTermsClick={() => setLegalPage('terms')}
           />
         )}
       </ThemeProvider>
