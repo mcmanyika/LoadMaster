@@ -195,7 +195,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onSignIn
           {/* Smooth transition to next section */}
           <div className="absolute bottom-0 left-0 right-0 h-48 bg-gradient-to-b from-transparent via-slate-900/40 to-slate-900 pointer-events-none" />
           
-          <div className="relative max-w-7xl mx-auto px-6 py-24 md:py-32">
+          <div className="relative max-w-7xl mx-auto px-6 py-16 md:py-24">
             <div className="grid lg:grid-cols-2 gap-12 items-center">
               {/* Left Column - Text Content */}
               <div className="space-y-8">
@@ -286,7 +286,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onSignIn
         </section>
 
         {/* Features Section */}
-        <section ref={featuresRef} id="features" data-section="features" className="relative py-24 bg-slate-900">
+        <section ref={featuresRef} id="features" data-section="features" className="relative py-16 bg-slate-900">
           {/* Smooth transition from hero */}
           <div className="absolute top-0 left-0 right-0 h-48 bg-gradient-to-b from-slate-900 via-slate-900/95 to-slate-900 pointer-events-none" />
           {/* Smooth transition to email section */}
@@ -358,7 +358,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onSignIn
         </section>
 
         {/* Email Subscription */}
-        <section ref={emailRef} data-section="email" className="relative py-16 bg-slate-900">
+        <section ref={emailRef} data-section="email" className="relative py-12 bg-slate-900">
           {/* Smooth transition from features */}
           <div className="absolute top-0 left-0 right-0 h-48 bg-gradient-to-b from-slate-900 via-slate-900/95 to-transparent pointer-events-none" />
           {/* Smooth transition to pricing */}
@@ -408,7 +408,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onSignIn
         </section>
 
         {/* Pricing Section */}
-        <section ref={pricingRef} data-section="pricing" id="pricing" className="relative py-24 bg-slate-900">
+        <section ref={pricingRef} data-section="pricing" id="pricing" className="relative py-16 bg-slate-900">
           {/* Smooth transition from email */}
           <div className="absolute top-0 left-0 right-0 h-48 bg-gradient-to-b from-slate-900 via-slate-900/95 to-slate-900 pointer-events-none" />
           {/* Smooth transition to contact */}
@@ -532,7 +532,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onSignIn
           ref={contactRef}
           data-section="contact"
           id="contact"
-          className="relative py-24 bg-slate-900"
+          className="relative py-16 bg-slate-900"
         >
           {/* Smooth transition from pricing */}
           <div className="absolute top-0 left-0 right-0 h-48 bg-gradient-to-b from-slate-900 via-slate-900/95 to-slate-900 pointer-events-none" />
