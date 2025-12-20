@@ -506,20 +506,23 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onSignIn
               ].map((plan, index) => (
                 <div
                   key={index}
-                  className={`pricing-card relative p-10 rounded-3xl border-2 transition-all duration-500 ${
-                    plan.popular
-                      ? 'border-blue-500/60 bg-slate-800/90 scale-105 hover:scale-110 hover:border-blue-400'
-                      : 'border-slate-700/30 bg-slate-800/40 hover:border-slate-600/50 hover:bg-slate-800/60 hover:scale-105'
-                  } ${visibleSections.has('pricing') ? 'animate-scale-in' : 'opacity-0'}`}
+                  className="relative"
                   style={{ animationDelay: `${(index + 3) * 0.15}s` }}
                 >
                   {plan.popular && (
-                    <div className="absolute -top-5 left-1/2 -translate-x-1/2 px-5 py-1.5 bg-gradient-to-r from-blue-600 via-blue-600 to-blue-700 text-white text-sm font-bold rounded-full shadow-lg shadow-blue-600/50">
+                    <div className="absolute -top-5 left-1/2 -translate-x-1/2 z-20 px-5 py-1.5 bg-gradient-to-r from-blue-600 via-blue-600 to-blue-700 text-white text-sm font-bold rounded-full shadow-lg shadow-blue-600/50">
                       Most Popular
                     </div>
                   )}
-                  {/* Shine effect on hover */}
-                  <div className="absolute inset-0 rounded-3xl bg-gradient-to-r from-transparent via-white/5 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000 pointer-events-none"></div>
+                  <div
+                    className={`pricing-card relative p-10 rounded-3xl border-2 transition-all duration-500 overflow-hidden ${
+                      plan.popular
+                        ? 'border-blue-500/60 bg-slate-800/90 scale-105 hover:scale-110 hover:border-blue-400'
+                        : 'border-slate-700/30 bg-slate-800/40 hover:border-slate-600/50 hover:bg-slate-800/60 hover:scale-105'
+                    } ${visibleSections.has('pricing') ? 'animate-scale-in' : 'opacity-0'}`}
+                  >
+                    {/* Shine effect on hover */}
+                    <div className="absolute inset-0 rounded-3xl bg-gradient-to-r from-transparent via-white/5 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000 pointer-events-none"></div>
                   
                   <div className="relative z-10 mb-6 group-hover:scale-105 transition-transform duration-300">
                     <h3 className="text-2xl font-extrabold mb-2 text-white">{plan.name}</h3>
@@ -553,6 +556,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onSignIn
                       <div className="absolute inset-0 bg-gradient-to-r from-blue-500/0 via-blue-400/20 to-blue-500/0 group-hover:from-blue-500/20 group-hover:via-blue-400/40 group-hover:to-blue-500/20 transition-all duration-500 -translate-x-full group-hover:translate-x-full"></div>
                     )}
                   </button>
+                  </div>
                 </div>
               ))}
             </div>
