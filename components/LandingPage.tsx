@@ -239,16 +239,12 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onSignIn
                 <div className="relative flex items-center justify-center">
                   <div className="relative w-full max-w-4xl">
                     <img
-                      src="/images/hero.png"
+                      src="/images/hero3.png"
                       alt="LoadMaster Dashboard - Modern fleet management interface"
                       className="w-full h-auto object-contain rounded-2xl shadow-2xl"
                       onError={(e) => {
-                        // Fallback placeholder
+                        // Fallback: hide image and show placeholder
                         e.currentTarget.style.display = 'none';
-                        const parent = e.currentTarget.parentElement;
-                        if (parent) {
-                          parent.innerHTML = '<div class="w-full h-full flex items-center justify-center bg-slate-800 text-slate-500 p-12 rounded-2xl">Hero Image</div>';
-                        }
                       }}
                     />
                     {/* Decorative glow effects */}

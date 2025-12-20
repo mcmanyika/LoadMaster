@@ -74,10 +74,21 @@ import {
 const DashboardChart: React.FC<{ chartData: any[]; userRole: string }> = ({ chartData, userRole }) => {
   const { theme } = useTheme();
   
+  // Safety check: ensure chartData is an array
+  const safeChartData = Array.isArray(chartData) ? chartData : [];
+  
+  if (safeChartData.length === 0) {
+    return (
+      <div className="h-72 flex items-center justify-center text-slate-500 dark:text-slate-400">
+        <p>No data available for chart</p>
+      </div>
+    );
+  }
+  
   return (
     <div className="h-72">
       <ResponsiveContainer width="100%" height="100%">
-        <BarChart data={chartData}>
+        <BarChart data={safeChartData}>
           <CartesianGrid 
             strokeDasharray="3 3" 
             vertical={false} 
@@ -119,7 +130,7 @@ const DashboardChart: React.FC<{ chartData: any[]; userRole: string }> = ({ char
             }}
           />
           <Bar dataKey="gross" radius={[6, 6, 0, 0]}>
-            {chartData.map((entry, index) => (
+            {safeChartData.map((entry, index) => (
                <Cell key={`cell-${index}`} fill={index % 2 === 0 ? '#3b82f6' : '#6366f1'} />
             ))}
           </Bar>
@@ -692,7 +703,7 @@ function App() {
         netProfit,
         driverName
       };
-    }).sort((a, b) => new Date(b.dropDate).getTime() - new Date(a.dropDate).getTime());
+    }).slice().sort((a, b) => new Date(b.dropDate).getTime() - new Date(a.dropDate).getTime());
   }, [loads, driverMap, dispatcherFeeMap, driverPayConfigMap]);
 
   // Filter loads based on search, driver, and date filters
@@ -1304,8 +1315,9 @@ function App() {
                         <h4 className="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-3">Top Performers</h4>
                         <div className="space-y-2 max-h-[300px] overflow-y-auto">
                           {chartData
+                            .slice()
                             .sort((a, b) => b.gross - a.gross)
-                            .slice(0, 5)
+                            .slice(0, 2)
                             .map((item, index) => (
                               <div key={item.name} className="flex items-center justify-between p-2 rounded-lg bg-slate-50 dark:bg-slate-700/50">
                                 <div className="flex items-center gap-2">
