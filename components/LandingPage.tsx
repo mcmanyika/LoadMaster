@@ -147,37 +147,39 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onSignIn
   return (
     <div className="min-h-screen bg-slate-950 text-white">
       {/* Navigation */}
-      <nav className={`fixed top-0 left-0 right-0 z-50 backdrop-blur-lg border-b transition-all duration-300 ${
+      <nav className={`fixed top-0 left-0 right-0 z-50 backdrop-blur-xl border-b transition-all duration-500 ${
         scrolled 
-          ? 'bg-slate-950/95 border-slate-700/50 shadow-lg shadow-black/10' 
-          : 'bg-slate-950/80 border-slate-800/50'
+          ? 'bg-slate-950/98 border-slate-700/30 shadow-2xl shadow-black/20' 
+          : 'bg-slate-950/70 border-slate-800/30'
       }`}>
         <div className="max-w-7xl mx-auto px-6 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3 group cursor-pointer">
-              <div className="p-2 bg-gradient-to-br from-blue-600 to-blue-700 rounded-lg group-hover:scale-110 transition-transform duration-300">
+              <div className="p-2.5 bg-gradient-to-br from-blue-600 via-blue-600 to-blue-700 rounded-xl group-hover:scale-110 group-hover:shadow-lg group-hover:shadow-blue-600/50 transition-all duration-300">
                 <Truck className="h-5 w-5 text-white" />
               </div>
-              <span className="text-xl font-bold bg-gradient-to-r from-white to-slate-300 bg-clip-text text-transparent">
+              <span className="text-xl font-bold bg-gradient-to-r from-white via-blue-100 to-white bg-clip-text text-transparent group-hover:from-blue-300 group-hover:via-white group-hover:to-blue-300 transition-all duration-300">
                 LoadMaster
               </span>
             </div>
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-6">
               <button
                 onClick={scrollToFeatures}
-                className="hidden md:block text-sm text-slate-300 hover:text-white transition-all duration-300 hover:scale-105"
+                className="hidden md:block text-sm font-medium text-slate-300 hover:text-white transition-all duration-300 hover:scale-105 relative group"
               >
                 Features
+                <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-blue-500 group-hover:w-full transition-all duration-300"></span>
               </button>
               <button
                 onClick={scrollToPricing}
-                className="hidden md:block text-sm text-slate-300 hover:text-white transition-all duration-300 hover:scale-105"
+                className="hidden md:block text-sm font-medium text-slate-300 hover:text-white transition-all duration-300 hover:scale-105 relative group"
               >
                 Pricing
+                <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-blue-500 group-hover:w-full transition-all duration-300"></span>
               </button>
               <button
                 onClick={onSignIn}
-                className="btn-primary px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg"
+                className="px-5 py-2.5 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white text-sm font-semibold rounded-xl shadow-lg shadow-blue-600/30 hover:shadow-blue-600/50 hover:scale-105 active:scale-100 transition-all duration-300"
               >
                 Sign In
               </button>
@@ -220,35 +222,40 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onSignIn
                 <div className={`flex flex-col sm:flex-row items-start gap-4 ${visibleSections.has('hero') ? 'animate-fade-in-up delay-300' : 'opacity-0'}`}>
                   <button
                     onClick={onGetStarted}
-                    className="btn-primary group px-8 py-4 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-semibold rounded-xl shadow-lg shadow-blue-600/25 hover:shadow-blue-600/40 flex items-center gap-2"
+                    className="btn-primary group relative px-8 py-4 bg-gradient-to-r from-blue-600 via-blue-600 to-blue-700 hover:from-blue-700 hover:via-blue-700 hover:to-blue-800 text-white font-semibold rounded-xl shadow-2xl shadow-blue-600/30 hover:shadow-blue-600/50 hover:scale-105 active:scale-100 transition-all duration-300 flex items-center gap-2 overflow-hidden"
                   >
-                    Get Started Free
-                    <ArrowRight className="h-5 w-5 group-hover:translate-x-1 transition-transform duration-300" />
+                    <span className="relative z-10 flex items-center gap-2">
+                      Get Started Free
+                      <ArrowRight className="h-5 w-5 group-hover:translate-x-1 transition-transform duration-300" />
+                    </span>
+                    <div className="absolute inset-0 bg-gradient-to-r from-blue-500/0 via-blue-400/20 to-blue-500/0 group-hover:from-blue-500/20 group-hover:via-blue-400/40 group-hover:to-blue-500/20 transition-all duration-500 -translate-x-full group-hover:translate-x-full"></div>
                   </button>
                   <button
                     onClick={scrollToPricing}
-                    className="px-8 py-4 border-2 border-slate-700 hover:border-slate-600 text-slate-200 font-semibold rounded-xl hover:bg-slate-800/50 hover:scale-105 active:scale-100 transition-all duration-300"
+                    className="relative px-8 py-4 border-2 border-slate-700/50 hover:border-slate-600/80 text-slate-200 font-semibold rounded-xl hover:bg-slate-800/60 hover:scale-105 active:scale-100 transition-all duration-300 backdrop-blur-sm group overflow-hidden"
                   >
-                    View Pricing
+                    <span className="relative z-10">View Pricing</span>
+                    <div className="absolute inset-0 bg-gradient-to-r from-slate-700/0 via-slate-600/10 to-slate-700/0 group-hover:from-slate-700/20 group-hover:via-slate-600/30 group-hover:to-slate-700/20 transition-all duration-500 -translate-x-full group-hover:translate-x-full"></div>
                   </button>
                 </div>
               </div>
 
               {/* Right Column - Hero Image */}
               <div className={`relative ${visibleSections.has('hero') ? 'animate-fade-in-up delay-400' : 'opacity-0'}`}>
-                <div className="relative flex items-center justify-center">
-                  <div className="relative w-full max-w-4xl rounded-2xl overflow-hidden bg-slate-800/30">
+                <div className="relative flex items-center justify-center group">
+                  <div className="relative w-full max-w-4xl rounded-3xl overflow-hidden bg-slate-800/40 border border-slate-700/30 hover:border-slate-600/50 transition-all duration-500 group-hover:shadow-2xl group-hover:shadow-blue-600/20">
                     <img
                       src="/images/hero4.png"
                       alt="LoadMaster Dashboard - Modern fleet management interface"
-                      className="w-full h-auto object-contain"
+                      className="w-full h-auto object-contain transition-transform duration-700 group-hover:scale-[1.02]"
                       onError={(e) => {
                         // Fallback: hide image and show placeholder
                         e.currentTarget.style.display = 'none';
                       }}
                     />
-                    {/* Subtle glow effect */}
-                    <div className="absolute -inset-2 bg-gradient-to-r from-blue-600/10 via-emerald-600/10 to-blue-600/10 rounded-2xl blur-2xl -z-10 pointer-events-none" />
+                    {/* Enhanced glow effects */}
+                    <div className="absolute -inset-4 bg-gradient-to-r from-blue-600/15 via-emerald-600/15 to-blue-600/15 rounded-3xl blur-3xl -z-10 pointer-events-none opacity-50 group-hover:opacity-75 transition-opacity duration-500" />
+                    <div className="absolute inset-0 bg-gradient-to-t from-slate-900/20 via-transparent to-transparent pointer-events-none" />
                   </div>
                 </div>
               </div>
@@ -263,20 +270,20 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onSignIn
               ].map((stat, index) => (
                 <div
                   key={index}
-                  className="relative text-center group hover:scale-110 transition-transform duration-300"
+                  className="relative text-center group hover:scale-110 transition-all duration-500"
                 >
                   {/* Individual circular background for each stat with smooth fade */}
                   <div 
-                    className={`absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-40 h-40 rounded-full blur-3xl pointer-events-none`}
+                    className={`absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-40 h-40 rounded-full blur-3xl pointer-events-none group-hover:w-48 group-hover:h-48 transition-all duration-500`}
                     style={{
-                      background: `radial-gradient(circle, ${stat.circleColor.includes('blue-500') ? 'rgba(59, 130, 246, 0.15)' : stat.circleColor.includes('emerald') ? 'rgba(16, 185, 129, 0.15)' : 'rgba(96, 165, 250, 0.15)'} 0%, ${stat.circleColor.includes('blue-500') ? 'rgba(59, 130, 246, 0.08)' : stat.circleColor.includes('emerald') ? 'rgba(16, 185, 129, 0.08)' : 'rgba(96, 165, 250, 0.08)'} 40%, transparent 100%)`
+                      background: `radial-gradient(circle, ${stat.circleColor.includes('blue-500') ? 'rgba(59, 130, 246, 0.2)' : stat.circleColor.includes('emerald') ? 'rgba(16, 185, 129, 0.2)' : 'rgba(96, 165, 250, 0.2)'} 0%, ${stat.circleColor.includes('blue-500') ? 'rgba(59, 130, 246, 0.1)' : stat.circleColor.includes('emerald') ? 'rgba(16, 185, 129, 0.1)' : 'rgba(96, 165, 250, 0.1)'} 40%, transparent 100%)`
                     }}
                   ></div>
                   
-                  <div className="relative z-10 text-3xl md:text-4xl font-bold bg-gradient-to-r from-blue-400 to-emerald-400 bg-clip-text text-transparent group-hover:from-blue-300 group-hover:to-emerald-300 transition-all duration-300">
+                  <div className="relative z-10 text-4xl md:text-5xl font-extrabold bg-gradient-to-r from-blue-400 via-emerald-400 to-blue-400 bg-clip-text text-transparent group-hover:from-blue-300 group-hover:via-emerald-300 group-hover:to-blue-300 bg-[length:200%_100%] group-hover:animate-gradient-x transition-all duration-500">
                     {stat.value}
                   </div>
-                  <div className="relative z-10 text-sm text-slate-400 mt-1 group-hover:text-slate-300 transition-colors duration-300">
+                  <div className="relative z-10 text-sm font-medium text-slate-400 mt-2 group-hover:text-slate-200 transition-colors duration-300">
                     {stat.label}
                   </div>
                 </div>
@@ -343,14 +350,15 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onSignIn
               ].map((feature, index) => (
                 <div
                   key={index}
-                  className={`feature-card group p-6 rounded-2xl bg-slate-800/50 border border-slate-700/50 hover:border-slate-600 hover:bg-slate-800 transition-all duration-300 ${visibleSections.has('features') ? 'animate-fade-in-up' : 'opacity-0'}`}
+                  className={`feature-card group relative p-8 rounded-2xl bg-slate-800/40 border border-slate-700/40 hover:border-slate-600/60 hover:bg-slate-800/60 transition-all duration-500 hover:shadow-2xl hover:shadow-blue-600/10 hover:-translate-y-2 ${visibleSections.has('features') ? 'animate-fade-in-up' : 'opacity-0'}`}
                   style={{ animationDelay: `${(index + 3) * 0.1}s` }}
                 >
-                  <div className={`inline-flex p-3 rounded-xl bg-gradient-to-br ${feature.color} mb-4 group-hover:scale-110 transition-transform duration-300`}>
-                    <feature.icon className="h-6 w-6 text-white" />
+                  <div className={`inline-flex p-4 rounded-2xl bg-gradient-to-br ${feature.color} mb-5 group-hover:scale-110 group-hover:shadow-lg group-hover:shadow-blue-600/30 transition-all duration-300`}>
+                    <feature.icon className="h-7 w-7 text-white" />
                   </div>
-                  <h3 className="text-xl font-semibold mb-2 group-hover:text-white transition-colors duration-300">{feature.title}</h3>
-                  <p className="text-slate-400 leading-relaxed group-hover:text-slate-300 transition-colors duration-300">{feature.description}</p>
+                  <h3 className="text-xl font-bold mb-3 text-white group-hover:text-blue-300 transition-colors duration-300">{feature.title}</h3>
+                  <p className="text-slate-400 leading-relaxed group-hover:text-slate-200 transition-colors duration-300">{feature.description}</p>
+                  <div className="absolute inset-0 rounded-2xl bg-gradient-to-br from-blue-600/0 via-emerald-600/0 to-blue-600/0 group-hover:from-blue-600/5 group-hover:via-emerald-600/5 group-hover:to-blue-600/5 transition-all duration-500 pointer-events-none"></div>
                 </div>
               ))}
             </div>
@@ -364,7 +372,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onSignIn
           {/* Smooth transition to pricing */}
           <div className="absolute bottom-0 left-0 right-0 h-48 bg-gradient-to-t from-slate-900 via-slate-900/95 to-transparent pointer-events-none" />
           <div className="max-w-4xl mx-auto px-6">
-            <div className={`text-center space-y-6 p-8 rounded-2xl bg-slate-800/30 border border-slate-700/50 hover:border-slate-600 hover:bg-slate-800/40 transition-all duration-300 ${visibleSections.has('email') ? 'animate-fade-in-up delay-200' : 'opacity-0'}`}>
+            <div className={`text-center space-y-6 p-10 rounded-3xl bg-gradient-to-br from-slate-800/40 via-slate-800/30 to-slate-900/40 border border-slate-700/40 hover:border-slate-600/60 hover:bg-slate-800/50 transition-all duration-500 hover:shadow-2xl hover:shadow-blue-600/10 ${visibleSections.has('email') ? 'animate-fade-in-up delay-200' : 'opacity-0'}`}>
               <h2 className="text-3xl md:text-4xl font-bold">
                 Stay ahead of the curve
               </h2>
@@ -392,10 +400,13 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onSignIn
                 />
                 <button
                   type="submit"
-                  className="btn-primary px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg flex items-center justify-center gap-2 group"
+                  className="btn-primary relative px-6 py-3 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-semibold rounded-xl shadow-lg shadow-blue-600/30 hover:shadow-blue-600/50 hover:scale-105 active:scale-100 transition-all duration-300 flex items-center justify-center gap-2 group overflow-hidden"
                 >
-                  Subscribe
-                  <ArrowRight className="h-4 w-4 group-hover:translate-x-1 transition-transform duration-300" />
+                  <span className="relative z-10 flex items-center gap-2">
+                    Subscribe
+                    <ArrowRight className="h-4 w-4 group-hover:translate-x-1 transition-transform duration-300" />
+                  </span>
+                  <div className="absolute inset-0 bg-gradient-to-r from-blue-500/0 via-blue-400/20 to-blue-500/0 group-hover:from-blue-500/20 group-hover:via-blue-400/40 group-hover:to-blue-500/20 transition-all duration-500 -translate-x-full group-hover:translate-x-full"></div>
                 </button>
               </form>
               {emailSubmitted && (
@@ -781,6 +792,17 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onSignIn
           50% {
             transform: translateY(-10px);
           }
+        }
+        @keyframes gradient-x {
+          0%, 100% {
+            background-position: 0% 50%;
+          }
+          50% {
+            background-position: 100% 50%;
+          }
+        }
+        .animate-gradient-x {
+          animation: gradient-x 3s ease infinite;
         }
         .animate-fade-in-up {
           animation: fadeInUp 0.8s ease-out forwards;
