@@ -237,18 +237,18 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onSignIn
               {/* Right Column - Hero Image */}
               <div className={`relative ${visibleSections.has('hero') ? 'animate-fade-in-up delay-400' : 'opacity-0'}`}>
                 <div className="relative flex items-center justify-center">
-                  <div className="relative w-full max-w-4xl">
+                  <div className="relative w-full max-w-4xl rounded-2xl overflow-hidden bg-slate-800/30">
                     <img
-                      src="/images/hero3.png"
+                      src="/images/hero4.png"
                       alt="LoadMaster Dashboard - Modern fleet management interface"
-                      className="w-full h-auto object-contain rounded-2xl shadow-2xl"
+                      className="w-full h-auto object-contain"
                       onError={(e) => {
                         // Fallback: hide image and show placeholder
                         e.currentTarget.style.display = 'none';
                       }}
                     />
-                    {/* Decorative glow effects */}
-                    <div className="absolute -inset-4 bg-gradient-to-r from-blue-600/20 via-emerald-600/20 to-blue-600/20 rounded-2xl blur-2xl -z-10" />
+                    {/* Subtle glow effect */}
+                    <div className="absolute -inset-2 bg-gradient-to-r from-blue-600/10 via-emerald-600/10 to-blue-600/10 rounded-2xl blur-2xl -z-10 pointer-events-none" />
                   </div>
                 </div>
               </div>
