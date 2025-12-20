@@ -19,8 +19,8 @@ const supabaseKey = localKey || envKey || DEFAULT_KEY;
 
 export const isSupabaseConfigured = !!(supabaseUrl && supabaseKey);
 
-export const supabase = isSupabaseConfigured 
-  ? createClient(supabaseUrl!, supabaseKey!) 
+export const supabase = isSupabaseConfigured
+  ? createClient(supabaseUrl!, supabaseKey!)
   : null;
 
 /**
