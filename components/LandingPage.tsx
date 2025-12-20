@@ -196,71 +196,95 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onSignIn
           <div className="absolute bottom-0 left-0 right-0 h-48 bg-gradient-to-b from-transparent via-slate-900/40 to-slate-900 pointer-events-none" />
           
           <div className="relative max-w-7xl mx-auto px-6 py-24 md:py-32">
-            <div className="text-center max-w-4xl mx-auto space-y-8">
-              <div className={`inline-flex items-center gap-2 px-4 py-2 rounded-full bg-blue-600/10 border border-blue-500/20 hover:bg-blue-600/20 hover:border-blue-500/30 transition-all duration-300 ${visibleSections.has('hero') ? 'animate-fade-in-up delay-100' : 'opacity-0'}`}>
-                <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
-                <span className="text-sm text-blue-300 font-medium">Built for modern trucking operations</span>
-              </div>
-              
-              <h1 className={`text-5xl md:text-6xl lg:text-7xl font-bold leading-tight ${visibleSections.has('hero') ? 'animate-fade-in-up delay-200' : 'opacity-0'}`}>
-                <span className="bg-gradient-to-r from-white via-blue-100 to-white bg-clip-text text-transparent">
-                  Stop managing your fleet
-                </span>
-                <br />
-                <span className="bg-gradient-to-r from-blue-400 to-emerald-400 bg-clip-text text-transparent">
-                  with spreadsheets
-                </span>
-              </h1>
-              
-              <p className={`text-xl md:text-2xl text-slate-300 max-w-2xl mx-auto leading-relaxed ${visibleSections.has('hero') ? 'animate-fade-in-up delay-300' : 'opacity-0'}`}>
-                LoadMaster gives you real-time visibility into every load, driver, and dispatcher. 
-                Make data-driven decisions and grow your trucking business with confidence.
-              </p>
-              
-              <div className={`flex flex-col sm:flex-row items-center justify-center gap-4 pt-4 ${visibleSections.has('hero') ? 'animate-fade-in-up delay-400' : 'opacity-0'}`}>
-                <button
-                  onClick={onGetStarted}
-                  className="btn-primary group px-8 py-4 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-semibold rounded-xl shadow-lg shadow-blue-600/25 hover:shadow-blue-600/40 flex items-center gap-2"
-                >
-                  Get Started Free
-                  <ArrowRight className="h-5 w-5 group-hover:translate-x-1 transition-transform duration-300" />
-                </button>
-                <button
-                  onClick={scrollToPricing}
-                  className="px-8 py-4 border-2 border-slate-700 hover:border-slate-600 text-slate-200 font-semibold rounded-xl hover:bg-slate-800/50 hover:scale-105 active:scale-100 transition-all duration-300"
-                >
-                  View Pricing
-                </button>
+            <div className="grid lg:grid-cols-2 gap-12 items-center">
+              {/* Left Column - Text Content */}
+              <div className="space-y-8">
+                {/* Headline */}
+                <h1 className={`text-5xl md:text-6xl lg:text-7xl font-bold leading-tight ${visibleSections.has('hero') ? 'animate-fade-in-up delay-100' : 'opacity-0'}`}>
+                  <span className="text-white">
+                    Manage your fleet
+                  </span>
+                  <br />
+                  <span className="bg-gradient-to-r from-emerald-400 to-teal-400 bg-clip-text text-transparent">
+                    the modern way
+                  </span>
+                </h1>
+                
+                {/* Description */}
+                <p className={`text-xl md:text-2xl text-slate-300 leading-relaxed ${visibleSections.has('hero') ? 'animate-fade-in-up delay-200' : 'opacity-0'}`}>
+                  LoadMaster gives you real-time visibility into every load, driver, and dispatcher. 
+                  Make data-driven decisions and grow your trucking business with confidence.
+                </p>
+                
+                {/* CTA Buttons */}
+                <div className={`flex flex-col sm:flex-row items-start gap-4 ${visibleSections.has('hero') ? 'animate-fade-in-up delay-300' : 'opacity-0'}`}>
+                  <button
+                    onClick={onGetStarted}
+                    className="btn-primary group px-8 py-4 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-semibold rounded-xl shadow-lg shadow-blue-600/25 hover:shadow-blue-600/40 flex items-center gap-2"
+                  >
+                    Get Started Free
+                    <ArrowRight className="h-5 w-5 group-hover:translate-x-1 transition-transform duration-300" />
+                  </button>
+                  <button
+                    onClick={scrollToPricing}
+                    className="px-8 py-4 border-2 border-slate-700 hover:border-slate-600 text-slate-200 font-semibold rounded-xl hover:bg-slate-800/50 hover:scale-105 active:scale-100 transition-all duration-300"
+                  >
+                    View Pricing
+                  </button>
+                </div>
               </div>
 
-              {/* Stats */}
-              <div className={`grid grid-cols-3 gap-8 pt-16 max-w-3xl mx-auto ${visibleSections.has('hero') ? 'animate-fade-in-up delay-500' : 'opacity-0'}`}>
-                {[
-                  { value: '$0', label: 'Setup Fee', circleColor: 'bg-blue-500/10' },
-                  { value: '14 Days', label: 'Free Trial', circleColor: 'bg-emerald-500/10' },
-                  { value: '24/7', label: 'Support', circleColor: 'bg-blue-400/10' }
-                ].map((stat, index) => (
-                  <div
-                    key={index}
-                    className="relative text-center group hover:scale-110 transition-transform duration-300"
-                  >
-                    {/* Individual circular background for each stat with smooth fade */}
-                    <div 
-                      className={`absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-40 h-40 rounded-full blur-3xl pointer-events-none`}
-                      style={{
-                        background: `radial-gradient(circle, ${stat.circleColor.includes('blue-500') ? 'rgba(59, 130, 246, 0.15)' : stat.circleColor.includes('emerald') ? 'rgba(16, 185, 129, 0.15)' : 'rgba(96, 165, 250, 0.15)'} 0%, ${stat.circleColor.includes('blue-500') ? 'rgba(59, 130, 246, 0.08)' : stat.circleColor.includes('emerald') ? 'rgba(16, 185, 129, 0.08)' : 'rgba(96, 165, 250, 0.08)'} 40%, transparent 100%)`
+              {/* Right Column - Hero Image */}
+              <div className={`relative ${visibleSections.has('hero') ? 'animate-fade-in-up delay-400' : 'opacity-0'}`}>
+                <div className="relative flex items-center justify-center">
+                  <div className="relative w-full max-w-4xl">
+                    <img
+                      src="/images/hero.png"
+                      alt="LoadMaster Dashboard - Modern fleet management interface"
+                      className="w-full h-auto object-contain rounded-2xl shadow-2xl"
+                      onError={(e) => {
+                        // Fallback placeholder
+                        e.currentTarget.style.display = 'none';
+                        const parent = e.currentTarget.parentElement;
+                        if (parent) {
+                          parent.innerHTML = '<div class="w-full h-full flex items-center justify-center bg-slate-800 text-slate-500 p-12 rounded-2xl">Hero Image</div>';
+                        }
                       }}
-                    ></div>
-                    
-                    <div className="relative z-10 text-3xl md:text-4xl font-bold bg-gradient-to-r from-blue-400 to-emerald-400 bg-clip-text text-transparent group-hover:from-blue-300 group-hover:to-emerald-300 transition-all duration-300">
-                      {stat.value}
-                    </div>
-                    <div className="relative z-10 text-sm text-slate-400 mt-1 group-hover:text-slate-300 transition-colors duration-300">
-                      {stat.label}
-                    </div>
+                    />
+                    {/* Decorative glow effects */}
+                    <div className="absolute -inset-4 bg-gradient-to-r from-blue-600/20 via-emerald-600/20 to-blue-600/20 rounded-2xl blur-2xl -z-10" />
                   </div>
-                ))}
+                </div>
               </div>
+            </div>
+
+            {/* Stats - Moved below */}
+            <div className={`grid grid-cols-3 gap-8 pt-24 max-w-3xl mx-auto ${visibleSections.has('hero') ? 'animate-fade-in-up delay-500' : 'opacity-0'}`}>
+              {[
+                { value: '$0', label: 'Setup Fee', circleColor: 'bg-blue-500/10' },
+                { value: '14 Days', label: 'Free Trial', circleColor: 'bg-emerald-500/10' },
+                { value: '24/7', label: 'Support', circleColor: 'bg-blue-400/10' }
+              ].map((stat, index) => (
+                <div
+                  key={index}
+                  className="relative text-center group hover:scale-110 transition-transform duration-300"
+                >
+                  {/* Individual circular background for each stat with smooth fade */}
+                  <div 
+                    className={`absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-40 h-40 rounded-full blur-3xl pointer-events-none`}
+                    style={{
+                      background: `radial-gradient(circle, ${stat.circleColor.includes('blue-500') ? 'rgba(59, 130, 246, 0.15)' : stat.circleColor.includes('emerald') ? 'rgba(16, 185, 129, 0.15)' : 'rgba(96, 165, 250, 0.15)'} 0%, ${stat.circleColor.includes('blue-500') ? 'rgba(59, 130, 246, 0.08)' : stat.circleColor.includes('emerald') ? 'rgba(16, 185, 129, 0.08)' : 'rgba(96, 165, 250, 0.08)'} 40%, transparent 100%)`
+                    }}
+                  ></div>
+                  
+                  <div className="relative z-10 text-3xl md:text-4xl font-bold bg-gradient-to-r from-blue-400 to-emerald-400 bg-clip-text text-transparent group-hover:from-blue-300 group-hover:to-emerald-300 transition-all duration-300">
+                    {stat.value}
+                  </div>
+                  <div className="relative z-10 text-sm text-slate-400 mt-1 group-hover:text-slate-300 transition-colors duration-300">
+                    {stat.label}
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
         </section>
