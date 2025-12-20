@@ -145,7 +145,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onSignIn
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950 text-white">
+    <div className="min-h-screen bg-slate-950 text-white">
       {/* Navigation */}
       <nav className={`fixed top-0 left-0 right-0 z-50 backdrop-blur-lg border-b transition-all duration-300 ${
         scrolled 
@@ -188,10 +188,12 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onSignIn
 
       <main className="pt-20">
         {/* Hero Section */}
-        <section ref={heroRef} data-section="hero" className="relative overflow-hidden">
+        <section ref={heroRef} data-section="hero" className="relative overflow-hidden bg-gradient-to-b from-slate-950 via-slate-900/80 to-slate-900">
           <div className="absolute inset-0 bg-gradient-to-br from-blue-600/10 via-transparent to-emerald-600/10" />
           <div className="absolute top-0 right-0 w-96 h-96 bg-blue-600/5 rounded-full blur-3xl" />
           <div className="absolute bottom-0 left-0 w-96 h-96 bg-emerald-600/5 rounded-full blur-3xl" />
+          {/* Smooth transition to next section */}
+          <div className="absolute bottom-0 left-0 right-0 h-48 bg-gradient-to-b from-transparent via-slate-900/40 to-slate-900 pointer-events-none" />
           
           <div className="relative max-w-7xl mx-auto px-6 py-24 md:py-32">
             <div className="text-center max-w-4xl mx-auto space-y-8">
@@ -264,8 +266,12 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onSignIn
         </section>
 
         {/* Features Section */}
-        <section ref={featuresRef} id="features" data-section="features" className="py-24 bg-slate-900/50">
-          <div className="max-w-7xl mx-auto px-6">
+        <section ref={featuresRef} id="features" data-section="features" className="relative py-24 bg-slate-900">
+          {/* Smooth transition from hero */}
+          <div className="absolute top-0 left-0 right-0 h-48 bg-gradient-to-b from-slate-900 via-slate-900/95 to-slate-900 pointer-events-none" />
+          {/* Smooth transition to email section */}
+          <div className="absolute bottom-0 left-0 right-0 h-48 bg-gradient-to-t from-slate-900 via-slate-900/95 to-slate-900 pointer-events-none" />
+          <div className="relative max-w-7xl mx-auto px-6">
             <div className="text-center mb-16">
               <h2 className={`text-4xl md:text-5xl font-bold mb-4 ${visibleSections.has('features') ? 'animate-fade-in-up delay-100' : 'opacity-0'}`}>
                 Everything you need to
@@ -317,7 +323,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onSignIn
               ].map((feature, index) => (
                 <div
                   key={index}
-                  className={`feature-card group p-6 rounded-2xl bg-slate-800/50 border border-slate-700/50 hover:border-slate-600 hover:bg-slate-800 ${visibleSections.has('features') ? 'animate-fade-in-up' : 'opacity-0'}`}
+                  className={`feature-card group p-6 rounded-2xl bg-slate-800/50 border border-slate-700/50 hover:border-slate-600 hover:bg-slate-800 transition-all duration-300 ${visibleSections.has('features') ? 'animate-fade-in-up' : 'opacity-0'}`}
                   style={{ animationDelay: `${(index + 3) * 0.1}s` }}
                 >
                   <div className={`inline-flex p-3 rounded-xl bg-gradient-to-br ${feature.color} mb-4 group-hover:scale-110 transition-transform duration-300`}>
@@ -332,7 +338,11 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onSignIn
         </section>
 
         {/* Email Subscription */}
-        <section ref={emailRef} data-section="email" className="py-16 bg-gradient-to-r from-blue-600/10 via-slate-900 to-emerald-600/10">
+        <section ref={emailRef} data-section="email" className="relative py-16 bg-slate-900">
+          {/* Smooth transition from features */}
+          <div className="absolute top-0 left-0 right-0 h-48 bg-gradient-to-b from-slate-900 via-slate-900/95 to-transparent pointer-events-none" />
+          {/* Smooth transition to pricing */}
+          <div className="absolute bottom-0 left-0 right-0 h-48 bg-gradient-to-t from-slate-900 via-slate-900/95 to-transparent pointer-events-none" />
           <div className="max-w-4xl mx-auto px-6">
             <div className={`text-center space-y-6 p-8 rounded-2xl bg-slate-800/30 border border-slate-700/50 hover:border-slate-600 hover:bg-slate-800/40 transition-all duration-300 ${visibleSections.has('email') ? 'animate-fade-in-up delay-200' : 'opacity-0'}`}>
               <h2 className="text-3xl md:text-4xl font-bold">
@@ -378,7 +388,11 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onSignIn
         </section>
 
         {/* Pricing Section */}
-        <section ref={pricingRef} data-section="pricing" id="pricing" className="py-24">
+        <section ref={pricingRef} data-section="pricing" id="pricing" className="relative py-24 bg-slate-900">
+          {/* Smooth transition from email */}
+          <div className="absolute top-0 left-0 right-0 h-48 bg-gradient-to-b from-slate-900 via-slate-900/95 to-slate-900 pointer-events-none" />
+          {/* Smooth transition to contact */}
+          <div className="absolute bottom-0 left-0 right-0 h-48 bg-gradient-to-t from-slate-900 via-slate-900/95 to-slate-900 pointer-events-none" />
           <div className="max-w-7xl mx-auto px-6">
             <div className="text-center mb-16">
               <h2 className={`text-4xl md:text-5xl font-bold mb-4 ${visibleSections.has('pricing') ? 'animate-fade-in-up delay-100' : 'opacity-0'}`}>
@@ -498,8 +512,12 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onSignIn
           ref={contactRef}
           data-section="contact"
           id="contact"
-          className="py-24 bg-slate-900/50"
+          className="relative py-24 bg-slate-900"
         >
+          {/* Smooth transition from pricing */}
+          <div className="absolute top-0 left-0 right-0 h-48 bg-gradient-to-b from-slate-900 via-slate-900/95 to-slate-900 pointer-events-none" />
+          {/* Smooth transition to footer */}
+          <div className="absolute bottom-0 left-0 right-0 h-48 bg-gradient-to-t from-slate-950 via-slate-900/95 to-slate-900 pointer-events-none" />
           <div className="max-w-4xl mx-auto px-6">
             <div className={`text-center mb-12 ${visibleSections.has('contact') ? 'animate-fade-in-up delay-100' : 'opacity-0'}`}>
               <h2 className="text-4xl md:text-5xl font-bold mb-4">
