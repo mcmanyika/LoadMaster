@@ -317,7 +317,9 @@ export const Expenses: React.FC<ExpensesProps> = ({ user, companyId }) => {
                   </Pie>
                   <Tooltip 
                     formatter={(value: number) => `$${value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
-                    contentStyle={{ backgroundColor: '#1e293b', border: '1px solid #334155', color: '#f1f5f9' }}
+                    contentStyle={{ backgroundColor: '#1e293b', border: '1px solid #334155', color: '#ffffff' }}
+                    labelStyle={{ color: '#ffffff' }}
+                    itemStyle={{ color: '#ffffff' }}
                   />
                 </PieChart>
               </ResponsiveContainer>
