@@ -102,6 +102,72 @@ export const signUp = async (email: string, password: string, name: string, role
       try {
         const company = await createCompany(`${name}'s Company`, data.user.id);
         // Profile company_id will be set by createCompany function
+
+        // Create sample data for new owner accounts
+        if (company && isSupabaseConfigured && supabase) {
+          try {
+            // Wait a moment to ensure company is fully set up
+            await new Promise(resolve => setTimeout(resolve, 300));
+
+            // Create sample dispatcher
+            const { data: sampleDispatcher, error: dispatcherError } = await supabase
+              .from('dispatchers')
+              .insert([{
+                name: 'Sample Dispatcher',
+                email: `sample-dispatcher-${company.id.substring(0, 8)}@example.com`,
+                phone: '555-0100',
+                fee_percentage: 12,
+                company_id: company.id
+              }])
+              .select()
+              .single();
+
+            if (dispatcherError) {
+              console.error('Error creating sample dispatcher:', dispatcherError);
+            }
+
+            // Create sample vehicle/transporter
+            const { data: sampleVehicle, error: vehicleError } = await supabase
+              .from('transporters')
+              .insert([{
+                name: 'Sample Vehicle',
+                registration_number: 'SAMPLE-001',
+                mc_number: 'MC-SAMPLE-001',
+                contact_phone: '555-0200',
+                company_id: company.id
+              }])
+              .select()
+              .single();
+
+            if (vehicleError) {
+              console.error('Error creating sample vehicle:', vehicleError);
+            }
+
+            // Create sample driver (only if vehicle was created successfully)
+            if (sampleVehicle) {
+              const { error: driverError } = await supabase
+                .from('drivers')
+                .insert([{
+                  name: 'Sample Driver',
+                  phone: '555-0300',
+                  email: `sample-driver-${company.id.substring(0, 8)}@example.com`,
+                  transporter_id: sampleVehicle.id,
+                  company_id: company.id,
+                  pay_type: 'percentage_of_net',
+                  pay_percentage: 50
+                }]);
+
+              if (driverError) {
+                console.error('Error creating sample driver:', driverError);
+              } else {
+                console.log('✅ Sample data created for new owner account');
+              }
+            }
+          } catch (sampleError) {
+            console.error('Error creating sample data:', sampleError);
+            // Don't fail the signup if sample data creation fails
+          }
+        }
       } catch (error) {
         console.error('Error creating company for owner:', error);
         // Continue anyway - company can be created later

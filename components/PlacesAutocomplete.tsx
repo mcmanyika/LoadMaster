@@ -132,9 +132,9 @@ export const PlacesAutocomplete: React.FC<PlacesAutocompleteProps> = ({
       const listener = autocomplete.addListener('place_changed', () => {
         const place = autocomplete.getPlace();
         
-        if (place.formatted_address) {
+        if (place.formatted_address || place.name) {
           // Try to extract city and state
-          let formattedValue = place.formatted_address;
+          let formattedValue = '';
           
           if (place.address_components) {
             const cityComponent = place.address_components.find(
@@ -149,13 +149,31 @@ export const PlacesAutocomplete: React.FC<PlacesAutocompleteProps> = ({
             } else if (place.name && stateComponent) {
               // Fallback to place name if city component not found
               formattedValue = `${place.name}, ${stateComponent.short_name}`;
+            } else if (place.formatted_address) {
+              // Last resort: use formatted_address but remove country suffix
+              formattedValue = place.formatted_address
+                .replace(/,?\s*USA\s*$/i, '')
+                .replace(/,?\s*United States\s*$/i, '')
+                .replace(/,?\s*US\s*$/i, '')
+                .trim();
             }
+          } else if (place.formatted_address) {
+            // If no address_components, remove country from formatted_address
+            formattedValue = place.formatted_address
+              .replace(/,?\s*USA\s*$/i, '')
+              .replace(/,?\s*United States\s*$/i, '')
+              .replace(/,?\s*US\s*$/i, '')
+              .trim();
+          } else if (place.name) {
+            formattedValue = place.name;
           }
           
-          onChange(formattedValue);
-          
-          if (onPlaceSelect) {
-            onPlaceSelect(place);
+          if (formattedValue) {
+            onChange(formattedValue);
+            
+            if (onPlaceSelect) {
+              onPlaceSelect(place);
+            }
           }
         }
       });

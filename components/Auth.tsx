@@ -3,6 +3,7 @@ import { Truck, Lock, Mail, User, AlertCircle } from 'lucide-react';
 import { signIn, signUp } from '../services/authService';
 import { UserRole, UserProfile } from '../types';
 import { isSupabaseConfigured } from '../services/supabaseClient';
+import { RegistrationSuccess } from './RegistrationSuccess';
 
 interface AuthProps {
   onLogin: (user: UserProfile) => void;
@@ -12,6 +13,7 @@ export const Auth: React.FC<AuthProps> = ({ onLogin }) => {
   const [isLogin, setIsLogin] = useState(true);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [registrationSuccess, setRegistrationSuccess] = useState<{ user: UserProfile; name: string; role: string } | null>(null);
   
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -31,7 +33,10 @@ export const Auth: React.FC<AuthProps> = ({ onLogin }) => {
       } else {
         const { user, error } = await signUp(email, password, name, role);
         if (error) throw new Error(error);
-        if (user) onLogin(user);
+        if (user) {
+          // Show success page instead of immediately logging in
+          setRegistrationSuccess({ user, name, role });
+        }
       }
     } catch (err: any) {
       setError(err.message);
@@ -39,6 +44,23 @@ export const Auth: React.FC<AuthProps> = ({ onLogin }) => {
       setLoading(false);
     }
   };
+
+  const handleContinueToDashboard = () => {
+    if (registrationSuccess) {
+      onLogin(registrationSuccess.user);
+    }
+  };
+
+  // Show registration success page
+  if (registrationSuccess) {
+    return (
+      <RegistrationSuccess
+        userName={registrationSuccess.name}
+        userRole={registrationSuccess.role}
+        onContinue={handleContinueToDashboard}
+      />
+    );
+  }
 
   return (
     <div className="min-h-screen bg-slate-900 flex items-center justify-center p-4">
