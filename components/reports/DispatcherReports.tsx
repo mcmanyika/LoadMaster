@@ -1,5 +1,6 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { DispatcherReport } from '../../types/reports';
+import { UserProfile } from '../../types';
 import { ReportCard } from './ReportCard';
 import { ReportDetailModal } from './ReportDetailModal';
 import { exportToCSV, exportToPDF } from '../../services/reports/reportService';
@@ -8,6 +9,7 @@ import { Users, DollarSign, FileText, Download, FileDown, ArrowUpDown, ArrowUp, 
 
 interface DispatcherReportsProps {
   reports: DispatcherReport[];
+  user?: UserProfile;
   onSort?: (column: keyof DispatcherReport) => void;
   sortBy?: keyof DispatcherReport;
   sortDirection?: 'asc' | 'desc';
@@ -15,6 +17,7 @@ interface DispatcherReportsProps {
 
 export const DispatcherReports: React.FC<DispatcherReportsProps> = ({
   reports,
+  user,
   onSort,
   sortBy = 'totalFees',
   sortDirection = 'desc'
@@ -396,6 +399,7 @@ export const DispatcherReports: React.FC<DispatcherReportsProps> = ({
         onClose={() => setIsModalOpen(false)}
         report={selectedReport}
         type="dispatcher"
+        user={user}
       />
       <ErrorModal
         isOpen={errorModal.isOpen}

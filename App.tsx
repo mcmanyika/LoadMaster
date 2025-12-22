@@ -56,7 +56,7 @@ import { saveSubscription } from './services/subscriptionService';
 import { analyzeFleetPerformance } from './services/geminiService';
 import { getLoads, createLoad, updateLoad, deleteLoad, getDrivers, getDispatchers } from './services/loadService';
 import { getCurrentUser, signOut } from './services/authService';
-import { getCompany, getDispatcherCompanies } from './services/companyService';
+import { getCompany, getDispatcherCompanies, getDispatchCompanyOwnCompany } from './services/companyService';
 import { getExpenseSummary } from './services/expenseService';
 import { getPendingInvitations, getActiveCompanies } from './services/dispatcherAssociationService';
 import { Company } from './types';
@@ -456,13 +456,13 @@ function App() {
     checkAuth();
   }, []);
 
-  // Load company context for dispatchers
+  // Load company context for dispatchers and dispatch companies
   useEffect(() => {
-    if (user && user.role === 'dispatcher') {
+    if (user && (user.role === 'dispatcher' || user.role === 'dispatch_company')) {
       // Load saved company from localStorage
       const savedCompanyId = localStorage.getItem('currentCompanyId');
       
-      // Fetch dispatcher's companies and invitations
+      // Fetch dispatcher's/dispatch company's companies and invitations
       const loadDispatcherContext = async () => {
         try {
           const [companies, invitations] = await Promise.all([
@@ -484,13 +484,13 @@ function App() {
             localStorage.removeItem('currentCompanyId');
           }
         } catch (error) {
-          console.error('Error loading dispatcher context:', error);
+          console.error('Error loading dispatcher/dispatch company context:', error);
         }
       };
       
       loadDispatcherContext();
     } else {
-      // Clear dispatcher context for non-dispatchers
+      // Clear dispatcher context for non-dispatchers/non-dispatch-companies
       setCurrentCompanyId(null);
       setDispatcherCompanies([]);
       setPendingInvitations([]);
@@ -529,9 +529,9 @@ function App() {
     }
   }, [user, pendingPlan]);
 
-  // Redirect owners without a company to Settings page
+  // Redirect owners and dispatch companies without a company to Settings page
   useEffect(() => {
-    if (user && user.role === 'owner' && !authLoading) {
+    if (user && (user.role === 'owner' || user.role === 'dispatch_company') && !authLoading) {
       const checkCompanyAndRedirect = async () => {
         try {
           const companyData = await getCompany();
@@ -561,18 +561,34 @@ function App() {
   const fetchData = async () => {
     setDataLoading(true);
     try {
-      // For dispatchers, use currentCompanyId; for owners, getCompany() will handle it
+      // For dispatchers and dispatch companies, use currentCompanyId; for owners, getCompany() will handle it
       const companyData = await getCompany(currentCompanyId || undefined);
       
+      // For dispatch companies: get their own company for dispatchers (not the joined owner company)
+      let dispatcherCompanyId = companyData?.id;
+      let dispatcherNames: string[] | undefined = undefined;
+      
+      if (user?.role === 'dispatch_company') {
+        const ownCompany = await getDispatchCompanyOwnCompany();
+        dispatcherCompanyId = ownCompany?.id;
+        
+        // Get dispatchers from dispatch company's own company to filter loads
+        if (dispatcherCompanyId) {
+          const dispatchCompanyDispatchers = await getDispatchers(dispatcherCompanyId);
+          dispatcherNames = dispatchCompanyDispatchers.map(d => d.name).filter(Boolean) as string[];
+        }
+      }
+      
       // For dispatchers, filter loads by their name and selected company
+      // For dispatch companies, filter loads by their dispatchers' names
       // For owners, show all loads for their company
       const dispatcherName = user?.role === 'dispatcher' ? user.name : undefined;
       const companyIdForLoads = companyData?.id;
       
       const [loadsData, driversData, dispatchersData] = await Promise.all([
-        getLoads(companyIdForLoads, dispatcherName), // Filter by company and dispatcher if applicable
-        getDrivers(companyIdForLoads), // Filter drivers by company
-        getDispatchers(companyData?.id) // Filter dispatchers by company
+        getLoads(companyIdForLoads, dispatcherName, dispatcherNames), // Filter by company and dispatcher(s) if applicable
+        getDrivers(companyIdForLoads), // Filter drivers by owner's company (for dispatch companies)
+        getDispatchers(dispatcherCompanyId) // Filter dispatchers by dispatch company's own company
       ]);
       
       // Deduplicate drivers by ID (not name) to ensure all driver pay configs are preserved
@@ -592,9 +608,13 @@ function App() {
       if (companyData) {
         setCompanyName(companyData.name);
         setCompany({ id: companyData.id, name: companyData.name });
-        // Fetch expense summary for dashboard
-        const summary = await getExpenseSummary(companyData.id);
-        setExpenseSummary(summary);
+        // Fetch expense summary for dashboard (only for owners)
+        if (user?.role === 'owner') {
+          const summary = await getExpenseSummary(companyData.id);
+          setExpenseSummary(summary);
+        } else {
+          setExpenseSummary(null);
+        }
       }
     } catch (error) {
       console.error("Failed to load data", error);
@@ -603,9 +623,9 @@ function App() {
     }
   };
 
-  // Switch company for dispatchers
+  // Switch company for dispatchers and dispatch companies
   const switchCompany = async (companyId: string) => {
-    if (user?.role !== 'dispatcher') return;
+    if (user?.role !== 'dispatcher' && user?.role !== 'dispatch_company') return;
     
     setCurrentCompanyId(companyId);
     // Refresh data for the new company
@@ -1057,7 +1077,7 @@ function App() {
               <Users size={20} className="flex-shrink-0" />
               <span className="opacity-0 group-hover:opacity-100 transition-opacity duration-300 whitespace-nowrap overflow-hidden text-slate-300 dark:text-slate-300">Fleet & Drivers</span>
             </button>
-            {(user.role === 'owner' || user.role === 'dispatcher') && (
+            {(user.role === 'owner' || user.role === 'dispatcher' || user.role === 'dispatch_company') && (
               <button
                 onClick={() => setView('reports')}
                 className={`w-full flex items-center justify-center group-hover:justify-start gap-3 px-4 py-3 rounded-xl transition-colors ${view === 'reports' ? 'bg-blue-600/10 text-blue-400 font-medium' : 'text-slate-300 dark:text-slate-300 hover:bg-slate-800'}`}
@@ -1067,6 +1087,7 @@ function App() {
                 <span className="opacity-0 group-hover:opacity-100 transition-opacity duration-300 whitespace-nowrap overflow-hidden text-slate-300 dark:text-slate-300">Reports</span>
               </button>
             )}
+            {/* Expenses - only for owners */}
             {user.role === 'owner' && (
               <button
                 onClick={() => setView('expenses')}
@@ -1107,7 +1128,7 @@ function App() {
                 <span className="opacity-0 group-hover:opacity-100 transition-opacity duration-300 whitespace-nowrap overflow-hidden text-slate-300 dark:text-slate-300">My Subscriptions</span>
               </button>
             )}
-            {user.role === 'owner' && (
+            {(user.role === 'owner' || user.role === 'dispatch_company') && (
               <button
                 onClick={() => setView('company')}
                 className={`w-full flex items-center justify-center group-hover:justify-start gap-3 px-4 py-3 rounded-xl transition-colors ${view === 'company' ? 'bg-blue-600/10 text-blue-400 font-medium' : 'text-slate-300 dark:text-slate-300 hover:bg-slate-800'}`}
@@ -1280,8 +1301,8 @@ function App() {
               {/* Dashboard View Specifics */}
               {view === 'dashboard' && (
                 <>
-                  {/* Dispatcher Companies List - Show at top for dispatchers */}
-                  {user.role === 'dispatcher' && (
+                  {/* Dispatcher Companies List - Show at top for dispatchers and dispatch companies */}
+                  {(user.role === 'dispatcher' || user.role === 'dispatch_company') && (
                     <DispatcherCompaniesList
                       user={user}
                       currentCompanyId={currentCompanyId}
@@ -1503,7 +1524,7 @@ function App() {
                             {getSortIcon('status')}
                           </div>
                         </th>
-                        {user.role === 'owner' && (
+                        {(user.role === 'owner' || user.role === 'dispatch_company') && (
                           <th 
                             className="bg-slate-50 dark:bg-slate-800 text-slate-500 dark:text-slate-400 p-4 font-semibold border-b border-slate-200 dark:border-slate-700 cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors select-none"
                             onClick={() => handleSort('driverPayoutStatus')}
@@ -1522,7 +1543,7 @@ function App() {
                     <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
                       {dataLoading && sortedLoads.length === 0 ? (
                          <tr>
-                            <td colSpan={user.role === 'owner' ? 10 : 9} className="p-12 text-center text-slate-400 dark:text-slate-500">
+                            <td colSpan={(user.role === 'owner' || user.role === 'dispatch_company') ? 10 : 9} className="p-12 text-center text-slate-400 dark:text-slate-500">
                                <div className="flex justify-center items-center gap-2">
                                  <div className="w-4 h-4 border-2 border-slate-400 dark:border-slate-500 border-t-transparent rounded-full animate-spin"></div>
                                  <span>Loading fleet data...</span>
@@ -1531,7 +1552,7 @@ function App() {
                          </tr>
                       ) : sortedLoads.length === 0 ? (
                          <tr>
-                            <td colSpan={user.role === 'owner' ? 10 : 9} className="p-8 text-center text-slate-400 dark:text-slate-500">
+                            <td colSpan={(user.role === 'owner' || user.role === 'dispatch_company') ? 10 : 9} className="p-8 text-center text-slate-400 dark:text-slate-500">
                                No loads found. Add a new load to get started.
                             </td>
                          </tr>
@@ -1579,7 +1600,7 @@ function App() {
                                 {load.status}
                               </span>
                             </td>
-                            {user.role === 'owner' && (
+                            {(user.role === 'owner' || user.role === 'dispatch_company') && (
                               <td className="p-4">
                                 <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
                                   load.driverPayoutStatus === 'paid' 

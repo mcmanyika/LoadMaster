@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { CalculatedLoad, UserProfile, Company } from '../types';
-import { Truck, MapPin, Calendar, DollarSign, LogOut, Key, Building2, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Truck, MapPin, Calendar, DollarSign, LogOut, Key, Building2, ChevronLeft, ChevronRight, Sun, Moon } from 'lucide-react';
 import { DriverInvitationManagement } from './DriverInvitationManagement';
 import { getDriverAssociationsWithCompanies } from '../services/driverAssociationService';
+import { useTheme } from '../contexts/ThemeContext';
 
 interface DriverDashboardProps {
   user: UserProfile;
@@ -11,6 +12,7 @@ interface DriverDashboardProps {
 }
 
 export const DriverDashboard: React.FC<DriverDashboardProps> = ({ user, loads, onSignOut }) => {
+  const { theme, toggleTheme } = useTheme();
   const [showInviteCode, setShowInviteCode] = useState(false);
   const [currentCompany, setCurrentCompany] = useState<Company | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
@@ -55,39 +57,52 @@ export const DriverDashboard: React.FC<DriverDashboardProps> = ({ user, loads, o
   }, [loads.length]); 
 
   return (
-    <div className="min-h-screen bg-slate-100 pb-20">
+    <div className="min-h-screen bg-slate-100 dark:bg-slate-900 pb-20">
       {/* Mobile Header */}
-      <div className="bg-slate-900 text-white p-6 rounded-b-3xl shadow-lg">
+      <div className="bg-slate-200 dark:bg-slate-900 text-slate-900 dark:text-white p-6 rounded-b-3xl shadow-lg">
         <div className="flex justify-between items-start mb-6">
           <div className="flex items-center gap-3">
-             <div className="bg-indigo-600 p-2 rounded-lg">
+             <div className="bg-indigo-600 dark:bg-indigo-600 p-2 rounded-lg">
                 <Truck size={20} className="text-white" />
              </div>
              <div>
                <h1 className="font-bold text-lg">Hello, {user.name}</h1>
-               <p className="text-slate-400 text-xs">Drive safe!</p>
+               <p className="text-slate-600 dark:text-slate-400 text-xs">Drive safe!</p>
                {currentCompany && (
                  <div className="flex items-center gap-1.5 mt-1">
-                   <Building2 size={12} className="text-slate-400" />
-                   <p className="text-slate-300 text-xs">{currentCompany.name}</p>
+                   <Building2 size={12} className="text-slate-600 dark:text-slate-400" />
+                   <p className="text-slate-700 dark:text-slate-300 text-xs">{currentCompany.name}</p>
                  </div>
                )}
              </div>
           </div>
-          <button onClick={onSignOut} className="bg-slate-800 p-2 rounded-full hover:bg-slate-700">
-            <LogOut size={16} />
-          </button>
+          <div className="flex items-center gap-2">
+            <button 
+              onClick={toggleTheme}
+              className="bg-slate-300 dark:bg-slate-800 p-2 rounded-full hover:bg-slate-400 dark:hover:bg-slate-700 text-slate-700 dark:text-white transition-colors"
+              title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+            >
+              {theme === 'dark' ? (
+                <Sun size={16} />
+              ) : (
+                <Moon size={16} />
+              )}
+            </button>
+            <button onClick={onSignOut} className="bg-slate-300 dark:bg-slate-800 p-2 rounded-full hover:bg-slate-400 dark:hover:bg-slate-700 text-slate-700 dark:text-white">
+              <LogOut size={16} />
+            </button>
+          </div>
         </div>
         
         {/* Quick Stats */}
         <div className="grid grid-cols-2 gap-4">
-           <div className="bg-white/10 backdrop-blur-md rounded-xl p-4">
-              <p className="text-slate-400 text-xs mb-1">Active Loads</p>
-              <p className="text-2xl font-bold">{myLoads.filter(l => l.status === 'Not yet Factored').length}</p>
+           <div className="bg-white/80 dark:bg-white/10 backdrop-blur-md rounded-xl p-4 border border-slate-300/50 dark:border-transparent">
+              <p className="text-slate-600 dark:text-slate-400 text-xs mb-1">Active Loads</p>
+              <p className="text-2xl font-bold text-slate-900 dark:text-white">{myLoads.filter(l => l.status === 'Not yet Factored').length}</p>
            </div>
-           <div className="bg-emerald-500/20 backdrop-blur-md rounded-xl p-4 border border-emerald-500/30">
-              <p className="text-emerald-100 text-xs mb-1">Next Payout</p>
-              <p className="text-2xl font-bold text-emerald-300">
+           <div className="bg-emerald-100/80 dark:bg-emerald-500/20 backdrop-blur-md rounded-xl p-4 border border-emerald-300/50 dark:border-emerald-500/30">
+              <p className="text-emerald-700 dark:text-emerald-100 text-xs mb-1">Next Payout</p>
+              <p className="text-2xl font-bold text-emerald-700 dark:text-emerald-300">
                 ${myLoads.filter(l => l.status === 'Factored').slice(0, 3).reduce((sum, l) => sum + l.driverPay, 0).toLocaleString()}
               </p>
            </div>
@@ -97,10 +112,10 @@ export const DriverDashboard: React.FC<DriverDashboardProps> = ({ user, loads, o
       {/* Join Company Section - Show only if driver doesn't have a company */}
       {!currentCompany && (
         <div className="px-4 py-4">
-          <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6 mb-4">
+          <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 p-6 mb-4">
             <div className="flex items-center gap-2 mb-4">
-              <Key size={20} className="text-blue-600" />
-              <h2 className="text-slate-800 font-bold text-lg">Join Company</h2>
+              <Key size={20} className="text-blue-600 dark:text-blue-400" />
+              <h2 className="text-slate-800 dark:text-slate-100 font-bold text-lg">Join Company</h2>
             </div>
             <DriverInvitationManagement
               user={user}
@@ -132,12 +147,12 @@ export const DriverDashboard: React.FC<DriverDashboardProps> = ({ user, loads, o
 
       {/* Load Feed */}
       <div className="px-4 py-6 space-y-4">
-        <h2 className="text-slate-800 font-bold text-sm uppercase tracking-wider ml-1">Assigned Loads</h2>
+        <h2 className="text-slate-800 dark:text-slate-100 font-bold text-sm uppercase tracking-wider ml-1">Assigned Loads</h2>
         
         {myLoads.length === 0 ? (
-          <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-8 text-center">
-            <Truck size={48} className="mx-auto text-slate-300 mb-4" />
-            <p className="text-slate-600 font-medium mb-2">No loads assigned yet</p>
+          <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 p-8 text-center">
+            <Truck size={48} className="mx-auto text-slate-300 dark:text-slate-500 mb-4" />
+            <p className="text-slate-600 dark:text-slate-300 font-medium mb-2">No loads assigned yet</p>
             <p className="text-slate-400 text-sm">
               {!currentCompany 
                 ? "Join a company using an invite code to start receiving loads."
@@ -147,7 +162,7 @@ export const DriverDashboard: React.FC<DriverDashboardProps> = ({ user, loads, o
         ) : (
           <>
             {paginatedLoads.map((load) => (
-          <div key={load.id} className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden active:scale-[0.98] transition-transform">
+          <div key={load.id} className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden active:scale-[0.98] transition-transform">
              {/* Status Bar */}
              <div className={`h-1.5 w-full ${load.status === 'Factored' ? 'bg-emerald-500' : 'bg-amber-500'}`} />
              
@@ -157,7 +172,9 @@ export const DriverDashboard: React.FC<DriverDashboardProps> = ({ user, loads, o
                      <span className="text-xs font-semibold text-slate-400">#{load.id.slice(0, 6)} • {load.company}</span>
                      <div className="flex items-center gap-2 mt-1">
                         <span className={`px-2 py-0.5 rounded text-xs font-medium ${
-                           load.status === 'Factored' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'
+                           load.status === 'Factored' 
+                             ? 'bg-emerald-100 dark:bg-emerald-900/50 text-emerald-700 dark:text-emerald-300' 
+                             : 'bg-amber-100 dark:bg-amber-900/50 text-amber-700 dark:text-amber-300'
                         }`}>
                            {load.status}
                         </span>
@@ -166,24 +183,24 @@ export const DriverDashboard: React.FC<DriverDashboardProps> = ({ user, loads, o
                    </div>
                    <div className="text-right">
                       <p className="text-xs text-slate-400">Pay</p>
-                      <p className="text-lg font-bold text-slate-800">${load.driverPay.toFixed(0)}</p>
+                      <p className="text-lg font-bold text-slate-800 dark:text-slate-100">${load.driverPay.toFixed(0)}</p>
                    </div>
                 </div>
 
-                <div className="relative border-l-2 border-slate-100 pl-4 ml-1 space-y-6">
+                <div className="relative border-l-2 border-slate-100 dark:border-slate-700 pl-4 ml-1 space-y-6">
                    <div className="relative">
-                      <div className="absolute -left-[21px] top-1 w-3 h-3 rounded-full bg-blue-500 border-2 border-white shadow-sm"></div>
+                      <div className="absolute -left-[21px] top-1 w-3 h-3 rounded-full bg-blue-500 border-2 border-white dark:border-slate-800 shadow-sm"></div>
                       <p className="text-xs text-slate-400">Origin</p>
-                      <p className="text-sm font-medium text-slate-800">{load.origin}</p>
+                      <p className="text-sm font-medium text-slate-800 dark:text-slate-100">{load.origin}</p>
                    </div>
                    <div className="relative">
-                      <div className="absolute -left-[21px] top-1 w-3 h-3 rounded-full bg-indigo-500 border-2 border-white shadow-sm"></div>
+                      <div className="absolute -left-[21px] top-1 w-3 h-3 rounded-full bg-indigo-500 border-2 border-white dark:border-slate-800 shadow-sm"></div>
                       <p className="text-xs text-slate-400">Destination</p>
-                      <p className="text-sm font-medium text-slate-800">{load.destination}</p>
+                      <p className="text-sm font-medium text-slate-800 dark:text-slate-100">{load.destination}</p>
                    </div>
                 </div>
 
-                <div className="mt-5 pt-4 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
+                <div className="mt-5 pt-4 border-t border-slate-100 dark:border-slate-700 flex items-center justify-between text-xs text-slate-500 dark:text-slate-400">
                    <div className="flex items-center gap-1">
                       <Calendar size={14} />
                       <span>{load.dropDate}</span>
@@ -199,15 +216,15 @@ export const DriverDashboard: React.FC<DriverDashboardProps> = ({ user, loads, o
 
           {/* Pagination Controls */}
           {myLoads.length > itemsPerPage && (
-            <div className="flex items-center justify-between mt-6 pt-4 border-t border-slate-200">
-              <div className="text-sm text-slate-600">
+            <div className="flex items-center justify-between mt-6 pt-4 border-t border-slate-200 dark:border-slate-700">
+              <div className="text-sm text-slate-600 dark:text-slate-300">
                 Showing {(currentPage - 1) * itemsPerPage + 1} to {Math.min(currentPage * itemsPerPage, myLoads.length)} of {myLoads.length} loads
               </div>
               <div className="flex items-center gap-2">
                 <button
                   onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
                   disabled={currentPage === 1}
-                  className="p-2 rounded-lg border border-slate-300 hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  className="p-2 rounded-lg border border-slate-300 dark:border-slate-600 hover:bg-slate-50 dark:hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-slate-600 dark:text-slate-300"
                   aria-label="Previous page"
                 >
                   <ChevronLeft size={18} />
@@ -227,7 +244,7 @@ export const DriverDashboard: React.FC<DriverDashboardProps> = ({ user, loads, o
                           className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
                             currentPage === page
                               ? 'bg-blue-600 text-white'
-                              : 'bg-white text-slate-700 border border-slate-300 hover:bg-slate-50'
+                              : 'bg-white dark:bg-slate-700 text-slate-700 dark:text-slate-200 border border-slate-300 dark:border-slate-600 hover:bg-slate-50 dark:hover:bg-slate-600'
                           }`}
                         >
                           {page}
@@ -237,7 +254,7 @@ export const DriverDashboard: React.FC<DriverDashboardProps> = ({ user, loads, o
                       page === currentPage - 2 ||
                       page === currentPage + 2
                     ) {
-                      return <span key={page} className="px-2 text-slate-400">...</span>;
+                      return <span key={page} className="px-2 text-slate-400 dark:text-slate-500">...</span>;
                     }
                     return null;
                   })}
@@ -245,7 +262,7 @@ export const DriverDashboard: React.FC<DriverDashboardProps> = ({ user, loads, o
                 <button
                   onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
                   disabled={currentPage === totalPages}
-                  className="p-2 rounded-lg border border-slate-300 hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  className="p-2 rounded-lg border border-slate-300 dark:border-slate-600 hover:bg-slate-50 dark:hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-slate-600 dark:text-slate-300"
                   aria-label="Next page"
                 >
                   <ChevronRight size={18} />

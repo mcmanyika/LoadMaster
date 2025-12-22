@@ -136,12 +136,14 @@ export const ProfileSetup: React.FC<ProfileSetupProps> = ({ userId, userEmail, o
               className="w-full px-4 py-3 bg-slate-700 border border-slate-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             >
               <option value="owner">Owner</option>
+              <option value="dispatch_company">Dispatch Company</option>
               <option value="dispatcher">Dispatcher</option>
               <option value="driver">Driver</option>
             </select>
             <p className="text-xs text-slate-500 mt-1">
               {role === 'owner' && 'As an owner, a company will be created for you automatically.'}
-              {role === 'dispatcher' && 'You will need to be assigned to a company by an owner.'}
+              {role === 'dispatch_company' && 'As a dispatch company, a company will be created for you automatically.'}
+              {role === 'dispatcher' && 'You will need to be assigned to a company by an owner or dispatch company.'}
               {role === 'driver' && 'You will need to be assigned to a company by an owner.'}
             </p>
           </div>

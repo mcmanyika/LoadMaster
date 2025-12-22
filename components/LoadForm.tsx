@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { Load, Driver, UserProfile, Dispatcher } from '../types';
 import { X, Calculator, Upload, FileText, AlertCircle } from 'lucide-react';
-import { getCompany } from '../services/companyService';
+import { getCompany, getDispatchCompanyOwnCompany } from '../services/companyService';
 import { getCompanyDispatchers } from '../services/dispatcherAssociationService';
 import { getCompanyDrivers } from '../services/driverAssociationService';
-import { getDispatchers, getDrivers } from '../services/loadService';
+import { getDispatchers, getDrivers, getLoads } from '../services/loadService';
 import { uploadRateConfirmationPdf } from '../services/storageService';
 import { PlacesAutocomplete } from './PlacesAutocomplete';
 import { calculateDistance } from '../services/distanceService';
@@ -62,12 +62,44 @@ export const LoadForm: React.FC<LoadFormProps> = ({ onClose, onSave, currentUser
         // Fetch dispatchers and drivers only if we have companyData
         // Use getDispatchers which queries both dispatcher_company_associations and dispatchers tables
         if (companyData) {
-          // Fetch dispatchers from both associations and dispatchers table
-          const dispatchersData = await getDispatchers(companyData.id);
+          // For dispatch companies: get dispatchers from their own company, not the joined owner company
+          let dispatcherCompanyId = companyData.id;
+          let driverCompanyId = companyData.id; // For fetching drivers
+          
+          if (currentUser?.role === 'dispatch_company') {
+            const ownCompany = await getDispatchCompanyOwnCompany();
+            dispatcherCompanyId = ownCompany?.id || companyData.id;
+            // For dispatch companies, drivers should always come from the owner company (companyData.id)
+            // companyData is the joined owner company for dispatch companies
+            driverCompanyId = companyData.id; // Always use owner company for drivers
+          }
+          
+          // Fetch dispatchers from dispatch company's own company (or owner's company for others)
+          const dispatchersData = await getDispatchers(dispatcherCompanyId);
           setDispatchers(dispatchersData);
           
-          // Fetch drivers from both associations and drivers table
-          const driversData = await getDrivers(companyData.id);
+          // Fetch drivers from owner's company (for dispatch companies) or regular company
+          let driversData = await getDrivers(driverCompanyId);
+          
+          // For dispatch companies: filter drivers to only those assigned to loads dispatched by their dispatchers
+          if (currentUser?.role === 'dispatch_company' && dispatchersData.length > 0) {
+            const dispatcherNames = dispatchersData.map(d => d.name).filter(Boolean);
+            if (dispatcherNames.length > 0) {
+              // Get loads dispatched by this dispatch company's dispatchers
+              const loadsDispatchedByCompany = await getLoads(driverCompanyId, undefined, dispatcherNames);
+              
+              // Get unique driver IDs from those loads
+              const assignedDriverIds = new Set<string>();
+              loadsDispatchedByCompany.forEach(load => {
+                if (load.driverId) {
+                  assignedDriverIds.add(load.driverId);
+                }
+              });
+              
+              // Filter drivers to only those assigned to loads
+              driversData = driversData.filter(driver => assignedDriverIds.has(driver.id));
+            }
+          }
           
           // If in edit mode and loadToEdit has a driverId, ensure that driver is in the list
           let finalDriversData = driversData;

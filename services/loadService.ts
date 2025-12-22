@@ -90,7 +90,11 @@ const MOCK_LOADS: Load[] = [
 
 // --- LOAD OPERATIONS ---
 
-export const getLoads = async (companyId?: string, dispatcherName?: string): Promise<Load[]> => {
+export const getLoads = async (
+  companyId?: string, 
+  dispatcherName?: string,
+  dispatcherNames?: string[] // Array of dispatcher names (for dispatch companies)
+): Promise<Load[]> => {
   if (!isSupabaseConfigured || !supabase) {
     console.warn("Supabase not configured. Using Mock Data.");
     await new Promise(resolve => setTimeout(resolve, 800));
@@ -99,7 +103,9 @@ export const getLoads = async (companyId?: string, dispatcherName?: string): Pro
     if (companyId) {
       mockLoads = mockLoads.filter(l => l.companyId === companyId);
     }
-    if (dispatcherName) {
+    if (dispatcherNames && dispatcherNames.length > 0) {
+      mockLoads = mockLoads.filter(l => l.dispatcher && dispatcherNames.includes(l.dispatcher));
+    } else if (dispatcherName) {
       mockLoads = mockLoads.filter(l => l.dispatcher === dispatcherName);
     }
     return mockLoads;
@@ -119,8 +125,12 @@ export const getLoads = async (companyId?: string, dispatcherName?: string): Pro
     query = query.eq('company_id', companyId);
   }
 
-  // Filter by dispatcher name if provided (for dispatchers to see only their loads)
-  if (dispatcherName) {
+  // Filter by dispatcher name(s) if provided
+  if (dispatcherNames && dispatcherNames.length > 0) {
+    // Filter by multiple dispatcher names (for dispatch companies to see loads from their dispatchers)
+    query = query.in('dispatcher', dispatcherNames);
+  } else if (dispatcherName) {
+    // Filter by single dispatcher name (for individual dispatchers to see only their loads)
     query = query.eq('dispatcher', dispatcherName);
   }
 

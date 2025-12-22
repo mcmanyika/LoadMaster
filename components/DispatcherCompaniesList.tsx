@@ -20,7 +20,7 @@ export const DispatcherCompaniesList: React.FC<DispatcherCompaniesListProps> = (
   const [errorModal, setErrorModal] = useState<{ isOpen: boolean; message: string }>({ isOpen: false, message: '' });
 
   useEffect(() => {
-    if (user.role === 'dispatcher') {
+    if (user.role === 'dispatcher' || user.role === 'dispatch_company') {
       loadCompanies();
     }
   }, [user]);
@@ -52,12 +52,20 @@ export const DispatcherCompaniesList: React.FC<DispatcherCompaniesListProps> = (
       <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm p-6">
         <h3 className="text-lg font-bold text-slate-800 dark:text-slate-100 mb-4 flex items-center gap-2">
           <Building2 size={20} className="text-slate-600 dark:text-slate-400" />
-          My Companies
+          {user.role === 'dispatch_company' ? 'Joined Owner Companies' : 'My Companies'}
         </h3>
         <div className="text-center py-8">
           <AlertCircle size={48} className="mx-auto text-slate-300 dark:text-slate-600 mb-4" />
-          <p className="text-slate-500 dark:text-slate-400 mb-2">You're not associated with any companies yet.</p>
-          <p className="text-sm text-slate-400 dark:text-slate-500">Use an invite code to join a company.</p>
+          <p className="text-slate-500 dark:text-slate-400 mb-2">
+            {user.role === 'dispatch_company' 
+              ? "You haven't joined any owner companies yet." 
+              : "You're not associated with any companies yet."}
+          </p>
+          <p className="text-sm text-slate-400 dark:text-slate-500">
+            {user.role === 'dispatch_company' 
+              ? "Use an invite code from an owner to join their company." 
+              : "Use an invite code to join a company."}
+          </p>
         </div>
       </div>
     );
@@ -73,7 +81,7 @@ export const DispatcherCompaniesList: React.FC<DispatcherCompaniesListProps> = (
 
       <h3 className="text-lg font-bold text-slate-800 dark:text-slate-100 mb-4 flex items-center gap-2">
         <Building2 size={20} className="text-slate-600 dark:text-slate-400" />
-        My Companies ({associations.length})
+        {user.role === 'dispatch_company' ? `Joined Owner Companies (${associations.length})` : `My Companies (${associations.length})`}
       </h3>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">

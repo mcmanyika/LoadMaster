@@ -42,9 +42,9 @@ export const getCompany = async (currentCompanyId?: string): Promise<Company | n
       return null;
     }
 
-    // For dispatchers: Check junction table first if currentCompanyId is provided
-    if (profile?.role === 'dispatcher' && currentCompanyId) {
-      console.log('[getCompany] Dispatcher with currentCompanyId, checking association');
+    // For dispatchers and dispatch companies: Check junction table first if currentCompanyId is provided
+    if ((profile?.role === 'dispatcher' || profile?.role === 'dispatch_company') && currentCompanyId) {
+      console.log(`[getCompany] ${profile.role} with currentCompanyId, checking association`);
       const { data: company, error: companyError } = await supabase
         .from('companies')
         .select('*')
@@ -77,9 +77,9 @@ export const getCompany = async (currentCompanyId?: string): Promise<Company | n
       }
     }
 
-    // For dispatchers without currentCompanyId: Get first active company from associations
-    if (profile?.role === 'dispatcher') {
-      console.log('[getCompany] Dispatcher, checking associations');
+    // For dispatchers and dispatch companies without currentCompanyId: Get first active company from associations
+    if (profile?.role === 'dispatcher' || profile?.role === 'dispatch_company') {
+      console.log(`[getCompany] ${profile.role}, checking associations`);
       const activeCompanies = await getActiveCompanies(session.user.id);
       if (activeCompanies.length > 0) {
         // Use first active company or check localStorage for saved preference
@@ -95,14 +95,23 @@ export const getCompany = async (currentCompanyId?: string): Promise<Company | n
           return selectedCompany;
         }
       }
+      
+      // If dispatch company has no joined companies, fall through to use their own company
+      if (profile?.role === 'dispatch_company') {
+        console.log('[getCompany] Dispatch company with no joined companies, using own company');
+        // Fall through to owner_id lookup below
+      } else {
+        // For dispatchers with no associations, return null
+        return null;
+      }
     }
 
     if (!profile?.company_id) {
       console.log('[getCompany] No company_id in profile');
       
-      // For owners: try to find company by owner_id as fallback
-      if (profile?.role === 'owner') {
-        console.log('[getCompany] Owner with no company_id, trying owner_id lookup');
+      // For owners and dispatch companies: try to find company by owner_id as fallback
+      if (profile?.role === 'owner' || profile?.role === 'dispatch_company') {
+        console.log('[getCompany] Owner/Dispatch Company with no company_id, trying owner_id lookup');
         const { data: companyByOwner, error: ownerError } = await supabase
           .from('companies')
           .select('*')
@@ -167,6 +176,84 @@ export const getCompany = async (currentCompanyId?: string): Promise<Company | n
     };
   } catch (error) {
     console.error('[getCompany] Unexpected error:', error);
+    return null;
+  }
+};
+
+/**
+ * Get dispatch company's own company (not the joined owner company)
+ * This is used to fetch dispatchers from the dispatch company's own company
+ */
+export const getDispatchCompanyOwnCompany = async (): Promise<Company | null> => {
+  if (!isSupabaseConfigured || !supabase) {
+    return null;
+  }
+
+  try {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session?.user) {
+      return null;
+    }
+
+    // Get profile to check role
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('role, company_id')
+      .eq('id', session.user.id)
+      .single();
+
+    if (profile?.role !== 'dispatch_company') {
+      return null;
+    }
+
+    // Try to get company from profile.company_id first
+    if (profile.company_id) {
+      const { data: company } = await supabase
+        .from('companies')
+        .select('*')
+        .eq('id', profile.company_id)
+        .eq('owner_id', session.user.id) // Ensure it's their own company
+        .single();
+
+      if (company) {
+        return {
+          id: company.id,
+          name: company.name,
+          ownerId: company.owner_id,
+          address: company.address || undefined,
+          website: company.website || undefined,
+          phone: company.phone || undefined,
+          numberOfTrucks: company.number_of_trucks || undefined,
+          createdAt: company.created_at,
+          updatedAt: company.updated_at
+        };
+      }
+    }
+
+    // Fallback: find company by owner_id
+    const { data: companyByOwner } = await supabase
+      .from('companies')
+      .select('*')
+      .eq('owner_id', session.user.id)
+      .single();
+
+    if (companyByOwner) {
+      return {
+        id: companyByOwner.id,
+        name: companyByOwner.name,
+        ownerId: companyByOwner.owner_id,
+        address: companyByOwner.address || undefined,
+        website: companyByOwner.website || undefined,
+        phone: companyByOwner.phone || undefined,
+        numberOfTrucks: companyByOwner.number_of_trucks || undefined,
+        createdAt: companyByOwner.created_at,
+        updatedAt: companyByOwner.updated_at
+      };
+    }
+
+    return null;
+  } catch (error) {
+    console.error('[getDispatchCompanyOwnCompany] Error:', error);
     return null;
   }
 };

@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { DriverReport, DispatcherReport } from '../../types/reports';
-import { CalculatedLoad } from '../../types';
+import { CalculatedLoad, UserProfile } from '../../types';
 import { X, Calendar, DollarSign, MapPin, FileText, Truck, Users } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { groupLoadsByTimePeriod, calculateDispatcherTrend } from '../../services/reports/chartDataService';
@@ -11,13 +11,15 @@ interface ReportDetailModalProps {
   onClose: () => void;
   report: DriverReport | DispatcherReport | null;
   type: 'driver' | 'dispatcher';
+  user?: UserProfile;
 }
 
 export const ReportDetailModal: React.FC<ReportDetailModalProps> = ({
   isOpen,
   onClose,
   report,
-  type
+  type,
+  user
 }) => {
   // ALL HOOKS MUST BE CALLED BEFORE ANY EARLY RETURNS - React Rules of Hooks
   const [selectedLoad, setSelectedLoad] = useState<CalculatedLoad | null>(null);
@@ -48,6 +50,10 @@ export const ReportDetailModal: React.FC<ReportDetailModalProps> = ({
     console.log('Load clicked:', { loadId: load.id, load, hasId: !!load.id });
     if (!load.id) {
       console.error('Load has no ID!', load);
+      return;
+    }
+    // Don't open expenses modal for dispatch companies
+    if (user?.role === 'dispatch_company') {
       return;
     }
     setSelectedLoad(load);
@@ -362,7 +368,9 @@ export const ReportDetailModal: React.FC<ReportDetailModalProps> = ({
                     <th className="p-3 text-left text-sm font-semibold text-slate-600 dark:text-slate-400">Origin</th>
                     <th className="p-3 text-left text-sm font-semibold text-slate-600 dark:text-slate-400">Destination</th>
                     <th className="p-3 text-right text-sm font-semibold text-slate-600 dark:text-slate-400">Gross</th>
-                    <th className="p-3 text-right text-sm font-semibold text-slate-600 dark:text-slate-400">Gas</th>
+                    {user?.role !== 'dispatch_company' && (
+                      <th className="p-3 text-right text-sm font-semibold text-slate-600 dark:text-slate-400">Gas</th>
+                    )}
                     <th className="p-3 text-right text-sm font-semibold text-slate-600 dark:text-slate-400">Miles</th>
                     {isDriver ? (
                       <>
@@ -382,7 +390,11 @@ export const ReportDetailModal: React.FC<ReportDetailModalProps> = ({
                   {(isDriver ? driverReport?.loads : dispatcherReport?.loads)?.map((load) => (
                     <tr 
                       key={load.id} 
-                      className="hover:bg-slate-50 dark:hover:bg-slate-700/50 cursor-pointer transition-colors"
+                      className={`transition-colors ${
+                        user?.role === 'dispatch_company' 
+                          ? '' 
+                          : 'hover:bg-slate-50 dark:hover:bg-slate-700/50 cursor-pointer'
+                      }`}
                       onClick={(e) => handleLoadClick(e, load)}
                     >
                       <td className="p-3 text-sm text-slate-600 dark:text-slate-400">
@@ -393,9 +405,11 @@ export const ReportDetailModal: React.FC<ReportDetailModalProps> = ({
                       <td className="p-3 text-sm text-right text-slate-600 dark:text-slate-400">
                         ${load.gross.toFixed(2)}
                       </td>
-                      <td className="p-3 text-sm text-right text-slate-600 dark:text-slate-400">
-                        ${Number(load.gasAmount || 0).toFixed(2)}
-                      </td>
+                      {user?.role !== 'dispatch_company' && (
+                        <td className="p-3 text-sm text-right text-slate-600 dark:text-slate-400">
+                          ${Number(load.gasAmount || 0).toFixed(2)}
+                        </td>
+                      )}
                       <td className="p-3 text-sm text-right text-slate-600 dark:text-slate-400">
                         {load.miles.toLocaleString()}
                       </td>

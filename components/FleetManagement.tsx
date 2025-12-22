@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { Transporter, Driver, UserProfile, Dispatcher } from '../types';
 import { getTransporters, getDrivers, createTransporter, updateTransporter, createDriver, updateDriver, getDispatchers, createDispatcher, updateDispatcher } from '../services/loadService';
-import { getCompany } from '../services/companyService';
+import { getCompany, getDispatchCompanyOwnCompany } from '../services/companyService';
 import { Truck, User, Plus, Search, Building2, Phone, Mail, FileBadge, Users as UsersIcon, AlertCircle, DollarSign, Edit2, X, Check } from 'lucide-react';
 import { ErrorModal } from './ErrorModal';
 import { InvitationManagement } from './InvitationManagement';
 import { DriverInvitationManagement } from './DriverInvitationManagement';
+import { DispatchCompanyInvitationManagement } from './DispatchCompanyInvitationManagement';
 
 interface FleetManagementProps {
   user: UserProfile;
@@ -13,12 +14,15 @@ interface FleetManagementProps {
 
 export const FleetManagement: React.FC<FleetManagementProps> = ({ user }) => {
   const isOwner = user.role === 'owner';
-  const [activeTab, setActiveTab] = useState<'drivers' | 'dispatchers' | 'vehicles'>(isOwner ? 'dispatchers' : 'dispatchers');
+  const isDispatchCompany = user.role === 'dispatch_company';
+  const canManageFleet = isOwner || isDispatchCompany;
+  const [activeTab, setActiveTab] = useState<'drivers' | 'dispatchers' | 'vehicles' | 'dispatch_companies' | 'join_owner'>(canManageFleet ? 'dispatchers' : isDispatchCompany ? 'join_owner' : 'dispatchers');
   const [transporters, setTransporters] = useState<Transporter[]>([]);
   const [drivers, setDrivers] = useState<Driver[]>([]);
   const [dispatchers, setDispatchers] = useState<Dispatcher[]>([]);
   const [companyName, setCompanyName] = useState<string>('');
   const [companyId, setCompanyId] = useState<string | undefined>(undefined);
+  const [driverCompanyId, setDriverCompanyId] = useState<string | undefined>(undefined); // For driver invitations (owner company for dispatch companies)
   const [loading, setLoading] = useState(false);
   const [showAddForm, setShowAddForm] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -61,13 +65,41 @@ export const FleetManagement: React.FC<FleetManagementProps> = ({ user }) => {
       ]);
       setTransporters(transportersData);
       setDrivers(driversData);
-      if (companyData) {
-        setCompanyName(companyData.name);
+      
+      // For dispatch companies: 
+      // - Use their own company for dispatchers
+      // - Use owner company (companyData) for drivers (so drivers join the owner company)
+      let dispatcherCompanyId: string | undefined = undefined;
+      let driverInviteCompanyId: string | undefined = undefined; // For driver invitations
+      
+      if (isDispatchCompany) {
+        const ownCompany = await getDispatchCompanyOwnCompany();
+        if (ownCompany) {
+          dispatcherCompanyId = ownCompany.id;
+          // Use own company for dispatcher-related operations
+          // But use owner company (companyData) for driver invitations
+          driverInviteCompanyId = companyData?.id; // Owner company for driver invites
+          setCompanyId(ownCompany.id); // For dispatchers tab
+          setCompanyName(ownCompany.name);
+          setDriverCompanyId(driverInviteCompanyId); // Store owner company ID for driver invites
+        } else if (companyData) {
+          // Fallback to companyData if own company not found
+          dispatcherCompanyId = companyData.id;
+          driverInviteCompanyId = companyData.id;
+          setCompanyId(companyData.id);
+          setCompanyName(companyData.name);
+          setDriverCompanyId(driverInviteCompanyId);
+        }
+      } else if (companyData) {
+        dispatcherCompanyId = companyData.id;
+        driverInviteCompanyId = companyData.id;
         setCompanyId(companyData.id);
+        setCompanyName(companyData.name);
+        setDriverCompanyId(driverInviteCompanyId);
       }
       
-      if (isOwner && companyData) {
-        const dispatchersData = await getDispatchers(companyData.id);
+      if (canManageFleet && dispatcherCompanyId) {
+        const dispatchersData = await getDispatchers(dispatcherCompanyId);
         setDispatchers(dispatchersData);
       }
     } catch (e) {
@@ -313,11 +345,11 @@ export const FleetManagement: React.FC<FleetManagementProps> = ({ user }) => {
           <div>
             <h2 className="text-xl font-bold text-slate-800 dark:text-slate-100">Fleet Management</h2>
             <p className="text-sm text-slate-500 dark:text-slate-400">
-              {isOwner ? 'Manage your drivers and dispatchers' : 'Manage your carriers and drivers'}
+              {canManageFleet ? 'Manage your drivers and dispatchers' : 'Manage your carriers and drivers'}
             </p>
           </div>
-          {/* Add button - show for owners on all tabs */}
-          {isOwner && (
+          {/* Add button - show for owners/dispatch companies on their respective tabs */}
+          {((isOwner && activeTab !== 'dispatch_companies') || (isDispatchCompany && activeTab !== 'vehicles' && activeTab !== 'dispatch_companies')) && (
             <button 
               onClick={() => setShowAddForm(true)}
               className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium shadow-sm transition-colors"
@@ -333,18 +365,18 @@ export const FleetManagement: React.FC<FleetManagementProps> = ({ user }) => {
         </div>
         
         <div className="flex px-6 gap-6">
-          {/* Show dispatchers tab for both owners and dispatchers */}
+          {/* Show dispatchers tab for owners, dispatch companies, and dispatchers */}
           <button 
             onClick={() => setActiveTab('dispatchers')}
             className={`pb-4 text-sm font-medium transition-colors relative ${
               activeTab === 'dispatchers' ? 'text-blue-600 dark:text-blue-400' : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300'
             }`}
           >
-            {isOwner ? 'Dispatchers' : 'Join Company'}
+            {canManageFleet ? 'Dispatchers' : 'Join Company'}
             {activeTab === 'dispatchers' && <div className="absolute bottom-0 left-0 w-full h-0.5 bg-blue-600 rounded-t-full"></div>}
           </button>
-          {/* Drivers tab - only for owners */}
-          {isOwner && (
+          {/* Drivers tab - for owners and dispatch companies */}
+          {canManageFleet && (
             <button 
               onClick={() => setActiveTab('drivers')}
               className={`pb-4 text-sm font-medium transition-colors relative ${
@@ -355,6 +387,7 @@ export const FleetManagement: React.FC<FleetManagementProps> = ({ user }) => {
               {activeTab === 'drivers' && <div className="absolute bottom-0 left-0 w-full h-0.5 bg-blue-600 dark:bg-blue-400 rounded-t-full"></div>}
             </button>
           )}
+          {/* Vehicles tab - only for owners */}
           {isOwner && (
             <button 
               onClick={() => setActiveTab('vehicles')}
@@ -364,6 +397,30 @@ export const FleetManagement: React.FC<FleetManagementProps> = ({ user }) => {
             >
               Vehicles
               {activeTab === 'vehicles' && <div className="absolute bottom-0 left-0 w-full h-0.5 bg-blue-600 dark:bg-blue-400 rounded-t-full"></div>}
+            </button>
+          )}
+          {/* Dispatch Company tab - only for owners */}
+          {isOwner && (
+            <button 
+              onClick={() => setActiveTab('dispatch_companies')}
+              className={`pb-4 text-sm font-medium transition-colors relative ${
+                activeTab === 'dispatch_companies' ? 'text-blue-600 dark:text-blue-400' : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300'
+              }`}
+            >
+              Dispatch Companies
+              {activeTab === 'dispatch_companies' && <div className="absolute bottom-0 left-0 w-full h-0.5 bg-blue-600 dark:bg-blue-400 rounded-t-full"></div>}
+            </button>
+          )}
+          {/* Join Owner Company tab - only for dispatch companies */}
+          {isDispatchCompany && (
+            <button 
+              onClick={() => setActiveTab('join_owner')}
+              className={`pb-4 text-sm font-medium transition-colors relative ${
+                activeTab === 'join_owner' ? 'text-blue-600 dark:text-blue-400' : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300'
+              }`}
+            >
+              Join Owner Company
+              {activeTab === 'join_owner' && <div className="absolute bottom-0 left-0 w-full h-0.5 bg-blue-600 dark:bg-blue-400 rounded-t-full"></div>}
             </button>
           )}
         </div>
@@ -484,6 +541,7 @@ export const FleetManagement: React.FC<FleetManagementProps> = ({ user }) => {
             )}
 
             {/* LISTS */}
+            {/* Vehicles list - only for owners */}
             {isOwner && activeTab === 'vehicles' && (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {transporters.map(t => {
@@ -581,7 +639,7 @@ export const FleetManagement: React.FC<FleetManagementProps> = ({ user }) => {
                 <div className="border-b border-slate-200 dark:border-slate-700 pb-6">
                   <DriverInvitationManagement
                     user={user}
-                    companyId={companyId}
+                    companyId={isDispatchCompany ? (driverCompanyId || companyId) : companyId}
                     onUpdate={fetchData}
                   />
                 </div>
@@ -602,6 +660,32 @@ export const FleetManagement: React.FC<FleetManagementProps> = ({ user }) => {
                 </div>
                 
                 {/* Dispatchers List is now handled by InvitationManagement component above */}
+              </div>
+            )}
+
+            {activeTab === 'dispatch_companies' && isOwner && (
+              <div className="space-y-6">
+                {/* Dispatch Company Invitation Management Section - Only for owners */}
+                <div className="border-b border-slate-200 dark:border-slate-700 pb-6">
+                  <DispatchCompanyInvitationManagement
+                    user={user}
+                    companyId={companyId}
+                    onUpdate={fetchData}
+                  />
+                </div>
+              </div>
+            )}
+
+            {/* Join Owner Company tab - only for dispatch companies */}
+            {activeTab === 'join_owner' && isDispatchCompany && (
+              <div className="space-y-6">
+                <div className="border-b border-slate-200 dark:border-slate-700 pb-6">
+                  <DispatchCompanyInvitationManagement
+                    user={user}
+                    companyId={companyId}
+                    onUpdate={fetchData}
+                  />
+                </div>
               </div>
             )}
           </>

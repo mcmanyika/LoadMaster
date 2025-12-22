@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { UserProfile, CalculatedLoad, Driver, Dispatcher } from '../../types';
-import { getLoads } from '../../services/loadService';
+import { getLoads, getDispatchers } from '../../services/loadService';
 import { getCompanyDrivers } from '../../services/driverAssociationService';
-import { getCompanyDispatchers } from '../../services/dispatcherAssociationService';
+import { getDispatchCompanyOwnCompany } from '../../services/companyService';
 import { supabase } from '../../services/supabaseClient';
 import { DriverReports } from './DriverReports';
 import { DispatcherReports } from './DispatcherReports';
@@ -18,7 +18,10 @@ interface ReportsProps {
 }
 
 export const Reports: React.FC<ReportsProps> = ({ user, companyId }) => {
-  const [activeTab, setActiveTab] = useState<'drivers' | 'dispatchers'>('drivers');
+  // Default to dispatchers tab for dispatch companies (they manage dispatchers)
+  const [activeTab, setActiveTab] = useState<'drivers' | 'dispatchers'>(
+    user?.role === 'dispatch_company' ? 'dispatchers' : 'drivers'
+  );
   const [loads, setLoads] = useState<CalculatedLoad[]>([]);
   const [drivers, setDrivers] = useState<Driver[]>([]); // Deduplicated for dropdown
   const [allDrivers, setAllDrivers] = useState<Driver[]>([]); // All drivers for report generation
@@ -40,46 +43,43 @@ export const Reports: React.FC<ReportsProps> = ({ user, companyId }) => {
     setLoading(true);
     setError(null);
     try {
-      // For dispatchers, filter loads by their name and selected company
-      // For owners, filter by company only
-      const dispatcherName = user?.role === 'dispatcher' ? user.name : undefined;
-      
       if (!companyId) {
         setError('Company ID is required');
         setLoading(false);
         return;
       }
       
+      // For dispatch companies: get their dispatchers' names to filter loads
+      let dispatcherNames: string[] | undefined = undefined;
+      const dispatcherName = user?.role === 'dispatcher' ? user.name : undefined;
+      let dispatcherCompanyId = companyId; // For fetching dispatchers list
+      
+      if (user?.role === 'dispatch_company') {
+        // Get dispatch company's own company
+        const ownCompany = await getDispatchCompanyOwnCompany();
+        if (ownCompany) {
+          dispatcherCompanyId = ownCompany.id; // Use own company for fetching dispatchers
+          const dispatchCompanyDispatchers = await getDispatchers(ownCompany.id);
+          dispatcherNames = dispatchCompanyDispatchers.map(d => d.name).filter(Boolean) as string[];
+        }
+      }
+      
       const [loadsData] = await Promise.all([
-        getLoads(companyId, dispatcherName)
+        getLoads(companyId, dispatcherName, dispatcherNames)
       ]);
       
-      // Fetch dispatchers from associations
-      const dispatcherAssociations = await getCompanyDispatchers(companyId);
-      const activeDispatcherAssociations = dispatcherAssociations.filter(a => a.status === 'active' && a.dispatcherId && a.dispatcher);
+      // Fetch dispatchers - use dispatch company's own company for dispatch companies
+      // getDispatchers gets dispatchers from both associations AND dispatchers table
+      let dispatchersData = await getDispatchers(dispatcherCompanyId);
       
-      // Map to Dispatcher format and deduplicate by name
-      const dispatchersByName = new Map<string, Dispatcher>();
-      activeDispatcherAssociations.forEach(association => {
-        if (association.dispatcherId && association.dispatcher) {
-          const dispatcherName = association.dispatcher.name || association.dispatcher.email || 'Unknown';
-          const key = dispatcherName.toLowerCase().trim();
-          
-          // Only keep the first occurrence of each name
-          if (!dispatchersByName.has(key)) {
-            dispatchersByName.set(key, {
-              id: association.dispatcherId,
-              name: dispatcherName,
-              email: association.dispatcher.email || '',
-              phone: association.dispatcher.phone || '',
-              feePercentage: association.feePercentage || 12,
-              companyId: association.companyId
-            });
-          }
+      // Deduplicate by ID to ensure unique dispatchers
+      const dispatchersById = new Map<string, Dispatcher>();
+      dispatchersData.forEach(dispatcher => {
+        if (!dispatchersById.has(dispatcher.id)) {
+          dispatchersById.set(dispatcher.id, dispatcher);
         }
       });
-      
-      let dispatchersData = Array.from(dispatchersByName.values());
+      dispatchersData = Array.from(dispatchersById.values());
 
       // For dispatchers, only show their own dispatcher record
       if (user?.role === 'dispatcher') {
@@ -591,9 +591,9 @@ export const Reports: React.FC<ReportsProps> = ({ user, companyId }) => {
 
         <div className="p-6">
           {activeTab === 'drivers' ? (
-            <DriverReports reports={driverReports} />
+            <DriverReports reports={driverReports} user={user} />
           ) : (
-            <DispatcherReports reports={dispatcherReports} />
+            <DispatcherReports reports={dispatcherReports} user={user} />
           )}
         </div>
       </div>

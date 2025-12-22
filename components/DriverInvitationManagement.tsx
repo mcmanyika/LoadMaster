@@ -30,6 +30,8 @@ export const DriverInvitationManagement: React.FC<DriverInvitationManagementProp
   onUpdate
 }) => {
   const isOwner = user.role === 'owner';
+  const isDispatchCompany = user.role === 'dispatch_company';
+  const canManageDrivers = isOwner || isDispatchCompany;
   const [unusedCodes, setUnusedCodes] = useState<DriverCompanyAssociation[]>([]);
   const [activeDrivers, setActiveDrivers] = useState<DriverCompanyAssociation[]>([]);
   const [loading, setLoading] = useState(false);
@@ -54,7 +56,7 @@ export const DriverInvitationManagement: React.FC<DriverInvitationManagementProp
   const [transporters, setTransporters] = useState<Transporter[]>([]);
 
   useEffect(() => {
-    if (isOwner && companyId) {
+    if (canManageDrivers && companyId) {
       loadOwnerData();
       loadTransporters();
     }
@@ -349,7 +351,7 @@ export const DriverInvitationManagement: React.FC<DriverInvitationManagementProp
     });
   };
 
-  if (isOwner && !companyId) {
+  if (canManageDrivers && !companyId) {
     return (
       <div className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 p-6">
         <p className="text-slate-500 dark:text-slate-400">Please set up your company first.</p>
@@ -365,7 +367,7 @@ export const DriverInvitationManagement: React.FC<DriverInvitationManagementProp
         onClose={() => setErrorModal({ isOpen: false, message: '' })}
       />
 
-      {isOwner ? (
+      {canManageDrivers ? (
         <>
           {/* Generate Invite Code Form */}
           <div className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 p-6">
@@ -534,7 +536,7 @@ export const DriverInvitationManagement: React.FC<DriverInvitationManagementProp
                       )}
                     </div>
                     <div className="flex items-center gap-4">
-                      {isOwner && association.id.startsWith('manual-') && (
+                      {canManageDrivers && association.id.startsWith('manual-') && (
                         <button
                           onClick={async () => {
                             const driverId = association.id.replace('manual-', '');

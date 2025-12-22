@@ -1,5 +1,6 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { DriverReport } from '../../types/reports';
+import { UserProfile } from '../../types';
 import { ReportCard } from './ReportCard';
 import { ReportDetailModal } from './ReportDetailModal';
 import { exportToCSV, exportToPDF } from '../../services/reports/reportService';
@@ -8,6 +9,7 @@ import { Truck, DollarSign, MapPin, FileText, Download, FileDown, ArrowUpDown, A
 
 interface DriverReportsProps {
   reports: DriverReport[];
+  user?: UserProfile;
   onSort?: (column: keyof DriverReport) => void;
   sortBy?: keyof DriverReport;
   sortDirection?: 'asc' | 'desc';
@@ -15,6 +17,7 @@ interface DriverReportsProps {
 
 export const DriverReports: React.FC<DriverReportsProps> = ({
   reports,
+  user,
   onSort,
   sortBy = 'totalPay',
   sortDirection = 'desc'
@@ -439,6 +442,7 @@ export const DriverReports: React.FC<DriverReportsProps> = ({
         onClose={() => setIsModalOpen(false)}
         report={selectedReport}
         type="driver"
+        user={user}
       />
       <ErrorModal
         isOpen={errorModal.isOpen}

@@ -131,7 +131,7 @@ export enum DispatcherName {
   Logan = "Logan"
 }
 
-export type UserRole = 'owner' | 'dispatcher' | 'driver';
+export type UserRole = 'owner' | 'dispatcher' | 'driver' | 'dispatch_company';
 export type UserStatus = 'active' | 'inactive';
 
 export interface UserProfile {

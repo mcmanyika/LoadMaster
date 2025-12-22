@@ -150,8 +150,8 @@ export const Auth: React.FC<AuthProps> = ({ onLogin }) => {
               {!isLogin && (
                 <div>
                    <label className="block text-sm font-medium text-slate-300 mb-1">Role</label>
-                   <div className="grid grid-cols-3 gap-2">
-                      {(['owner', 'dispatcher', 'driver'] as UserRole[]).map((r) => (
+                   <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                      {(['owner', 'dispatch_company', 'dispatcher', 'driver'] as UserRole[]).map((r) => (
                         <button
                           key={r}
                           type="button"
@@ -162,7 +162,7 @@ export const Auth: React.FC<AuthProps> = ({ onLogin }) => {
                               : 'bg-slate-700 text-slate-300 border-slate-600 hover:bg-slate-600'
                           }`}
                         >
-                          {r}
+                          {r.replace('_', ' ')}
                         </button>
                       ))}
                    </div>

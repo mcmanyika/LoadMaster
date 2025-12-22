@@ -28,6 +28,12 @@ export const InvitationManagement: React.FC<InvitationManagementProps> = ({
   onUpdate
 }) => {
   const isOwner = user.role === 'owner';
+  const isDispatchCompany = user.role === 'dispatch_company';
+  const isDispatcher = user.role === 'dispatcher';
+  // Only dispatch companies can invite dispatchers (not owners)
+  const canInviteDispatchers = isDispatchCompany;
+  // Owners and dispatch companies can view dispatchers list
+  const canViewDispatchers = isOwner || isDispatchCompany;
   const [unusedCodes, setUnusedCodes] = useState<DispatcherCompanyAssociation[]>([]);
   const [activeDispatchers, setActiveDispatchers] = useState<DispatcherCompanyAssociation[]>([]);
   const [loading, setLoading] = useState(false);
@@ -45,10 +51,10 @@ export const InvitationManagement: React.FC<InvitationManagementProps> = ({
   const [previewLoading, setPreviewLoading] = useState(false);
 
   useEffect(() => {
-    if (isOwner && companyId) {
+    if (canViewDispatchers && companyId) {
       loadOwnerData();
     }
-  }, [user, companyId]);
+  }, [user, companyId, canViewDispatchers]);
 
   const loadOwnerData = async () => {
     if (!companyId) return;
@@ -356,7 +362,7 @@ export const InvitationManagement: React.FC<InvitationManagementProps> = ({
     });
   };
 
-  if (isOwner && !companyId) {
+  if (canViewDispatchers && !companyId) {
     return (
       <div className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 p-6">
         <p className="text-slate-500 dark:text-slate-400">Please set up your company first.</p>
@@ -382,9 +388,10 @@ export const InvitationManagement: React.FC<InvitationManagementProps> = ({
         onCancel={() => setConfirmModal({ isOpen: false, message: '', onConfirm: () => {} })}
       />
 
-      {isOwner ? (
+      {canViewDispatchers ? (
         <>
-          {/* Generate Invite Code Form */}
+          {/* Generate Invite Code Form - Only for dispatch companies */}
+          {canInviteDispatchers && (
           <div className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 p-6">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-lg font-semibold text-slate-800 dark:text-slate-100 flex items-center gap-2">
@@ -489,9 +496,10 @@ export const InvitationManagement: React.FC<InvitationManagementProps> = ({
               </div>
             )}
           </div>
+          )}
 
-          {/* Unused Invite Codes */}
-          {unusedCodes.length > 0 && (
+          {/* Unused Invite Codes - Only for dispatch companies */}
+          {canInviteDispatchers && unusedCodes.length > 0 && (
             <div className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 p-6">
               <h3 className="text-lg font-semibold text-slate-800 dark:text-slate-100 mb-4 flex items-center gap-2">
                 <Clock size={20} className="text-amber-500" />
@@ -561,7 +569,8 @@ export const InvitationManagement: React.FC<InvitationManagementProps> = ({
                       </p>
                     </div>
                     <div className="flex items-center gap-4">
-                      {editingFee === association.id ? (
+                      {/* Only dispatch companies can edit fees and remove dispatchers */}
+                      {canInviteDispatchers && editingFee === association.id ? (
                         <div className="flex items-center gap-2">
                           <input
                             type="number"
@@ -598,23 +607,27 @@ export const InvitationManagement: React.FC<InvitationManagementProps> = ({
                             </p>
                             <p className="text-xs text-slate-600 dark:text-slate-400">Fee</p>
                           </div>
-                          <button
-                            onClick={() => {
-                              setEditingFee(association.id);
-                              setEditFeeValue(association.feePercentage.toString());
-                            }}
-                            className="p-2 text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded transition-colors"
-                            title="Edit fee"
-                          >
-                            <Edit2 size={16} />
-                          </button>
-                          <button
-                            onClick={() => handleRemove(association.id)}
-                            className="p-2 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/30 rounded transition-colors"
-                            title="Remove dispatcher"
-                          >
-                            <Trash2 size={16} />
-                          </button>
+                          {canInviteDispatchers && (
+                            <>
+                              <button
+                                onClick={() => {
+                                  setEditingFee(association.id);
+                                  setEditFeeValue(association.feePercentage.toString());
+                                }}
+                                className="p-2 text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded transition-colors"
+                                title="Edit fee"
+                              >
+                                <Edit2 size={16} />
+                              </button>
+                              <button
+                                onClick={() => handleRemove(association.id)}
+                                className="p-2 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/30 rounded transition-colors"
+                                title="Remove dispatcher"
+                              >
+                                <Trash2 size={16} />
+                              </button>
+                            </>
+                          )}
                         </>
                       )}
                     </div>
@@ -624,7 +637,7 @@ export const InvitationManagement: React.FC<InvitationManagementProps> = ({
             )}
           </div>
         </>
-      ) : (
+      ) : isDispatcher ? (
         /* Dispatcher View - Enter Invite Code */
         <div className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 p-6">
           <h3 className="text-lg font-semibold text-slate-800 dark:text-slate-100 mb-4 flex items-center gap-2">
@@ -646,7 +659,7 @@ export const InvitationManagement: React.FC<InvitationManagementProps> = ({
                 maxLength={9} // XXXX-XXXX format
               />
               <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                Enter the 8-character code provided by the company owner
+                Enter the 8-character code provided by the dispatch company
               </p>
             </div>
 
@@ -701,6 +714,10 @@ export const InvitationManagement: React.FC<InvitationManagementProps> = ({
               )}
             </button>
           </div>
+        </div>
+      ) : (
+        <div className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 p-6">
+          <p className="text-slate-500 dark:text-slate-400">You don't have permission to view this section.</p>
         </div>
       )}
     </div>

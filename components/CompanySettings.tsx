@@ -3,6 +3,7 @@ import { UserProfile, Company } from '../types';
 import { getCompany, createCompany, updateCompany, getOwnerEmail } from '../services/companyService';
 import { getCurrentUser } from '../services/authService';
 import { Building2, CheckCircle, AlertCircle, Loader, Mail, Pencil } from 'lucide-react';
+import { DispatchCompanyInvitationManagement } from './DispatchCompanyInvitationManagement';
 
 interface CompanySettingsProps {
   user: UserProfile;
@@ -11,6 +12,8 @@ interface CompanySettingsProps {
 
 export const CompanySettings: React.FC<CompanySettingsProps> = ({ user, onCompanyCreated }) => {
   const isOwner = user.role === 'owner';
+  const isDispatchCompany = user.role === 'dispatch_company';
+  const canManageCompany = isOwner || isDispatchCompany;
   const [company, setCompany] = useState<Company | null>(null);
   const [ownerEmail, setOwnerEmail] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -47,13 +50,13 @@ export const CompanySettings: React.FC<CompanySettingsProps> = ({ user, onCompan
         setIsEditing(false);
         
         // Fetch owner email for dispatchers
-        if (!isOwner && companyData.ownerId) {
+        if (!canManageCompany && companyData.ownerId) {
           const email = await getOwnerEmail(companyData.ownerId);
           setOwnerEmail(email);
         }
       } else {
-        // Only show create form for owners
-        if (isOwner) {
+        // Show create form for owners and dispatch companies
+        if (canManageCompany) {
           setIsEditing(true);
         } else {
           // For dispatchers, show a helpful message
@@ -62,7 +65,7 @@ export const CompanySettings: React.FC<CompanySettingsProps> = ({ user, onCompan
       }
     } catch (err: any) {
       console.error('Error fetching company:', err);
-      if (isOwner) {
+      if (canManageCompany) {
         setError('Failed to load company information');
       } else {
         setError('Failed to load company information. Please ensure you are assigned to a company.');
@@ -162,7 +165,7 @@ export const CompanySettings: React.FC<CompanySettingsProps> = ({ user, onCompan
         <div className="flex items-center gap-3 mb-6">
           <Building2 className="text-blue-400" size={24} />
           <h2 className="text-2xl font-bold text-slate-900 dark:text-white">
-            {isOwner ? 'Company Settings' : 'Company Information'}
+            {canManageCompany ? 'Company Settings' : 'Company Information'}
           </h2>
         </div>
 
@@ -180,7 +183,7 @@ export const CompanySettings: React.FC<CompanySettingsProps> = ({ user, onCompan
           </div>
         )}
 
-        {!company && isOwner && !success && !saving && !loading && (
+        {!company && canManageCompany && !success && !saving && !loading && (
           <div className="mb-6 p-4 bg-yellow-500/10 border border-yellow-500/20 rounded-lg">
             <p className="text-yellow-400 text-sm">
               You don't have a company yet. Create one to start managing your loads, transporters, and drivers.
@@ -188,7 +191,7 @@ export const CompanySettings: React.FC<CompanySettingsProps> = ({ user, onCompan
           </div>
         )}
 
-        {!company && !isOwner && (
+        {!company && !canManageCompany && (
           <div className="mb-6 p-4 bg-yellow-500/10 border border-yellow-500/20 rounded-lg">
             <p className="text-yellow-400 text-sm">
               You are not currently assigned to a company. Please contact your administrator.
@@ -196,7 +199,7 @@ export const CompanySettings: React.FC<CompanySettingsProps> = ({ user, onCompan
           </div>
         )}
 
-        {isOwner && (
+        {canManageCompany && (
           <form onSubmit={handleCreateOrUpdate} className="space-y-6">
             {/* Company Name - visible when editing or creating */}
             {(isEditing || !company) && (
@@ -353,7 +356,7 @@ export const CompanySettings: React.FC<CompanySettingsProps> = ({ user, onCompan
                 </div>
                 <div className="flex items-center justify-between">
                   <p className="text-slate-900 dark:text-white text-lg font-semibold">{company.name}</p>
-                  {isOwner && (
+                  {canManageCompany && (
                     <button
                       type="button"
                       onClick={() => setIsEditing(true)}
@@ -443,6 +446,17 @@ export const CompanySettings: React.FC<CompanySettingsProps> = ({ user, onCompan
                 </div>
               )}
             </div>
+          </div>
+        )}
+
+        {/* Dispatch Company Invitation Management - Only for owners */}
+        {isOwner && company && (
+          <div className="mt-8 pt-6 border-t border-slate-200 dark:border-slate-800">
+            <DispatchCompanyInvitationManagement
+              user={user}
+              companyId={company.id}
+              onUpdate={fetchCompany}
+            />
           </div>
         )}
       </div>

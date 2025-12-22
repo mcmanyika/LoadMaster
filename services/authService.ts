@@ -97,14 +97,14 @@ export const signUp = async (email: string, password: string, name: string, role
     // Create profile entry with default status 'active'
     await supabase.from('profiles').insert([{ id: data.user.id, name, role, status: 'active' }]);
 
-    // If user is an owner, create a company for them
-    if (role === 'owner') {
+    // If user is an owner or dispatch_company, create a company for them
+    if (role === 'owner' || role === 'dispatch_company') {
       try {
         const company = await createCompany(`${name}'s Company`, data.user.id);
         // Profile company_id will be set by createCompany function
 
-        // Create sample data for new owner accounts
-        if (company && isSupabaseConfigured && supabase) {
+        // Create sample data for new owner accounts (not for dispatch companies)
+        if (role === 'owner' && company && isSupabaseConfigured && supabase) {
           try {
             // Wait a moment to ensure company is fully set up
             await new Promise(resolve => setTimeout(resolve, 300));
