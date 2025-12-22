@@ -14,8 +14,9 @@ import { ErrorModal } from './ErrorModal';
 import { ConfirmModal } from './ConfirmModal';
 import { Mail, X, Check, Users, Clock, AlertCircle, Trash2, Copy, Key, Building2, Edit2 } from 'lucide-react';
 import { supabase } from '../services/supabaseClient';
-import { updateDriver, getDrivers } from '../services/loadService';
-import { Driver } from '../types';
+import { updateDriver, getDrivers, getTransporters } from '../services/loadService';
+import { Driver, Transporter } from '../types';
+import { Truck } from 'lucide-react';
 
 interface DriverInvitationManagementProps {
   user: UserProfile;
@@ -47,14 +48,27 @@ export const DriverInvitationManagement: React.FC<DriverInvitationManagementProp
   const [editingDriverId, setEditingDriverId] = useState<string | null>(null);
   const [editDriverForm, setEditDriverForm] = useState({
     payType: 'percentage_of_net' as 'percentage_of_gross' | 'percentage_of_net',
-    payPercentage: '50'
+    payPercentage: '50',
+    transporterId: '' as string
   });
+  const [transporters, setTransporters] = useState<Transporter[]>([]);
 
   useEffect(() => {
     if (isOwner && companyId) {
       loadOwnerData();
+      loadTransporters();
     }
   }, [user, companyId]);
+
+  const loadTransporters = async () => {
+    if (!companyId) return;
+    try {
+      const transportersData = await getTransporters(companyId);
+      setTransporters(transportersData);
+    } catch (error) {
+      console.error('Error loading transporters:', error);
+    }
+  };
 
   const loadOwnerData = async () => {
     if (!companyId) return;
@@ -531,7 +545,8 @@ export const DriverInvitationManagement: React.FC<DriverInvitationManagementProp
                               setEditingDriverId(driverId);
                               setEditDriverForm({
                                 payType: driver.payType || 'percentage_of_net',
-                                payPercentage: (driver.payPercentage || 50).toString()
+                                payPercentage: (driver.payPercentage || 50).toString(),
+                                transporterId: driver.transporterId || ''
                               });
                             }
                           }}
@@ -560,11 +575,11 @@ export const DriverInvitationManagement: React.FC<DriverInvitationManagementProp
             <div className="fixed inset-0 bg-slate-900/50 dark:bg-slate-900/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
               <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-xl w-full max-w-md">
                 <div className="px-6 py-4 border-b border-slate-200 dark:border-slate-700 flex justify-between items-center">
-                  <h3 className="text-lg font-bold text-slate-800 dark:text-slate-100">Edit Driver Pay Configuration</h3>
+                  <h3 className="text-lg font-bold text-slate-800 dark:text-slate-100">Edit Driver Settings</h3>
                   <button
                     onClick={() => {
                       setEditingDriverId(null);
-                      setEditDriverForm({ payType: 'percentage_of_net', payPercentage: '50' });
+                      setEditDriverForm({ payType: 'percentage_of_net', payPercentage: '50', transporterId: '' });
                     }}
                     className="p-2 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-full transition-colors"
                   >
@@ -572,6 +587,27 @@ export const DriverInvitationManagement: React.FC<DriverInvitationManagementProp
                   </button>
                 </div>
                 <div className="p-6 space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                      <Truck size={16} className="inline mr-2" />
+                      Assign to Vehicle
+                    </label>
+                    <select
+                      className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-white"
+                      value={editDriverForm.transporterId}
+                      onChange={e => setEditDriverForm({ ...editDriverForm, transporterId: e.target.value })}
+                    >
+                      <option value="">No Vehicle (Unassigned)</option>
+                      {transporters.map(t => (
+                        <option key={t.id} value={t.id}>
+                          {t.name} {t.registrationNumber ? `(${t.registrationNumber})` : ''}
+                        </option>
+                      ))}
+                    </select>
+                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                      Select a vehicle to assign this driver to, or leave unassigned.
+                    </p>
+                  </div>
                   <div>
                     <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
                       Pay Calculation Method
@@ -617,11 +653,12 @@ export const DriverInvitationManagement: React.FC<DriverInvitationManagementProp
                           
                           await updateDriver(editingDriverId, {
                             payType: editDriverForm.payType,
-                            payPercentage: payPercentage
+                            payPercentage: payPercentage,
+                            transporterId: editDriverForm.transporterId || undefined
                           });
                           
                           setEditingDriverId(null);
-                          setEditDriverForm({ payType: 'percentage_of_net', payPercentage: '50' });
+                          setEditDriverForm({ payType: 'percentage_of_net', payPercentage: '50', transporterId: '' });
                           await loadOwnerData();
                           onUpdate?.();
                         } catch (error: any) {
@@ -635,7 +672,7 @@ export const DriverInvitationManagement: React.FC<DriverInvitationManagementProp
                     <button
                       onClick={() => {
                         setEditingDriverId(null);
-                        setEditDriverForm({ payType: 'percentage_of_net', payPercentage: '50' });
+                        setEditDriverForm({ payType: 'percentage_of_net', payPercentage: '50', transporterId: '' });
                       }}
                       className="flex-1 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-300 px-4 py-2 rounded-lg font-medium transition-colors"
                     >
