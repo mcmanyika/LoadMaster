@@ -1,17 +1,13 @@
 import React from 'react';
 import { ArrowLeft, Shield } from 'lucide-react';
-import { useTheme } from '../contexts/ThemeContext';
 
 interface PrivacyPolicyProps {
   onBack?: () => void;
 }
 
 export const PrivacyPolicy: React.FC<PrivacyPolicyProps> = ({ onBack }) => {
-  const { theme } = useTheme();
-  const isDark = theme === 'dark';
-
   return (
-    <div className={`min-h-screen ${isDark ? 'bg-slate-900' : 'bg-slate-50'} transition-colors duration-200`}>
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-900 transition-colors duration-200">
       <div className="max-w-4xl mx-auto px-6 py-12">
         {/* Header */}
         <div className="mb-8">
@@ -36,7 +32,7 @@ export const PrivacyPolicy: React.FC<PrivacyPolicyProps> = ({ onBack }) => {
         </div>
 
         {/* Content */}
-        <div className={`prose prose-slate dark:prose-invert max-w-none ${isDark ? 'prose-headings:text-slate-100 prose-p:text-slate-300 prose-strong:text-slate-100' : ''}`}>
+        <div className="prose prose-slate dark:prose-invert max-w-none prose-headings:text-slate-900 dark:prose-headings:text-slate-100 prose-p:text-slate-700 dark:prose-p:text-slate-300 prose-strong:text-slate-900 dark:prose-strong:text-slate-100">
           <section className="mb-8">
             <h2 className="text-2xl font-semibold text-slate-900 dark:text-slate-100 mb-4">
               1. Introduction

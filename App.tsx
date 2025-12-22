@@ -1057,7 +1057,7 @@ function App() {
               <Users size={20} className="flex-shrink-0" />
               <span className="opacity-0 group-hover:opacity-100 transition-opacity duration-300 whitespace-nowrap overflow-hidden text-slate-300 dark:text-slate-300">Fleet & Drivers</span>
             </button>
-            {user.role === 'owner' && (
+            {(user.role === 'owner' || user.role === 'dispatcher') && (
               <button
                 onClick={() => setView('reports')}
                 className={`w-full flex items-center justify-center group-hover:justify-start gap-3 px-4 py-3 rounded-xl transition-colors ${view === 'reports' ? 'bg-blue-600/10 text-blue-400 font-medium' : 'text-slate-300 dark:text-slate-300 hover:bg-slate-800'}`}

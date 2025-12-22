@@ -443,9 +443,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onSignIn
           <div className="max-w-7xl mx-auto px-6">
             <div className="text-center mb-20">
               <h2 className={`text-4xl md:text-5xl lg:text-6xl font-extrabold mb-6 tracking-tight ${visibleSections.has('pricing') ? 'animate-fade-in-up delay-100' : 'opacity-0'}`}>
-                Simple, transparent
-                <br />
-                <span className="bg-gradient-to-r from-blue-400 via-emerald-400 to-blue-400 bg-clip-text text-transparent bg-[length:200%_100%] animate-gradient-x">pricing</span>
+                Simple, transparent <span className="bg-gradient-to-r from-blue-400 via-emerald-400 to-blue-400 bg-clip-text text-transparent bg-[length:200%_100%] animate-gradient-x">pricing</span>
               </h2>
               <p className={`text-xl text-slate-400 max-w-2xl mx-auto leading-relaxed ${visibleSections.has('pricing') ? 'animate-fade-in-up delay-200' : 'opacity-0'}`}>
                 Choose the plan that fits your fleet. <span className="text-slate-300 font-medium">Upgrade or downgrade anytime.</span>

@@ -79,7 +79,28 @@ export const Reports: React.FC<ReportsProps> = ({ user, companyId }) => {
         }
       });
       
-      const dispatchersData = Array.from(dispatchersByName.values());
+      let dispatchersData = Array.from(dispatchersByName.values());
+
+      // For dispatchers, only show their own dispatcher record
+      if (user?.role === 'dispatcher') {
+        const currentDispatcher = dispatchersData.find(d => d.id === user.id);
+        if (currentDispatcher) {
+          dispatchersData = [currentDispatcher];
+          // Auto-filter to their own dispatcher reports
+          setDateFilter(prev => ({ ...prev, dispatcherId: currentDispatcher.id }));
+        } else {
+          // If dispatcher not found in associations, create a placeholder
+          dispatchersData = [{
+            id: user.id,
+            name: user.name || user.email || 'Unknown',
+            email: user.email || '',
+            phone: user.phone || '',
+            feePercentage: 12,
+            companyId: companyId
+          }];
+          setDateFilter(prev => ({ ...prev, dispatcherId: user.id }));
+        }
+      }
 
       // Fetch ALL driver records for the company (to match loads that might reference old driver IDs)
       // This ensures we can resolve driver names for all loads, even if they reference older driver records
@@ -209,9 +230,33 @@ export const Reports: React.FC<ReportsProps> = ({ user, companyId }) => {
       // This ensures we can resolve driver names even if loads reference old driver IDs
       const allDriversById = Array.from(driversById.values());
       
+      // For dispatchers, filter drivers to only show drivers they've dispatched
+      let filteredFinalDrivers = finalDrivers;
+      let filteredAllDrivers = allDriversById;
+      
+      if (user?.role === 'dispatcher' && loadsData && loadsData.length > 0) {
+        // Get unique driver IDs from loads dispatched by this dispatcher
+        const dispatchedDriverIds = new Set<string>();
+        loadsData.forEach(load => {
+          if (load.driverId) {
+            dispatchedDriverIds.add(load.driverId);
+          }
+        });
+        
+        // Filter drivers to only those that appear in the dispatcher's loads
+        filteredFinalDrivers = finalDrivers.filter(driver => 
+          dispatchedDriverIds.has(driver.id)
+        );
+        
+        // Also filter allDrivers for report generation
+        filteredAllDrivers = allDriversById.filter(driver => 
+          dispatchedDriverIds.has(driver.id)
+        );
+      }
+      
       setLoads(loadsData || []);
-      setDrivers(finalDrivers); // Use deduplicated drivers for dropdown (unique names only)
-      setAllDrivers(allDriversById); // Store all drivers for report generation
+      setDrivers(filteredFinalDrivers); // Use filtered drivers for dropdown
+      setAllDrivers(filteredAllDrivers); // Store filtered drivers for report generation
       setDispatchers(dispatchersData || []);
     } catch (error) {
       console.error('Error fetching reports data:', error);
@@ -295,22 +340,55 @@ export const Reports: React.FC<ReportsProps> = ({ user, companyId }) => {
       // Use drivers (deduplicated) only for the dropdown
       // Fallback to drivers if allDrivers is not yet loaded
       const driversForReports = (allDrivers && allDrivers.length > 0) ? allDrivers : drivers;
-      return generateDriverReports(processedLoads, driversForReports, dateFilter);
+      let reports = generateDriverReports(processedLoads, driversForReports, dateFilter);
+      
+      // For dispatchers, ensure we only show drivers they've dispatched
+      // (This is already handled by filtered loads, but double-check for safety)
+      if (user.role === 'dispatcher') {
+        // Get unique driver IDs from processed loads
+        const dispatchedDriverIds = new Set<string>();
+        processedLoads.forEach(load => {
+          if (load.driverId) {
+            dispatchedDriverIds.add(load.driverId);
+          }
+        });
+        
+        // Filter reports to only drivers that appear in the dispatcher's loads
+        reports = reports.filter(report => {
+          // Check if this driver has any loads in processedLoads
+          return processedLoads.some(load => 
+            load.driverId === report.driverId || 
+            load.driverName === report.driverName
+          );
+        });
+      }
+      
+      return reports;
     } catch (error) {
       console.error('Error generating driver reports:', error);
       return [];
     }
-  }, [processedLoads, allDrivers, drivers, dateFilter]);
+  }, [processedLoads, allDrivers, drivers, dateFilter, user]);
 
   // Generate dispatcher reports
   const dispatcherReports = useMemo(() => {
     try {
-      return generateDispatcherReports(processedLoads, dispatchers, dateFilter);
+      let reports = generateDispatcherReports(processedLoads, dispatchers, dateFilter);
+      
+      // For dispatchers, only show their own reports
+      if (user.role === 'dispatcher') {
+        const currentDispatcher = dispatchers.find(d => d.id === user.id);
+        if (currentDispatcher) {
+          reports = reports.filter(r => r.dispatcherId === user.id || r.dispatcherName === currentDispatcher.name);
+        }
+      }
+      
+      return reports;
     } catch (error) {
       console.error('Error generating dispatcher reports:', error);
       return [];
     }
-  }, [processedLoads, dispatchers, dateFilter]);
+  }, [processedLoads, dispatchers, dateFilter, user]);
 
   if (loading) {
     return (
@@ -391,18 +469,24 @@ export const Reports: React.FC<ReportsProps> = ({ user, companyId }) => {
               ) : (
                 <div className="flex-1">
                   <label className="block text-xs text-slate-600 dark:text-slate-400 mb-1">Filter by Dispatcher</label>
-                  <select
-                    value={dateFilter.dispatcherId || ''}
-                    onChange={(e) => setDateFilter({ ...dateFilter, dispatcherId: e.target.value || undefined })}
-                    className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg text-sm bg-white dark:bg-slate-700 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  >
-                    <option value="">All Dispatchers</option>
-                    {dispatchers.map((dispatcher) => (
-                      <option key={dispatcher.id} value={dispatcher.id}>
-                        {dispatcher.name}
-                      </option>
-                    ))}
-                  </select>
+                  {user.role === 'dispatcher' ? (
+                    <div className="px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg text-sm bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-400">
+                      {user.name || user.email || 'Your Reports'}
+                    </div>
+                  ) : (
+                    <select
+                      value={dateFilter.dispatcherId || ''}
+                      onChange={(e) => setDateFilter({ ...dateFilter, dispatcherId: e.target.value || undefined })}
+                      className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg text-sm bg-white dark:bg-slate-700 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    >
+                      <option value="">All Dispatchers</option>
+                      {dispatchers.map((dispatcher) => (
+                        <option key={dispatcher.id} value={dispatcher.id}>
+                          {dispatcher.name}
+                        </option>
+                      ))}
+                    </select>
+                  )}
                 </div>
               )}
             </div>
@@ -434,10 +518,23 @@ export const Reports: React.FC<ReportsProps> = ({ user, companyId }) => {
           </div>
 
           {/* Clear Filters Button */}
-          {(dateFilter.startDate || dateFilter.endDate || dateFilter.driverId || dateFilter.dispatcherId) && (
+          {(dateFilter.startDate || dateFilter.endDate || dateFilter.driverId || (dateFilter.dispatcherId && user.role !== 'dispatcher')) && (
             <div className="flex justify-end">
               <button
-                onClick={() => setDateFilter({ startDate: '', endDate: '', driverId: '', dispatcherId: '' })}
+                onClick={() => {
+                  if (user.role === 'dispatcher') {
+                    // For dispatchers, preserve their dispatcher filter
+                    const currentDispatcher = dispatchers.find(d => d.id === user.id);
+                    setDateFilter({ 
+                      startDate: '', 
+                      endDate: '', 
+                      driverId: '', 
+                      dispatcherId: currentDispatcher?.id || user.id 
+                    });
+                  } else {
+                    setDateFilter({ startDate: '', endDate: '', driverId: '', dispatcherId: '' });
+                  }
+                }}
                 className="flex items-center gap-2 px-4 py-2 text-sm text-slate-600 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors"
               >
                 <X size={16} />
@@ -455,8 +552,10 @@ export const Reports: React.FC<ReportsProps> = ({ user, companyId }) => {
             <button
               onClick={() => {
                 setActiveTab('drivers');
-                // Clear dispatcher filter when switching to drivers tab
-                setDateFilter(prev => ({ ...prev, dispatcherId: '' }));
+                // Clear dispatcher filter when switching to drivers tab (only for owners)
+                if (user.role !== 'dispatcher') {
+                  setDateFilter(prev => ({ ...prev, dispatcherId: '' }));
+                }
               }}
               className={`flex-1 px-6 py-4 text-sm font-medium transition-colors ${
                 activeTab === 'drivers'
@@ -471,6 +570,13 @@ export const Reports: React.FC<ReportsProps> = ({ user, companyId }) => {
                 setActiveTab('dispatchers');
                 // Clear driver filter when switching to dispatchers tab
                 setDateFilter(prev => ({ ...prev, driverId: '' }));
+                // For dispatchers, ensure their own filter is set
+                if (user.role === 'dispatcher') {
+                  const currentDispatcher = dispatchers.find(d => d.id === user.id);
+                  if (currentDispatcher) {
+                    setDateFilter(prev => ({ ...prev, dispatcherId: currentDispatcher.id }));
+                  }
+                }
               }}
               className={`flex-1 px-6 py-4 text-sm font-medium transition-colors ${
                 activeTab === 'dispatchers'
