@@ -754,3 +754,77 @@ export const getFuelExpensesForLoad = async (loadId: string): Promise<Expense[]>
   }
 };
 
+/**
+ * Get all expenses linked to a specific load
+ */
+export const getExpensesForLoad = async (loadId: string): Promise<Expense[]> => {
+  if (!isSupabaseConfigured || !supabase) {
+    return [];
+  }
+
+  try {
+    const { data, error } = await supabase
+      .from('expenses')
+      .select(`
+        *,
+        expense_categories (
+          id,
+          name,
+          description,
+          icon,
+          color
+        ),
+        transporters:vehicle_id (
+          name
+        ),
+        drivers:driver_id (
+          name
+        ),
+        loads:load_id (
+          company
+        )
+      `)
+      .eq('load_id', loadId)
+      .order('expense_date', { ascending: false });
+
+    if (error) {
+      console.error('Error fetching expenses for load:', error);
+      return [];
+    }
+
+    return data.map(exp => ({
+      id: exp.id,
+      companyId: exp.company_id,
+      categoryId: exp.category_id,
+      amount: parseFloat(exp.amount),
+      description: exp.description,
+      expenseDate: exp.expense_date,
+      vendor: exp.vendor,
+      receiptUrl: exp.receipt_url,
+      vehicleId: exp.vehicle_id,
+      driverId: exp.driver_id,
+      loadId: exp.load_id,
+      paymentMethod: exp.payment_method,
+      paymentStatus: exp.payment_status,
+      recurringFrequency: exp.recurring_frequency,
+      createdBy: exp.created_by,
+      createdAt: exp.created_at,
+      updatedAt: exp.updated_at,
+      category: exp.expense_categories ? {
+        id: exp.expense_categories.id,
+        name: exp.expense_categories.name,
+        description: exp.expense_categories.description,
+        icon: exp.expense_categories.icon,
+        color: exp.expense_categories.color,
+        createdAt: '',
+      } : undefined,
+      vehicleName: exp.transporters?.name,
+      driverName: exp.drivers?.name,
+      loadCompany: exp.loads?.company,
+    }));
+  } catch (error) {
+    console.error('Error in getExpensesForLoad:', error);
+    return [];
+  }
+};
+

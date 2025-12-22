@@ -1,8 +1,10 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { DriverReport, DispatcherReport } from '../../types/reports';
+import { CalculatedLoad } from '../../types';
 import { X, Calendar, DollarSign, MapPin, FileText, Truck, Users } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { groupLoadsByTimePeriod, calculateDispatcherTrend } from '../../services/reports/chartDataService';
+import { LoadExpensesModal } from './LoadExpensesModal';
 
 interface ReportDetailModalProps {
   isOpen: boolean;
@@ -17,13 +19,15 @@ export const ReportDetailModal: React.FC<ReportDetailModalProps> = ({
   report,
   type
 }) => {
-  if (!isOpen || !report) return null;
+  // ALL HOOKS MUST BE CALLED BEFORE ANY EARLY RETURNS - React Rules of Hooks
+  const [selectedLoad, setSelectedLoad] = useState<CalculatedLoad | null>(null);
+  const [isExpensesModalOpen, setIsExpensesModalOpen] = useState(false);
 
   const isDriver = type === 'driver';
-  const driverReport = isDriver ? (report as DriverReport) : null;
-  const dispatcherReport = !isDriver ? (report as DispatcherReport) : null;
+  const driverReport = isDriver && report ? (report as DriverReport) : null;
+  const dispatcherReport = !isDriver && report ? (report as DispatcherReport) : null;
 
-  // Calculate trend data for charts
+  // Calculate trend data for charts - must be before early return
   const driverTrendData = useMemo(() => {
     if (!isDriver || !driverReport) return [];
     return groupLoadsByTimePeriod(driverReport.loads);
@@ -37,6 +41,22 @@ export const ReportDetailModal: React.FC<ReportDetailModalProps> = ({
   const currencyFormatter = (value: number) => {
     return `$${value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
   };
+
+  const handleLoadClick = (e: React.MouseEvent, load: CalculatedLoad) => {
+    e.stopPropagation();
+    e.preventDefault();
+    console.log('Load clicked:', { loadId: load.id, load, hasId: !!load.id });
+    if (!load.id) {
+      console.error('Load has no ID!', load);
+      return;
+    }
+    setSelectedLoad(load);
+    setIsExpensesModalOpen(true);
+    console.log('Modal state set:', { selectedLoad: load.id, isOpen: true });
+  };
+
+  // Early return AFTER all hooks
+  if (!isOpen || !report) return null;
 
   return (
     <>
@@ -342,6 +362,7 @@ export const ReportDetailModal: React.FC<ReportDetailModalProps> = ({
                     <th className="p-3 text-left text-sm font-semibold text-slate-600 dark:text-slate-400">Origin</th>
                     <th className="p-3 text-left text-sm font-semibold text-slate-600 dark:text-slate-400">Destination</th>
                     <th className="p-3 text-right text-sm font-semibold text-slate-600 dark:text-slate-400">Gross</th>
+                    <th className="p-3 text-right text-sm font-semibold text-slate-600 dark:text-slate-400">Gas</th>
                     <th className="p-3 text-right text-sm font-semibold text-slate-600 dark:text-slate-400">Miles</th>
                     {isDriver ? (
                       <>
@@ -359,7 +380,11 @@ export const ReportDetailModal: React.FC<ReportDetailModalProps> = ({
                 </thead>
                 <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
                   {(isDriver ? driverReport?.loads : dispatcherReport?.loads)?.map((load) => (
-                    <tr key={load.id} className="hover:bg-slate-50 dark:hover:bg-slate-700/50">
+                    <tr 
+                      key={load.id} 
+                      className="hover:bg-slate-50 dark:hover:bg-slate-700/50 cursor-pointer transition-colors"
+                      onClick={(e) => handleLoadClick(e, load)}
+                    >
                       <td className="p-3 text-sm text-slate-600 dark:text-slate-400">
                         {new Date(load.dropDate).toLocaleDateString()}
                       </td>
@@ -369,14 +394,17 @@ export const ReportDetailModal: React.FC<ReportDetailModalProps> = ({
                         ${load.gross.toFixed(2)}
                       </td>
                       <td className="p-3 text-sm text-right text-slate-600 dark:text-slate-400">
+                        ${Number(load.gasAmount || 0).toFixed(2)}
+                      </td>
+                      <td className="p-3 text-sm text-right text-slate-600 dark:text-slate-400">
                         {load.miles.toLocaleString()}
                       </td>
                       {isDriver ? (
                         <>
-                          <td className="p-3 text-sm text-right font-semibold text-slate-800 dark:text-slate-100">
+                          <td className="p-3 text-sm text-right font-semibold text-slate-800 dark:text-slate-100" onClick={(e) => e.stopPropagation()}>
                             ${load.driverPay.toFixed(2)}
                           </td>
-                          <td className="p-3 text-center">
+                          <td className="p-3 text-center" onClick={(e) => e.stopPropagation()}>
                             <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
                               load.status === 'Factored' 
                                 ? 'bg-slate-100 dark:bg-slate-700 text-slate-800 dark:text-slate-200' 
@@ -385,7 +413,7 @@ export const ReportDetailModal: React.FC<ReportDetailModalProps> = ({
                               {load.status}
                             </span>
                           </td>
-                          <td className="p-3 text-center">
+                          <td className="p-3 text-center" onClick={(e) => e.stopPropagation()}>
                             <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
                               load.driverPayoutStatus === 'paid' 
                                 ? 'bg-slate-100 dark:bg-slate-700 text-slate-800 dark:text-slate-200' 
@@ -400,10 +428,10 @@ export const ReportDetailModal: React.FC<ReportDetailModalProps> = ({
                         </>
                       ) : (
                         <>
-                          <td className="p-3 text-sm text-right font-semibold text-slate-800 dark:text-slate-100">
+                          <td className="p-3 text-sm text-right font-semibold text-slate-800 dark:text-slate-100" onClick={(e) => e.stopPropagation()}>
                             ${load.dispatchFee.toFixed(2)}
                           </td>
-                          <td className="p-3 text-center">
+                          <td className="p-3 text-center" onClick={(e) => e.stopPropagation()}>
                             <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
                               load.status === 'Factored' 
                                 ? 'bg-slate-100 dark:bg-slate-700 text-slate-800 dark:text-slate-200' 
@@ -421,6 +449,24 @@ export const ReportDetailModal: React.FC<ReportDetailModalProps> = ({
             </div>
           </div>
         </div>
+
+        {/* Load Expenses Modal */}
+        {isExpensesModalOpen && selectedLoad && (
+          <LoadExpensesModal
+            isOpen={isExpensesModalOpen}
+            onClose={() => {
+              console.log('Closing expenses modal');
+              setIsExpensesModalOpen(false);
+              setSelectedLoad(null);
+            }}
+            loadId={selectedLoad.id}
+            loadInfo={{
+              origin: selectedLoad.origin,
+              destination: selectedLoad.destination,
+              dropDate: selectedLoad.dropDate
+            }}
+          />
+        )}
       </div>
     </>
   );
