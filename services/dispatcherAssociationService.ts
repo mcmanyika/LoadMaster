@@ -46,23 +46,58 @@ export const getCompanyDispatchers = async (
   }
 
   try {
+    console.log('[getCompanyDispatchers] Fetching dispatchers for companyId:', companyId);
     const { data, error } = await supabase
       .from('dispatcher_company_associations')
       .select(`
         *,
         company:companies(*),
-        dispatcher:profiles!dispatcher_id(*)
+        dispatcher:profiles!dispatcher_id(*),
+        inviter:profiles!invited_by(*)
       `)
       .eq('company_id', companyId)
-      .eq('status', 'active') // Only get active dispatchers
+      .eq('status', 'active')
+      .not('dispatcher_id', 'is', null) // Only get associations with dispatchers (not unused codes)
       .order('joined_at', { ascending: false });
 
     if (error) {
-      console.error('Error fetching company dispatchers:', error);
+      console.error('[getCompanyDispatchers] Error fetching company dispatchers:', error);
       return [];
     }
 
-    return (data || []).map(mapAssociation);
+    console.log('[getCompanyDispatchers] Raw data from query:', data?.length || 0, 'associations');
+    
+    // Debug: log each item to see what we're getting
+    if (data && data.length > 0) {
+      data.forEach((item: any, index: number) => {
+        console.log(`[getCompanyDispatchers] Association ${index}:`, {
+          id: item.id,
+          dispatcher_id: item.dispatcher_id,
+          company_id: item.company_id,
+          status: item.status,
+          hasDispatcher: !!item.dispatcher,
+          dispatcherRole: item.dispatcher?.role,
+          dispatcherName: item.dispatcher?.name
+        });
+      });
+    }
+
+    // Filter to only include dispatchers (role = 'dispatcher'), not dispatch companies
+    const filtered = (data || []).filter((item: any) => {
+      // Only include if dispatcher exists and has role 'dispatcher'
+      const isValid = item.dispatcher && item.dispatcher.role === 'dispatcher';
+      if (!isValid) {
+        if (!item.dispatcher) {
+          console.log('[getCompanyDispatchers] Filtered out - no dispatcher profile for dispatcher_id:', item.dispatcher_id);
+        } else {
+          console.log('[getCompanyDispatchers] Filtered out non-dispatcher:', item.dispatcher.role, item.dispatcher.name);
+        }
+      }
+      return isValid;
+    });
+    
+    console.log('[getCompanyDispatchers] Filtered dispatchers:', filtered.length);
+    return filtered.map(mapAssociation);
   } catch (error) {
     console.error('Error fetching company dispatchers:', error);
     return [];
@@ -768,6 +803,14 @@ function mapAssociation(item: any): DispatcherCompanyAssociation {
       role: item.dispatcher.role,
       status: item.dispatcher.status,
       companyId: item.dispatcher.company_id
+    } : undefined,
+    inviter: item.inviter ? {
+      id: item.inviter.id,
+      email: item.inviter.email,
+      name: item.inviter.name,
+      role: item.inviter.role,
+      status: item.inviter.status,
+      companyId: item.inviter.company_id
     } : undefined
   };
 }

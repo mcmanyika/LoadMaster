@@ -4,6 +4,7 @@ import { Truck, MapPin, Calendar, DollarSign, LogOut, Key, Building2, ChevronLef
 import { DriverInvitationManagement } from './DriverInvitationManagement';
 import { getDriverAssociationsWithCompanies } from '../services/driverAssociationService';
 import { useTheme } from '../contexts/ThemeContext';
+import { supabase } from '../services/supabaseClient';
 
 interface DriverDashboardProps {
   user: UserProfile;
@@ -16,10 +17,12 @@ export const DriverDashboard: React.FC<DriverDashboardProps> = ({ user, loads, o
   const [showInviteCode, setShowInviteCode] = useState(false);
   const [currentCompany, setCurrentCompany] = useState<Company | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
+  const [driverId, setDriverId] = useState<string | null>(null);
   const itemsPerPage = 10;
 
   useEffect(() => {
     checkDriverCompany();
+    getDriverId();
   }, [user]);
 
   const checkDriverCompany = async () => {
@@ -38,10 +41,40 @@ export const DriverDashboard: React.FC<DriverDashboardProps> = ({ user, loads, o
     }
   };
 
-  // Filter logic: In a real app, this would be server-side. 
-  // Here we simulate "My Loads" by just showing all or random ones if we don't have driver assignment data structure.
-  // We'll show all loads for now as the data model doesn't explicitly link 'Driver User ID' to 'Load'.
-  const myLoads = loads;
+  const getDriverId = async () => {
+    try {
+      // Get the driver record ID from the drivers table using profile_id
+      const { data: driverRecord, error } = await supabase
+        .from('drivers')
+        .select('id')
+        .eq('profile_id', user.id)
+        .maybeSingle();
+      
+      if (error) {
+        console.error('Error fetching driver ID:', error);
+        setDriverId(null);
+        return;
+      }
+      
+      if (driverRecord) {
+        setDriverId(driverRecord.id);
+      } else {
+        setDriverId(null);
+      }
+    } catch (error) {
+      console.error('Error getting driver ID:', error);
+      setDriverId(null);
+    }
+  };
+
+  // Filter loads to only show loads assigned to this driver
+  const myLoads = useMemo(() => {
+    if (!driverId) {
+      return []; // Don't show any loads if we don't have a driver ID
+    }
+    // Filter loads where driverId matches the logged-in driver's ID
+    return loads.filter(load => load.driverId === driverId);
+  }, [loads, driverId]);
 
   // Pagination logic
   const totalPages = Math.ceil(myLoads.length / itemsPerPage);
@@ -89,8 +122,8 @@ export const DriverDashboard: React.FC<DriverDashboardProps> = ({ user, loads, o
               )}
             </button>
             <button onClick={onSignOut} className="bg-slate-300 dark:bg-slate-800 p-2 rounded-full hover:bg-slate-400 dark:hover:bg-slate-700 text-slate-700 dark:text-white">
-              <LogOut size={16} />
-            </button>
+            <LogOut size={16} />
+          </button>
           </div>
         </div>
         

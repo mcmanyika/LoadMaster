@@ -35,6 +35,7 @@ export const DriverInvitationManagement: React.FC<DriverInvitationManagementProp
   const [unusedCodes, setUnusedCodes] = useState<DriverCompanyAssociation[]>([]);
   const [activeDrivers, setActiveDrivers] = useState<DriverCompanyAssociation[]>([]);
   const [loading, setLoading] = useState(false);
+  const [joiningInProgress, setJoiningInProgress] = useState(false); // Separate state for join operation
   const [errorModal, setErrorModal] = useState<{ isOpen: boolean; message: string }>({ isOpen: false, message: '' });
   const [confirmModal, setConfirmModal] = useState<{ isOpen: boolean; message: string; onConfirm: () => void }>({ isOpen: false, message: '', onConfirm: () => {} });
   const [showInviteForm, setShowInviteForm] = useState(false);
@@ -250,17 +251,30 @@ export const DriverInvitationManagement: React.FC<DriverInvitationManagementProp
   };
 
   const handleJoinByCode = async () => {
-    if (!codeInput) return;
+    // Prevent double submission - check both loading states
+    if (loading || joiningInProgress || !codeInput) return;
 
     setLoading(true);
+    setJoiningInProgress(true);
+    
     try {
       const result = await joinCompanyByDriverCode(codeInput);
       if (result.success) {
+        // Clear input and preview immediately to prevent re-submission
+        const joinedCompanyName = result.association?.company?.name || 'company';
         setCodeInput('');
         setCodePreview(null);
-        onUpdate?.();
-        // Show success message
-        setErrorModal({ isOpen: true, message: `Successfully joined ${result.association?.company?.name || 'company'}!` });
+        
+        // Show success message first
+        setErrorModal({ isOpen: true, message: `Successfully joined ${joinedCompanyName}!` });
+        
+        // Call onUpdate after a short delay to prevent blinking
+        // Use requestAnimationFrame to ensure UI updates smoothly
+        requestAnimationFrame(() => {
+          setTimeout(() => {
+            onUpdate?.();
+          }, 200);
+        });
       } else {
         setErrorModal({ isOpen: true, message: result.error || 'Failed to join company' });
       }
@@ -268,6 +282,10 @@ export const DriverInvitationManagement: React.FC<DriverInvitationManagementProp
       setErrorModal({ isOpen: true, message: error.message || 'Failed to join company' });
     } finally {
       setLoading(false);
+      // Delay clearing joiningInProgress slightly to prevent rapid re-clicks
+      setTimeout(() => {
+        setJoiningInProgress(false);
+      }, 500);
     }
   };
 
@@ -747,11 +765,14 @@ export const DriverInvitationManagement: React.FC<DriverInvitationManagementProp
 
             <button
               onClick={handleJoinByCode}
-              disabled={loading || !codeInput || !validateInviteCodeFormat(normalizeInviteCode(codeInput)) || previewLoading}
+              disabled={loading || joiningInProgress || !codeInput || !validateInviteCodeFormat(normalizeInviteCode(codeInput)) || previewLoading}
               className="w-full px-4 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
             >
-              {loading ? (
-                <>Joining...</>
+              {loading || joiningInProgress ? (
+                <>
+                  <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  Joining...
+                </>
               ) : (
                 <>
                   <Check size={18} />

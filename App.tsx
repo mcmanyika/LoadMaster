@@ -59,6 +59,7 @@ import { getCurrentUser, signOut } from './services/authService';
 import { getCompany, getDispatcherCompanies, getDispatchCompanyOwnCompany } from './services/companyService';
 import { getExpenseSummary } from './services/expenseService';
 import { getPendingInvitations, getActiveCompanies } from './services/dispatcherAssociationService';
+import { supabase } from './services/supabaseClient';
 import { Company } from './types';
 import { exportAIAnalysisToPDF } from './services/reports/reportService';
 import {
@@ -150,6 +151,7 @@ function App() {
   const [dispatchers, setDispatchers] = useState<UserProfile[]>([]);
   const [companyName, setCompanyName] = useState<string>('');
   const [company, setCompany] = useState<{ id: string; name: string } | null>(null);
+  const [ownerCompanyName, setOwnerCompanyName] = useState<string>(''); // For dispatchers: owner company name
   const [expenseSummary, setExpenseSummary] = useState<any>(null);
   const [dataLoading, setDataLoading] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -203,6 +205,7 @@ function App() {
   const [currentCompanyId, setCurrentCompanyId] = useState<string | null>(null);
   const [dispatcherCompanies, setDispatcherCompanies] = useState<Company[]>([]);
   const [pendingInvitations, setPendingInvitations] = useState<any[]>([]);
+  const [companyContextInitialized, setCompanyContextInitialized] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState<{ isOpen: boolean; loadId: string | null }>({
     isOpen: false,
     loadId: null
@@ -474,17 +477,36 @@ function App() {
           setPendingInvitations(invitations);
           
           // Set current company: use saved, or first active company, or null
+          // Important: Only set company if currentCompanyId is null or if saved company exists
+          // This prevents overwriting when user manually switches companies
           if (savedCompanyId && companies.find(c => c.id === savedCompanyId)) {
-            setCurrentCompanyId(savedCompanyId);
+            // Restore saved company - only set if not already set (to avoid unnecessary state updates)
+            if (currentCompanyId !== savedCompanyId) {
+              setCurrentCompanyId(savedCompanyId);
+            }
+            setCompanyContextInitialized(true);
           } else if (companies.length > 0) {
-            setCurrentCompanyId(companies[0].id);
-            localStorage.setItem('currentCompanyId', companies[0].id);
+            // Only set first company if no saved company exists (fresh user) AND currentCompanyId is null
+            // Don't overwrite if user has already selected a company
+            if (!currentCompanyId) {
+              const initialCompanyId = companies[0].id;
+              setCurrentCompanyId(initialCompanyId);
+              // Only save to localStorage if there wasn't a saved company (new user scenario)
+              if (!savedCompanyId) {
+                localStorage.setItem('currentCompanyId', initialCompanyId);
+              }
+            }
+            setCompanyContextInitialized(true);
           } else {
-            setCurrentCompanyId(null);
+            if (!currentCompanyId) {
+              setCurrentCompanyId(null);
+            }
             localStorage.removeItem('currentCompanyId');
+            setCompanyContextInitialized(true);
           }
         } catch (error) {
           console.error('Error loading dispatcher/dispatch company context:', error);
+          setCompanyContextInitialized(true); // Set to true even on error to prevent blocking
         }
       };
       
@@ -494,6 +516,7 @@ function App() {
       setCurrentCompanyId(null);
       setDispatcherCompanies([]);
       setPendingInvitations([]);
+      setCompanyContextInitialized(true); // Owners/drivers don't need company context, so mark as initialized
     }
   }, [user]);
 
@@ -516,10 +539,20 @@ function App() {
 
   // Fetch Data when User exists
   useEffect(() => {
+    // For dispatchers and dispatch companies, wait for company context to be initialized
+    // For owners, we can fetch immediately
     if (user && view !== 'fleet') {
+      if ((user.role === 'dispatcher' || user.role === 'dispatch_company')) {
+        // Only fetch if company context has been initialized
+        if (companyContextInitialized) {
       fetchData();
     }
-  }, [user, view, currentCompanyId]);
+      } else {
+        // For owners and drivers, fetch immediately
+        fetchData();
+      }
+    }
+  }, [user, view, currentCompanyId, companyContextInitialized]);
 
   // If user logs in with a pending plan from the landing page, send them to Pricing
   useEffect(() => {
@@ -561,8 +594,16 @@ function App() {
   const fetchData = async () => {
     setDataLoading(true);
     try {
-      // For dispatchers and dispatch companies, use currentCompanyId; for owners, getCompany() will handle it
-      const companyData = await getCompany(currentCompanyId || undefined);
+      // For dispatchers and dispatch companies: use currentCompanyId from state, or fallback to localStorage
+      // This ensures we use the correct company even if state hasn't updated yet
+      const companyIdToUse = currentCompanyId || 
+        (typeof window !== 'undefined' && (user?.role === 'dispatcher' || user?.role === 'dispatch_company')
+          ? localStorage.getItem('currentCompanyId')
+          : null) || 
+        undefined;
+      
+      // For dispatchers and dispatch companies, use companyIdToUse; for owners, getCompany() will handle it
+      const companyData = await getCompany(companyIdToUse || undefined);
       
       // For dispatch companies: get their own company for dispatchers (not the joined owner company)
       let dispatcherCompanyId = companyData?.id;
@@ -579,17 +620,48 @@ function App() {
         }
       }
       
-      // For dispatchers, filter loads by their name and selected company
-      // For dispatch companies, filter loads by their dispatchers' names
-      // For owners, show all loads for their company
-      const dispatcherName = user?.role === 'dispatcher' ? user.name : undefined;
-      const companyIdForLoads = companyData?.id;
+      const isDispatcher = user?.role === 'dispatcher';
+      const isDispatchCompany = user?.role === 'dispatch_company';
+      const isDriver = user?.role === 'driver';
+
+      // For dispatchers: filter by dispatcher name to show only their loads
+      // For owners/dispatch companies: filter by company_id
+      // For drivers: we'll filter by driverId after fetching (since getLoads doesn't support driverId filter yet)
+      const dispatcherName = isDispatcher ? user.name : undefined;
+      const companyIdForLoads = isDispatcher || isDriver ? undefined : companyData?.id;
+
+      // Only apply dispatcherNames filter for non-dispatch-company, non-dispatcher roles
+      const dispatcherNamesFilter =
+        isDispatchCompany || isDispatcher ? undefined : dispatcherNames;
       
       const [loadsData, driversData, dispatchersData] = await Promise.all([
-        getLoads(companyIdForLoads, dispatcherName, dispatcherNames), // Filter by company and dispatcher(s) if applicable
+        getLoads(companyIdForLoads, dispatcherName, dispatcherNamesFilter), // Filter by company and dispatcher(s) if applicable
         getDrivers(companyIdForLoads), // Filter drivers by owner's company (for dispatch companies)
         getDispatchers(dispatcherCompanyId) // Filter dispatchers by dispatch company's own company
       ]);
+      
+      // For drivers: filter loads by driver ID (get driver ID from drivers table using profile_id)
+      let filteredLoadsData = loadsData;
+      if (isDriver) {
+        try {
+          const { data: driverRecord } = await supabase
+            .from('drivers')
+            .select('id')
+            .eq('profile_id', user.id)
+            .maybeSingle();
+          
+          if (driverRecord) {
+            // Filter loads to only show loads assigned to this driver
+            filteredLoadsData = loadsData.filter(load => load.driverId === driverRecord.id);
+          } else {
+            // If no driver record found, show no loads
+            filteredLoadsData = [];
+          }
+        } catch (error) {
+          console.error('Error filtering loads for driver:', error);
+          filteredLoadsData = [];
+        }
+      }
       
       // Deduplicate drivers by ID (not name) to ensure all driver pay configs are preserved
       // This is important because loads reference drivers by ID, and we need the pay config for each unique driver ID
@@ -602,7 +674,7 @@ function App() {
       });
       const uniqueDrivers = Array.from(driversById.values());
       
-      setLoads(loadsData);
+      setLoads(filteredLoadsData);
       setDrivers(uniqueDrivers);
       setDispatchers(dispatchersData);
       if (companyData) {
@@ -610,11 +682,47 @@ function App() {
         setCompany({ id: companyData.id, name: companyData.name });
         // Fetch expense summary for dashboard (only for owners)
         if (user?.role === 'owner') {
-          const summary = await getExpenseSummary(companyData.id);
-          setExpenseSummary(summary);
+        const summary = await getExpenseSummary(companyData.id);
+        setExpenseSummary(summary);
         } else {
           setExpenseSummary(null);
         }
+      }
+      
+      // For dispatchers: find and set owner company name (where drivers come from)
+      if (user?.role === 'dispatcher') {
+        try {
+          // Get all active associations for this dispatcher
+          const { data: allAssociations } = await supabase
+            .from('dispatcher_company_associations')
+            .select('company_id, company:companies(id, name, owner_id)')
+            .eq('dispatcher_id', user.id)
+            .eq('status', 'active');
+          
+          if (allAssociations && allAssociations.length > 0) {
+            // Find the owner company
+            for (const assoc of allAssociations) {
+              if (assoc.company && assoc.company.owner_id) {
+                const { data: ownerProfile } = await supabase
+                  .from('profiles')
+                  .select('role')
+                  .eq('id', assoc.company.owner_id)
+                  .single();
+                
+                if (ownerProfile?.role === 'owner') {
+                  // Found owner company - set its name
+                  setOwnerCompanyName(assoc.company.name || '');
+                  break;
+                }
+              }
+            }
+          }
+        } catch (error) {
+          console.error('[App] Error finding owner company for dispatcher:', error);
+          setOwnerCompanyName('');
+        }
+      } else {
+        setOwnerCompanyName('');
       }
     } catch (error) {
       console.error("Failed to load data", error);
@@ -627,8 +735,12 @@ function App() {
   const switchCompany = async (companyId: string) => {
     if (user?.role !== 'dispatcher' && user?.role !== 'dispatch_company') return;
     
+    // Save to localStorage immediately to ensure it persists
+    localStorage.setItem('currentCompanyId', companyId);
+    // Update state
     setCurrentCompanyId(companyId);
     // Refresh data for the new company
+    // fetchData() will now read from localStorage as fallback, ensuring it uses the correct company
     await fetchData();
   };
 
@@ -1198,6 +1310,12 @@ function App() {
               <ThemeToggle />
               {dataLoading && <span className="text-sm text-slate-400 dark:text-slate-500 animate-pulse">Syncing...</span>}
                {view !== 'fleet' && view !== 'pricing' && view !== 'subscriptions' && view !== 'marketing' && view !== 'company' && view !== 'expenses' && (
+                 <div className="flex items-center gap-2">
+                  {ownerCompanyName && user.role === 'dispatcher' && (
+                    <span className="text-sm text-slate-500 dark:text-slate-400">
+                      {ownerCompanyName}
+                    </span>
+                  )}
                  <button 
                   onClick={() => setIsModalOpen(true)}
                   className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2.5 rounded-lg text-sm font-medium shadow-sm transition-all hover:shadow-md"
@@ -1205,6 +1323,7 @@ function App() {
                   <Plus size={18} />
                   Add Load
                 </button>
+                </div>
                )}
             </div>
           </div>

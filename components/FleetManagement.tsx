@@ -87,7 +87,7 @@ export const FleetManagement: React.FC<FleetManagementProps> = ({ user }) => {
           dispatcherCompanyId = companyData.id;
           driverInviteCompanyId = companyData.id;
           setCompanyId(companyData.id);
-          setCompanyName(companyData.name);
+        setCompanyName(companyData.name);
           setDriverCompanyId(driverInviteCompanyId);
         }
       } else if (companyData) {

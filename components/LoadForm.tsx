@@ -24,6 +24,7 @@ export const LoadForm: React.FC<LoadFormProps> = ({ onClose, onSave, currentUser
   const [dispatchers, setDispatchers] = useState<Dispatcher[]>([]);
   const [drivers, setDrivers] = useState<Driver[]>([]);
   const [loadingOptions, setLoadingOptions] = useState(true);
+  const [ownerCompanyName, setOwnerCompanyName] = useState<string>(''); // For dispatchers: owner company name
   const [pdfFile, setPdfFile] = useState<File | null>(null);
   const [pdfPreview, setPdfPreview] = useState<string | null>(loadToEdit?.rateConfirmationPdfUrl || null);
   const [uploadingPdf, setUploadingPdf] = useState(false);
@@ -72,32 +73,489 @@ export const LoadForm: React.FC<LoadFormProps> = ({ onClose, onSave, currentUser
             // For dispatch companies, drivers should always come from the owner company (companyData.id)
             // companyData is the joined owner company for dispatch companies
             driverCompanyId = companyData.id; // Always use owner company for drivers
+          } else if (currentUser?.role === 'dispatcher') {
+            // For dispatchers: find owner company from all their associations
+            // Get all active associations for this dispatcher
+            try {
+              const { data: allAssociations, error: associationsError } = await supabase
+                .from('dispatcher_company_associations')
+                .select('company_id, company:companies(id, name, owner_id)')
+                .eq('dispatcher_id', currentUser.id)
+                .eq('status', 'active');
+              
+              if (associationsError) {
+                console.error('[LoadForm] Error fetching associations:', associationsError);
+              }
+              
+              console.log('[LoadForm] Dispatcher: Found', allAssociations?.length || 0, 'associations');
+              if (allAssociations && allAssociations.length > 0) {
+                // Check each association to find an owner company
+                for (const assoc of allAssociations) {
+                  console.log('[LoadForm] Dispatcher: Checking association with company_id', assoc.company_id);
+                  // Handle company as either object or array (Supabase join might return either)
+                  const company = Array.isArray(assoc.company) ? assoc.company[0] : assoc.company;
+                  
+                  if (company && company.owner_id) {
+                    // Check if this company is owned by an owner (not a dispatch company)
+                    try {
+                      const { data: ownerProfile, error: profileError } = await supabase
+                        .from('profiles')
+                        .select('role')
+                        .eq('id', company.owner_id)
+                        .maybeSingle();
+                      
+                      if (profileError) {
+                        console.error('[LoadForm] Error fetching owner profile:', profileError);
+                        continue;
+                      }
+                      
+                      if (ownerProfile?.role === 'owner') {
+                        // Found an owner company - use it for drivers
+                        driverCompanyId = assoc.company_id;
+                        console.log('[LoadForm] Dispatcher: Found owner company', driverCompanyId, 'from association', assoc.company_id);
+                        // Set the owner company name for display
+                        if (company.name) {
+                          setOwnerCompanyName(company.name);
+                        }
+                        break; // Use first owner company found
+                      } else if (ownerProfile?.role === 'dispatch_company') {
+                        // This is a dispatch company's own company - find the owner company via dispatch company's associations
+                        console.log('[LoadForm] Dispatcher: Found dispatch company', company.owner_id, '- looking for owner company');
+                        try {
+                          const { data: dispatchCompanyAssociations } = await supabase
+                            .from('dispatcher_company_associations')
+                            .select('company_id, company:companies(id, name, owner_id)')
+                            .eq('dispatcher_id', company.owner_id)
+                            .eq('status', 'active')
+                            .limit(10); // Get up to 10 associations
+                          
+                          if (dispatchCompanyAssociations && dispatchCompanyAssociations.length > 0) {
+                            // Find the owner company
+                            for (const dca of dispatchCompanyAssociations) {
+                              const ownerCompany = Array.isArray(dca.company) ? dca.company[0] : dca.company;
+                              if (ownerCompany && ownerCompany.owner_id) {
+                                const { data: ownerCompanyOwnerProfile } = await supabase
+                                  .from('profiles')
+                                  .select('role')
+                                  .eq('id', ownerCompany.owner_id)
+                                  .maybeSingle();
+                                
+                                if (ownerCompanyOwnerProfile?.role === 'owner') {
+                                  driverCompanyId = dca.company_id;
+                                  console.log('[LoadForm] Dispatcher: Found owner company via dispatch company chain', driverCompanyId);
+                                  if (ownerCompany.name) {
+                                    setOwnerCompanyName(ownerCompany.name);
+                                  }
+                                  break;
+                                }
+                              }
+                            }
+                            if (driverCompanyId) break; // Break from outer loop if found
+                          }
+                        } catch (error) {
+                          console.error('[LoadForm] Error finding owner company via dispatch company:', error);
+                        }
+                      }
+                    } catch (error) {
+                      console.error('[LoadForm] Error checking owner profile:', error);
+                      continue;
+                    }
+                  }
+                }
+              }
+            } catch (error) {
+              console.error('[LoadForm] Error in dispatcher company lookup:', error);
+            }
+            
+            // Fallback: if no owner company found, try the existing logic
+            if (!driverCompanyId && companyData) {
+              try {
+                const { data: companyOwner, error: ownerError } = await supabase
+                  .from('profiles')
+                  .select('role')
+                  .eq('id', companyData.ownerId)
+                  .maybeSingle();
+                
+                if (ownerError) {
+                  console.error('[LoadForm] Error fetching company owner:', ownerError);
+                } else if (companyOwner?.role === 'owner') {
+                  driverCompanyId = companyData.id;
+                  // Set the owner company name for display
+                  setOwnerCompanyName(companyData.name || '');
+                } else if (companyOwner?.role === 'dispatch_company') {
+                  // A dispatch company might have multiple associations, get the first one
+                  const { data: ownerCompanyAssociations } = await supabase
+                    .from('dispatcher_company_associations')
+                    .select('company_id, company:companies(name)')
+                    .eq('dispatcher_id', companyData.ownerId)
+                    .eq('status', 'active')
+                    .limit(1);
+                  
+                  const ownerCompanyAssociation = ownerCompanyAssociations && ownerCompanyAssociations.length > 0 
+                    ? ownerCompanyAssociations[0] 
+                    : null;
+                  
+                  if (ownerCompanyAssociation?.company_id) {
+                    driverCompanyId = ownerCompanyAssociation.company_id;
+                    // Set the owner company name for display
+                    // Handle company as either object or array (Supabase join might return either)
+                    const company = Array.isArray(ownerCompanyAssociation.company) 
+                      ? ownerCompanyAssociation.company[0] 
+                      : ownerCompanyAssociation.company;
+                    if (company?.name) {
+                      setOwnerCompanyName(company.name);
+                    }
+                  }
+                }
+              } catch (error) {
+                console.error('[LoadForm] Error in fallback company lookup:', error);
+              }
+            }
           }
           
           // Fetch dispatchers from dispatch company's own company (or owner's company for others)
           const dispatchersData = await getDispatchers(dispatcherCompanyId);
           setDispatchers(dispatchersData);
           
-          // Fetch drivers from owner's company (for dispatch companies) or regular company
-          let driversData = await getDrivers(driverCompanyId);
+          // Fetch drivers based on user role
+          let driversData: Driver[] = [];
           
-          // For dispatch companies: filter drivers to only those assigned to loads dispatched by their dispatchers
-          if (currentUser?.role === 'dispatch_company' && dispatchersData.length > 0) {
-            const dispatcherNames = dispatchersData.map(d => d.name).filter(Boolean);
-            if (dispatcherNames.length > 0) {
-              // Get loads dispatched by this dispatch company's dispatchers
-              const loadsDispatchedByCompany = await getLoads(driverCompanyId, undefined, dispatcherNames);
+          if (currentUser?.role === 'owner') {
+            // For owners: fetch ALL drivers from the drivers table for the company
+            // This ensures we show all drivers, not just those with matching profile_ids
+            console.log('[LoadForm] Owner: Fetching drivers for company', driverCompanyId);
+            try {
+              // First, try fetching without company filter to see what RLS allows
+              const { data: allDriversVisible, error: allDriversError } = await supabase
+                .from('drivers')
+                .select('id, name, phone, email, transporter_id, company_id, pay_type, pay_percentage, profile_id');
               
-              // Get unique driver IDs from those loads
-              const assignedDriverIds = new Set<string>();
-              loadsDispatchedByCompany.forEach(load => {
-                if (load.driverId) {
-                  assignedDriverIds.add(load.driverId);
+              console.log('[LoadForm] Owner: Total drivers visible via RLS (all companies):', allDriversVisible?.length || 0);
+              if (allDriversVisible && allDriversVisible.length > 0) {
+                console.log('[LoadForm] Owner: All visible drivers:', allDriversVisible.map(d => ({ 
+                  id: d.id, 
+                  name: d.name, 
+                  company_id: d.company_id,
+                  matches_target: d.company_id === driverCompanyId
+                })));
+              }
+              
+              // Get all drivers from drivers table for this company
+              const { data: allDrivers, error: driversError } = await supabase
+                .from('drivers')
+                .select('id, name, phone, email, transporter_id, company_id, pay_type, pay_percentage, profile_id')
+                .eq('company_id', driverCompanyId);
+              
+              if (driversError) {
+                console.error('[LoadForm] Owner: Error fetching drivers:', driversError);
+                console.error('[LoadForm] Owner: Error details:', JSON.stringify(driversError, null, 2));
+                driversData = [];
+              } else {
+                console.log('[LoadForm] Owner: Query returned', allDrivers?.length || 0, 'drivers for company_id', driverCompanyId);
+                console.log('[LoadForm] Owner: Driver IDs:', allDrivers?.map(d => ({ id: d.id, name: d.name, company_id: d.company_id, profile_id: d.profile_id })));
+                
+                // Also get associations to enrich with profile data if available
+                const invitedDrivers = await getCompanyDrivers(driverCompanyId);
+                console.log('[LoadForm] Owner: Got', invitedDrivers?.length || 0, 'invited drivers from associations');
+                
+                // Check for missing driver records (associations without drivers table records)
+                const driversTableProfileIds = new Set(
+                  (allDrivers || [])
+                    .filter(d => d.profile_id)
+                    .map(d => d.profile_id!)
+                );
+                
+                const missingDrivers = invitedDrivers.filter(assoc => 
+                  assoc.driverId && 
+                  !driversTableProfileIds.has(assoc.driverId)
+                );
+                
+                if (missingDrivers.length > 0) {
+                  console.warn('[LoadForm] Owner: Found', missingDrivers.length, 'drivers in associations without drivers table records. Creating missing records...');
+                  
+                  // Create missing driver records
+                  for (const assoc of missingDrivers) {
+                    if (!assoc.driverId || !assoc.driver) continue;
+                    
+                    try {
+                      const { data: newDriver, error: insertError } = await supabase
+                        .from('drivers')
+                        .insert({
+                          name: assoc.driver.name || 'Unknown Driver',
+                          email: assoc.driver.email || '',
+                          phone: null, // phone doesn't exist in profiles
+                          transporter_id: null,
+                          company_id: driverCompanyId,
+                          pay_type: 'percentage_of_net',
+                          pay_percentage: 50,
+                          profile_id: assoc.driverId
+                        })
+                        .select('id, name, phone, email, transporter_id, company_id, pay_type, pay_percentage, profile_id')
+                        .single();
+                      
+                      if (insertError) {
+                        console.error('[LoadForm] Owner: Error creating driver record for', assoc.driverId, ':', insertError);
+                      } else {
+                        console.log('[LoadForm] Owner: Created driver record for', assoc.driver.name, ':', newDriver.id);
+                        // Add to allDrivers array
+                        allDrivers.push(newDriver);
+                      }
+                    } catch (error) {
+                      console.error('[LoadForm] Owner: Error creating driver record:', error);
+                    }
+                  }
+                  
+                  // Re-fetch all drivers after creating missing records
+                  const { data: refreshedDrivers } = await supabase
+                    .from('drivers')
+                    .select('id, name, phone, email, transporter_id, company_id, pay_type, pay_percentage, profile_id')
+                    .eq('company_id', driverCompanyId);
+                  
+                  if (refreshedDrivers) {
+                    allDrivers.length = 0;
+                    allDrivers.push(...refreshedDrivers);
+                    console.log('[LoadForm] Owner: After creating missing records, now have', allDrivers.length, 'drivers');
+                  }
                 }
-              });
+                
+                if (allDrivers && allDrivers.length > 0) {
+                  // Deduplicate drivers by id (in case of duplicates in database)
+                  const uniqueDriversMap = new Map<string, typeof allDrivers[0]>();
+                  for (const driver of allDrivers) {
+                    if (!uniqueDriversMap.has(driver.id)) {
+                      uniqueDriversMap.set(driver.id, driver);
+                    }
+                  }
+                  const uniqueDrivers = Array.from(uniqueDriversMap.values());
+                  console.log('[LoadForm] Owner: After deduplication, have', uniqueDrivers.length, 'unique drivers (was', allDrivers.length, ')');
+                  
+                  // Create a map of profile_id to association for enrichment
+                  const associationMap = new Map(
+                    invitedDrivers
+                      .filter(assoc => assoc.driverId && assoc.driver)
+                      .map(assoc => [assoc.driverId!, assoc])
+                  );
+                  
+                  // Convert all drivers to Driver format, enriching with association data if available
+                  driversData = uniqueDrivers.map(driverRecord => {
+                    const association = driverRecord.profile_id 
+                      ? associationMap.get(driverRecord.profile_id)
+                      : null;
+                    
+                    return {
+                      id: driverRecord.id, // Always use drivers.id
+                      name: association?.driver?.name || driverRecord.name || '',
+                      email: association?.driver?.email || driverRecord.email || '',
+                      phone: association?.driver?.phone || driverRecord.phone || '',
+                      transporterId: driverRecord.transporter_id || '',
+                      companyId: driverRecord.company_id,
+                      payType: (driverRecord.pay_type || 'percentage_of_net') as 'percentage_of_gross' | 'percentage_of_net',
+                      payPercentage: driverRecord.pay_percentage || 50
+                    };
+                  });
+                  
+                  // Final deduplication by id (in case mapping creates duplicates)
+                  const finalDriversMap = new Map<string, typeof driversData[0]>();
+                  for (const driver of driversData) {
+                    if (!finalDriversMap.has(driver.id)) {
+                      finalDriversMap.set(driver.id, driver);
+                    }
+                  }
+                  driversData = Array.from(finalDriversMap.values());
+                  
+                  console.log('[LoadForm] Owner: Returning', driversData.length, 'drivers after mapping and deduplication');
+                  console.log('[LoadForm] Owner: Driver names:', driversData.map(d => d.name));
+                } else {
+                  console.warn('[LoadForm] Owner: No drivers found in drivers table for company', driverCompanyId);
+                  console.warn('[LoadForm] Owner: This might be an RLS issue or drivers have different company_id');
+                  driversData = [];
+                }
+              }
+            } catch (error) {
+              console.error('[LoadForm] Owner: Error fetching drivers:', error);
+              driversData = [];
+            }
+          } else if (currentUser?.role === 'dispatch_company') {
+            // For dispatch companies: fetch all drivers from owner company
+            // Use getCompanyDrivers to get invited drivers (with profile data)
+            const invitedDrivers = await getCompanyDrivers(driverCompanyId);
+            
+            // Enrich with pay config from drivers table
+            if (invitedDrivers.length > 0) {
+              const driverIds = invitedDrivers
+                .map(assoc => assoc.driverId)
+                .filter((id): id is string => !!id);
               
-              // Filter drivers to only those assigned to loads
-              driversData = driversData.filter(driver => assignedDriverIds.has(driver.id));
+              if (driverIds.length > 0) {
+                // Fetch pay config from drivers table
+                const { data: driversWithPayConfig, error: driversError } = await supabase
+                  .from('drivers')
+                  .select('id, name, phone, email, transporter_id, company_id, pay_type, pay_percentage, profile_id')
+                  .eq('company_id', driverCompanyId)
+                  .in('profile_id', driverIds);
+                
+                if (!driversError && driversWithPayConfig && driversWithPayConfig.length > 0) {
+                  // Create a map of profile_id to driver record
+                  const driverMap = new Map(
+                    driversWithPayConfig.map(d => [d.profile_id, d])
+                  );
+                  
+                  // Convert associations to Driver format
+                  // Only include drivers that have a record in the drivers table
+                  const mappedDrivers = invitedDrivers
+                    .filter(assoc => {
+                      if (!assoc.driverId || !assoc.driver) return false;
+                      return driverMap.has(assoc.driverId);
+                    })
+                    .map(assoc => {
+                      const driverRecord = driverMap.get(assoc.driverId!);
+                      if (!driverRecord) {
+                        // Should not happen due to filter above
+                        return null as any;
+                      }
+                      
+                      return {
+                        id: driverRecord.id, // Always use drivers.id
+                        name: assoc.driver?.name || driverRecord.name || '',
+                        email: assoc.driver?.email || driverRecord.email || '',
+                        phone: assoc.driver?.phone || driverRecord.phone || '',
+                        transporterId: driverRecord.transporter_id || '',
+                        companyId: assoc.companyId,
+                        payType: (driverRecord.pay_type || 'percentage_of_net') as 'percentage_of_gross' | 'percentage_of_net',
+                        payPercentage: driverRecord.pay_percentage || 50
+                      };
+                    })
+                    .filter(Boolean);
+                  
+                  // Deduplicate by id to ensure each driver appears only once
+                  const dispatchCompanyDriversMap = new Map<string, typeof mappedDrivers[0]>();
+                  for (const driver of mappedDrivers) {
+                    if (driver && !dispatchCompanyDriversMap.has(driver.id)) {
+                      dispatchCompanyDriversMap.set(driver.id, driver);
+                    }
+                  }
+                  driversData = Array.from(dispatchCompanyDriversMap.values());
+                  console.log('[LoadForm] Dispatch Company: After deduplication, have', driversData.length, 'unique drivers');
+                } else {
+                  // No matching driver records in drivers table; leave drivers list empty
+                  console.warn('[LoadForm] No matching driver records in drivers table for dispatch company; driver dropdown will be empty.');
+                  driversData = [];
+                }
+              }
+            }
+          } else if (currentUser?.role === 'dispatcher') {
+            // For dispatchers: fetch ALL drivers from the drivers table for the owner company
+            // This ensures we show all drivers, not just those with matching profile_ids
+            console.log('[LoadForm] Dispatcher: driverCompanyId =', driverCompanyId);
+            if (driverCompanyId) {
+              console.log('[LoadForm] Dispatcher: Fetching drivers for company', driverCompanyId);
+              try {
+                // Get all drivers that RLS allows this dispatcher to see (without company filter)
+                // Then filter client-side to only include drivers from the target company
+                // This ensures we see all drivers RLS allows, even if company_id filtering would hide some
+                const { data: allDriversVisible, error: driversError } = await supabase
+                  .from('drivers')
+                  .select('id, name, phone, email, transporter_id, company_id, pay_type, pay_percentage, profile_id');
+                
+                console.log('[LoadForm] Dispatcher: Total drivers visible via RLS (all companies):', allDriversVisible?.length || 0);
+                if (allDriversVisible && allDriversVisible.length > 0) {
+                  console.log('[LoadForm] Dispatcher: All visible drivers:', allDriversVisible.map(d => ({ 
+                    id: d.id, 
+                    name: d.name, 
+                    company_id: d.company_id,
+                    matches_target: d.company_id === driverCompanyId
+                  })));
+                }
+                
+                // Filter to only drivers from the target company (client-side after RLS)
+                const allDrivers = allDriversVisible?.filter(d => d.company_id === driverCompanyId) || [];
+                console.log('[LoadForm] Dispatcher: After filtering by company_id', driverCompanyId, ':', allDrivers.length, 'drivers');
+                
+                if (driversError) {
+                  console.error('[LoadForm] Dispatcher: Error fetching drivers:', driversError);
+                  console.error('[LoadForm] Dispatcher: Error details:', JSON.stringify(driversError, null, 2));
+                  driversData = [];
+                } else {
+                  console.log('[LoadForm] Dispatcher: Query returned', allDrivers?.length || 0, 'drivers for company_id', driverCompanyId);
+                  console.log('[LoadForm] Dispatcher: Driver IDs:', allDrivers?.map(d => ({ id: d.id, name: d.name, company_id: d.company_id, profile_id: d.profile_id })));
+                  
+                  // Also get associations to see if there are drivers in associations that aren't in drivers table
+                  const invitedDrivers = await getCompanyDrivers(driverCompanyId);
+                  console.log('[LoadForm] Dispatcher: Got', invitedDrivers?.length || 0, 'invited drivers from associations');
+                  
+                  // Create a map of profile_id to association for enrichment
+                  const associationMap = new Map(
+                    invitedDrivers
+                      .filter(assoc => assoc.driverId && assoc.driver)
+                      .map(assoc => [assoc.driverId!, assoc])
+                  );
+                  
+                  // Create a set of profile_ids we already have from drivers table
+                  const driversTableProfileIds = new Set(
+                    allDrivers
+                      .filter(d => d.profile_id)
+                      .map(d => d.profile_id!)
+                  );
+                  
+                  // Check if there are drivers in associations that don't have a drivers table record
+                  const missingDrivers = invitedDrivers.filter(assoc => 
+                    assoc.driverId && 
+                    !driversTableProfileIds.has(assoc.driverId)
+                  );
+                  
+                  if (missingDrivers.length > 0) {
+                    console.warn('[LoadForm] Dispatcher: Found', missingDrivers.length, 'drivers in associations without drivers table records:', 
+                      missingDrivers.map(a => ({ driverId: a.driverId, name: a.driver?.name })));
+                  }
+                  
+                  // Deduplicate drivers by id (in case of duplicates in database)
+                  const uniqueDriversMap = new Map<string, typeof allDrivers[0]>();
+                  for (const driver of allDrivers) {
+                    if (!uniqueDriversMap.has(driver.id)) {
+                      uniqueDriversMap.set(driver.id, driver);
+                    }
+                  }
+                  const uniqueDrivers = Array.from(uniqueDriversMap.values());
+                  console.log('[LoadForm] Dispatcher: After deduplication, have', uniqueDrivers.length, 'unique drivers (was', allDrivers.length, ')');
+                  
+                  // Convert all drivers from drivers table to Driver format, enriching with association data if available
+                  driversData = uniqueDrivers.map(driverRecord => {
+                    const association = driverRecord.profile_id 
+                      ? associationMap.get(driverRecord.profile_id)
+                      : null;
+                    
+                    return {
+                      id: driverRecord.id, // Always use drivers.id
+                      name: association?.driver?.name || driverRecord.name || '',
+                      email: association?.driver?.email || driverRecord.email || '',
+                      phone: association?.driver?.phone || driverRecord.phone || '',
+                      transporterId: driverRecord.transporter_id || '',
+                      companyId: driverRecord.company_id,
+                      payType: (driverRecord.pay_type || 'percentage_of_net') as 'percentage_of_gross' | 'percentage_of_net',
+                      payPercentage: driverRecord.pay_percentage || 50
+                    };
+                  });
+                  
+                  // Final deduplication by id (in case mapping creates duplicates)
+                  const finalDriversMap = new Map<string, typeof driversData[0]>();
+                  for (const driver of driversData) {
+                    if (!finalDriversMap.has(driver.id)) {
+                      finalDriversMap.set(driver.id, driver);
+                    }
+                  }
+                  driversData = Array.from(finalDriversMap.values());
+                  
+                  console.log('[LoadForm] Dispatcher: Returning', driversData.length, 'drivers after mapping and deduplication');
+                  console.log('[LoadForm] Dispatcher: Driver names:', driversData.map(d => d.name));
+                }
+              } catch (error) {
+                console.error('[LoadForm] Dispatcher: Error fetching drivers:', error);
+                driversData = [];
+              }
+            } else {
+              console.warn('[LoadForm] No driverCompanyId found for dispatcher; cannot fetch drivers.');
+              console.log('[LoadForm] Dispatcher: companyData =', companyData);
+              driversData = [];
             }
           }
           
@@ -111,7 +569,7 @@ export const LoadForm: React.FC<LoadFormProps> = ({ onClose, onSave, currentUser
               try {
                 const { data: loadDriver, error: driverError } = await supabase
                   .from('drivers')
-                  .select('id, name, phone, email, transporter_id, company_id, profile_id')
+                  .select('id, name, phone, email, transporter_id, company_id, pay_type, pay_percentage')
                   .eq('id', loadToEdit.driverId)
                   .maybeSingle();
                 
@@ -123,7 +581,9 @@ export const LoadForm: React.FC<LoadFormProps> = ({ onClose, onSave, currentUser
                     email: loadDriver.email || '',
                     phone: loadDriver.phone || '',
                     transporterId: loadDriver.transporter_id || '',
-                    companyId: loadDriver.company_id
+                    companyId: loadDriver.company_id,
+                    payType: loadDriver.pay_type || 'percentage_of_net',
+                    payPercentage: loadDriver.pay_percentage || 50
                   });
                 }
               } catch (error) {
@@ -319,7 +779,12 @@ export const LoadForm: React.FC<LoadFormProps> = ({ onClose, onSave, currentUser
     <div className="fixed inset-0 bg-slate-900/50 dark:bg-slate-900/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
       <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-xl w-full max-w-5xl overflow-hidden flex flex-col max-h-[90vh]">
         <div className="px-6 py-4 border-b border-slate-200 dark:border-slate-700 flex justify-between items-center bg-slate-50 dark:bg-slate-800">
+          <div>
           <h2 className="text-lg font-bold text-slate-800 dark:text-slate-100">{isEditMode ? 'Edit Load' : 'Add New Load'}</h2>
+            {ownerCompanyName && currentUser?.role === 'dispatcher' && (
+              <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">{ownerCompanyName}</p>
+            )}
+          </div>
           <button onClick={onClose} className="p-2 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-full transition-colors">
             <X className="w-5 h-5 text-slate-600 dark:text-slate-400" />
           </button>
@@ -452,9 +917,17 @@ export const LoadForm: React.FC<LoadFormProps> = ({ onClose, onSave, currentUser
                     className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none disabled:bg-slate-100 dark:disabled:bg-slate-600 disabled:text-slate-500"
                   >
                     <option value="">Select...</option>
-                    {dispatchers.map(d => (
-                      <option key={d.id} value={d.name}>{d.name}</option>
-                    ))}
+                    {dispatchers.map(d => {
+                      // For owners: show "Dispatch Company Name - Dispatcher Name" if inviter is dispatch company
+                      // Otherwise just show dispatcher name
+                      let displayName = d.name;
+                      if (currentUser.role === 'owner' && d.inviterName) {
+                        displayName = `${d.inviterName} - ${d.name}`;
+                      }
+                      return (
+                        <option key={d.id} value={d.name}>{displayName}</option>
+                      );
+                    })}
                   </select>
                </div>
                <div>

@@ -29,19 +29,19 @@ export interface CreateSubscriptionData {
   status?: 'active' | 'canceled' | 'completed' | 'past_due';
 }
 
-// Plan pricing (50% reduced)
+// Plan pricing
 const PLAN_PRICES: Record<string, Record<'month' | 'year', number>> = {
   essential: {
-    month: 12.49,
-    year: 10.62, // per month, billed annually (15% discount on reduced price)
+    month: 24.98,
+    year: 21.24, // per month, billed annually (15% discount on monthly price)
   },
   professional: {
-    month: 22.49,
-    year: 19.12, // per month, billed annually (15% discount on reduced price)
+    month: 44.98,
+    year: 38.24, // per month, billed annually (15% discount on monthly price)
   },
   enterprise: {
-    month: 249.5,
-    year: 212.5, // per month, billed annually
+    month: 499,
+    year: 425, // per month, billed annually (15% discount on monthly price)
   },
 };
 

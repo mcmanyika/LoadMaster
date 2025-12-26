@@ -30,8 +30,8 @@ export const InvitationManagement: React.FC<InvitationManagementProps> = ({
   const isOwner = user.role === 'owner';
   const isDispatchCompany = user.role === 'dispatch_company';
   const isDispatcher = user.role === 'dispatcher';
-  // Only dispatch companies can invite dispatchers (not owners)
-  const canInviteDispatchers = isDispatchCompany;
+  // Owners and dispatch companies can invite dispatchers
+  const canInviteDispatchers = isOwner || isDispatchCompany;
   // Owners and dispatch companies can view dispatchers list
   const canViewDispatchers = isOwner || isDispatchCompany;
   const [unusedCodes, setUnusedCodes] = useState<DispatcherCompanyAssociation[]>([]);
@@ -57,13 +57,18 @@ export const InvitationManagement: React.FC<InvitationManagementProps> = ({
   }, [user, companyId, canViewDispatchers]);
 
   const loadOwnerData = async () => {
-    if (!companyId) return;
+    if (!companyId) {
+      console.log('[InvitationManagement] No companyId provided');
+      return;
+    }
     setLoading(true);
     try {
+      console.log('[InvitationManagement] Loading dispatchers for companyId:', companyId);
       const [dispatchersFromAssociations, codes] = await Promise.all([
         getCompanyDispatchers(companyId),
         getUnusedInviteCodes(companyId)
       ]);
+      console.log('[InvitationManagement] Dispatchers from associations:', dispatchersFromAssociations);
       
       // Also fetch manually created dispatchers from the dispatchers table
       let manuallyCreatedDispatchers: DispatcherCompanyAssociation[] = [];
@@ -390,7 +395,7 @@ export const InvitationManagement: React.FC<InvitationManagementProps> = ({
 
       {canViewDispatchers ? (
         <>
-          {/* Generate Invite Code Form - Only for dispatch companies */}
+          {/* Generate Invite Code Form - For owners and dispatch companies */}
           {canInviteDispatchers && (
           <div className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 p-6">
             <div className="flex items-center justify-between mb-4">
@@ -561,15 +566,34 @@ export const InvitationManagement: React.FC<InvitationManagementProps> = ({
                     className="flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg"
                   >
                     <div className="flex-1">
+                      {/* For owners: show dispatch company name; for others: show dispatcher name */}
+                      {isOwner && association.inviter?.role === 'dispatch_company' ? (
+                        <>
+                          <p className="font-medium text-slate-900 dark:text-slate-100">
+                            {association.inviter?.name || 'Unknown Dispatch Company'}
+                          </p>
+                          <p className="text-sm text-slate-600 dark:text-slate-400">
+                            Dispatcher: {association.dispatcher?.name || association.dispatcher?.email || 'Unknown'}
+                          </p>
+                          {association.dispatcher?.email && (
+                            <p className="text-xs text-slate-500 dark:text-slate-500">
+                              {association.dispatcher.email}
+                            </p>
+                          )}
+                        </>
+                      ) : (
+                        <>
                       <p className="font-medium text-slate-900 dark:text-slate-100">
                         {association.dispatcher?.name || association.dispatcher?.email || 'Unknown'}
                       </p>
                       <p className="text-sm text-slate-600 dark:text-slate-400">
                         {association.dispatcher?.email}
                       </p>
+                        </>
+                      )}
                     </div>
                     <div className="flex items-center gap-4">
-                      {/* Only dispatch companies can edit fees and remove dispatchers */}
+                      {/* Owners and dispatch companies can edit fees and remove dispatchers */}
                       {canInviteDispatchers && editingFee === association.id ? (
                         <div className="flex items-center gap-2">
                           <input
@@ -609,23 +633,23 @@ export const InvitationManagement: React.FC<InvitationManagementProps> = ({
                           </div>
                           {canInviteDispatchers && (
                             <>
-                              <button
-                                onClick={() => {
-                                  setEditingFee(association.id);
-                                  setEditFeeValue(association.feePercentage.toString());
-                                }}
-                                className="p-2 text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded transition-colors"
-                                title="Edit fee"
-                              >
-                                <Edit2 size={16} />
-                              </button>
-                              <button
-                                onClick={() => handleRemove(association.id)}
-                                className="p-2 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/30 rounded transition-colors"
-                                title="Remove dispatcher"
-                              >
-                                <Trash2 size={16} />
-                              </button>
+                          <button
+                            onClick={() => {
+                              setEditingFee(association.id);
+                              setEditFeeValue(association.feePercentage.toString());
+                            }}
+                            className="p-2 text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded transition-colors"
+                            title="Edit fee"
+                          >
+                            <Edit2 size={16} />
+                          </button>
+                          <button
+                            onClick={() => handleRemove(association.id)}
+                            className="p-2 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/30 rounded transition-colors"
+                            title="Remove dispatcher"
+                          >
+                            <Trash2 size={16} />
+                          </button>
                             </>
                           )}
                         </>

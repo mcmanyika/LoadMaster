@@ -369,7 +369,7 @@ export const ReportDetailModal: React.FC<ReportDetailModalProps> = ({
                     <th className="p-3 text-left text-sm font-semibold text-slate-600 dark:text-slate-400">Destination</th>
                     <th className="p-3 text-right text-sm font-semibold text-slate-600 dark:text-slate-400">Gross</th>
                     {user?.role !== 'dispatch_company' && (
-                      <th className="p-3 text-right text-sm font-semibold text-slate-600 dark:text-slate-400">Gas</th>
+                    <th className="p-3 text-right text-sm font-semibold text-slate-600 dark:text-slate-400">Gas</th>
                     )}
                     <th className="p-3 text-right text-sm font-semibold text-slate-600 dark:text-slate-400">Miles</th>
                     {isDriver ? (
@@ -406,9 +406,9 @@ export const ReportDetailModal: React.FC<ReportDetailModalProps> = ({
                         ${load.gross.toFixed(2)}
                       </td>
                       {user?.role !== 'dispatch_company' && (
-                        <td className="p-3 text-sm text-right text-slate-600 dark:text-slate-400">
-                          ${Number(load.gasAmount || 0).toFixed(2)}
-                        </td>
+                      <td className="p-3 text-sm text-right text-slate-600 dark:text-slate-400">
+                        ${Number(load.gasAmount || 0).toFixed(2)}
+                      </td>
                       )}
                       <td className="p-3 text-sm text-right text-slate-600 dark:text-slate-400">
                         {load.miles.toLocaleString()}

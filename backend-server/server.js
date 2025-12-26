@@ -203,19 +203,19 @@ app.post('/api/create-subscription', async (req, res) => {
   }
 });
 
-// Plan pricing in cents (50% reduced)
+// Plan pricing in cents
 const PLAN_PRICES = {
   essential: {
-    month: 1249, // $12.49/month
-    year: 12745, // $10.62/month × 12 = $127.45/year (15% discount)
+    month: 2498, // $24.98/month
+    year: 25488, // $21.24/month × 12 = $254.88/year (15% discount)
   },
   professional: {
-    month: 2249, // $22.49/month
-    year: 22945, // $19.12/month × 12 = $229.45/year (15% discount)
+    month: 4498, // $44.98/month
+    year: 45888, // $38.24/month × 12 = $458.88/year (15% discount)
   },
   enterprise: {
-    month: 249500, // $249.50/month
-    year: 255000, // $212.50/month × 12 = $2,550/year
+    month: 49900, // $499/month
+    year: 510000, // $425/month × 12 = $5,100/year (15% discount)
   },
 };
 

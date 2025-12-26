@@ -41,6 +41,7 @@ export interface Dispatcher {
   feePercentage: number;
   companyId: string; // Kept for backward compatibility, but associations should be used
   associations?: DispatcherCompanyAssociation[]; // Multi-company associations
+  inviterName?: string; // Name of the dispatch company that invited this dispatcher (for owners)
 }
 
 export interface DispatcherCompanyAssociation {
@@ -58,6 +59,7 @@ export interface DispatcherCompanyAssociation {
   // Joined fields
   company?: Company;
   dispatcher?: UserProfile;
+  inviter?: UserProfile; // The dispatch company that invited this dispatcher
 }
 
 export interface DriverCompanyAssociation {

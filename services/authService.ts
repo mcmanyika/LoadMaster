@@ -82,6 +82,17 @@ export const signUp = async (email: string, password: string, name: string, role
     return { user: newUser, error: null };
   }
 
+  // Check if user already exists before attempting signup
+  const { data: existingUser } = await supabase
+    .from('profiles')
+    .select('id, email')
+    .eq('email', email)
+    .maybeSingle();
+  
+  if (existingUser) {
+    return { user: null, error: 'An account with this email already exists. Please sign in instead.' };
+  }
+
   const { data, error } = await supabase.auth.signUp({
     email,
     password,
@@ -90,12 +101,47 @@ export const signUp = async (email: string, password: string, name: string, role
     }
   });
 
-  if (error) return { user: null, error: error.message };
+  if (error) {
+    // Check for duplicate email error
+    if (error.message.includes('already registered') || error.message.includes('already exists') || error.message.includes('User already registered')) {
+      return { user: null, error: 'An account with this email already exists. Please sign in instead.' };
+    }
+    return { user: null, error: error.message };
+  }
 
   // If auto-confirm is on in Supabase
   if (data.user) {
-    // Create profile entry with default status 'active'
-    await supabase.from('profiles').insert([{ id: data.user.id, name, role, status: 'active' }]);
+    // Check if profile already exists (might be created by trigger)
+    const { data: existingProfile } = await supabase
+      .from('profiles')
+      .select('id')
+      .eq('id', data.user.id)
+      .maybeSingle();
+    
+    // Only create profile if it doesn't exist (trigger might have already created it)
+    if (!existingProfile) {
+      // Use upsert to handle race conditions (in case trigger creates it between check and insert)
+      const { error: profileError } = await supabase
+        .from('profiles')
+        .upsert([{ id: data.user.id, name, role, status: 'active' }], {
+          onConflict: 'id'
+        });
+      
+      if (profileError) {
+        console.error('Error creating/updating profile:', profileError);
+        // Continue anyway - profile might have been created by trigger
+      }
+    } else {
+      // Profile exists, but update it with correct name and role (in case trigger used defaults)
+      const { error: updateError } = await supabase
+        .from('profiles')
+        .update({ name, role })
+        .eq('id', data.user.id);
+      
+      if (updateError) {
+        console.error('Error updating profile:', updateError);
+      }
+    }
 
     // If user is an owner or dispatch_company, create a company for them
     if (role === 'owner' || role === 'dispatch_company') {

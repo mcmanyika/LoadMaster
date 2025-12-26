@@ -183,11 +183,15 @@ export const createLoad = async (load: Omit<Load, 'id'>): Promise<Load> => {
 
   // Use getCompany() which includes fallback logic to find company by owner_id
   // For dispatchers, use the companyId from load if provided, or get from context
-  const { data: profile } = await supabase
+  const { data: profile, error: profileError } = await supabase
     .from('profiles')
     .select('role, company_id')
     .eq('id', session.user.id)
-    .single();
+    .maybeSingle();
+  
+  if (profileError) {
+    console.error('[createLoad] Error fetching profile:', profileError);
+  }
 
   let company = await getCompany(load.companyId);
   let companyId: string | undefined;
@@ -217,36 +221,40 @@ export const createLoad = async (load: Omit<Load, 'id'>): Promise<Load> => {
   }
 
   // Validate dispatcher-company association if dispatcher is provided
+  // Note: For dispatchers associated via dispatch companies, this check might not find a direct association
+  // but that's okay - RLS will handle the access control
   if (load.dispatcher) {
     // Find dispatcher profile by name
-    const { data: dispatcherProfile } = await supabase
+    const { data: dispatcherProfile, error: profileError } = await supabase
       .from('profiles')
       .select('id')
       .eq('name', load.dispatcher)
       .eq('role', 'dispatcher')
-      .single();
+      .maybeSingle();
 
-    if (dispatcherProfile) {
-      // Check if dispatcher is associated with this company
-      const { data: association } = await supabase
+    if (!profileError && dispatcherProfile) {
+      // Check if dispatcher is associated with this company (directly or via dispatch company)
+      const { data: association, error: assocError } = await supabase
         .from('dispatcher_company_associations')
         .select('id')
         .eq('dispatcher_id', dispatcherProfile.id)
         .eq('company_id', companyId)
         .eq('status', 'active')
-        .single();
+        .maybeSingle();
 
-      // If no active association, check backward compatibility (profiles.company_id)
-      if (!association) {
+      // If no active association found, that's okay - dispatcher might be associated via dispatch company
+      // RLS will handle the access control, so we just log a warning
+      if (assocError || !association) {
+        // Check backward compatibility (profiles.company_id)
         const { data: profileCheck } = await supabase
           .from('profiles')
           .select('company_id')
           .eq('id', dispatcherProfile.id)
-          .single();
+          .maybeSingle();
 
         if (profileCheck?.company_id !== companyId) {
-          console.warn(`Dispatcher ${load.dispatcher} is not associated with company ${companyId}`);
-          // Don't throw error, just warn - allow for backward compatibility
+          console.warn(`Dispatcher ${load.dispatcher} is not directly associated with company ${companyId} (may be via dispatch company)`);
+          // Don't throw error - RLS will handle access control
         }
       }
     }
@@ -271,31 +279,74 @@ export const createLoad = async (load: Omit<Load, 'id'>): Promise<Load> => {
       driver_payout_status: load.driverPayoutStatus || 'pending',
       company_id: companyId
     }])
-    .select()
-    .single();
+    .select();
 
   if (error) {
     console.error("Error creating load:", error);
     throw error;
   }
 
+  if (!data || data.length === 0) {
+    // RLS might be blocking the select after insert
+    // Try to fetch the load again using the company_id and other identifying fields
+    const { data: newLoad, error: fetchError } = await supabase
+      .from('loads')
+      .select('*')
+      .eq('company_id', companyId)
+      .eq('company', load.company)
+      .eq('gross', load.gross)
+      .eq('miles', load.miles)
+      .eq('drop_date', load.dropDate)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    
+    if (fetchError || !newLoad) {
+      throw new Error('Load was created but cannot be retrieved. This may be due to RLS policies.');
+    }
+    
+    // Use the fetched data
+    const loadData = newLoad;
+    return {
+      id: loadData.id,
+      company: loadData.company,
+      gross: loadData.gross,
+      miles: loadData.miles,
+      gasAmount: loadData.gas_amount,
+      gasNotes: loadData.gas_notes,
+      dropDate: loadData.drop_date,
+      dispatcher: loadData.dispatcher,
+      transporterId: loadData.transporter_id,
+      driverId: loadData.driver_id,
+      origin: loadData.origin,
+      destination: loadData.destination,
+      status: loadData.status,
+      rateConfirmationPdfUrl: loadData.rate_confirmation_pdf_url || undefined,
+      driverPayoutStatus: loadData.driver_payout_status || 'pending',
+      companyId: loadData.company_id
+    };
+  }
+
+  // Handle both single object and array response
+  const loadData = Array.isArray(data) ? data[0] : data;
+  
   return {
-    id: data.id,
-    company: data.company,
-    gross: data.gross,
-    miles: data.miles,
-    gasAmount: data.gas_amount,
-    gasNotes: data.gas_notes,
-    dropDate: data.drop_date,
-    dispatcher: data.dispatcher,
-    transporterId: data.transporter_id,
-    driverId: data.driver_id,
-    origin: data.origin,
-    destination: data.destination,
-    status: data.status,
-    rateConfirmationPdfUrl: data.rate_confirmation_pdf_url || undefined,
-    driverPayoutStatus: data.driver_payout_status || 'pending',
-    companyId: data.company_id
+    id: loadData.id,
+    company: loadData.company,
+    gross: loadData.gross,
+    miles: loadData.miles,
+    gasAmount: loadData.gas_amount,
+    gasNotes: loadData.gas_notes,
+    dropDate: loadData.drop_date,
+    dispatcher: loadData.dispatcher,
+    transporterId: loadData.transporter_id,
+    driverId: loadData.driver_id,
+    origin: loadData.origin,
+    destination: loadData.destination,
+    status: loadData.status,
+    rateConfirmationPdfUrl: loadData.rate_confirmation_pdf_url || undefined,
+    driverPayoutStatus: loadData.driver_payout_status || 'pending',
+    companyId: loadData.company_id
   };
 };
 
@@ -316,7 +367,7 @@ export const updateLoad = async (id: string, load: Omit<Load, 'id'>): Promise<Lo
     .from('loads')
     .select('company_id')
     .eq('id', id)
-    .single();
+    .maybeSingle();
 
   if (fetchError || !existingLoad) {
     throw new Error('Load not found');
@@ -325,36 +376,40 @@ export const updateLoad = async (id: string, load: Omit<Load, 'id'>): Promise<Lo
   const companyId = existingLoad.company_id;
 
   // Validate dispatcher-company association if dispatcher is being updated
+  // Note: For dispatchers associated via dispatch companies, this check might not find a direct association
+  // but that's okay - RLS will handle the access control
   if (load.dispatcher && companyId) {
     // Find dispatcher profile by name
-    const { data: dispatcherProfile } = await supabase
+    const { data: dispatcherProfile, error: profileError } = await supabase
       .from('profiles')
       .select('id')
       .eq('name', load.dispatcher)
       .eq('role', 'dispatcher')
-      .single();
+      .maybeSingle();
 
-    if (dispatcherProfile) {
-      // Check if dispatcher is associated with this company
-      const { data: association } = await supabase
+    if (!profileError && dispatcherProfile) {
+      // Check if dispatcher is associated with this company (directly or via dispatch company)
+      const { data: association, error: assocError } = await supabase
         .from('dispatcher_company_associations')
         .select('id')
         .eq('dispatcher_id', dispatcherProfile.id)
         .eq('company_id', companyId)
         .eq('status', 'active')
-        .single();
+        .maybeSingle();
 
-      // If no active association, check backward compatibility (profiles.company_id)
-      if (!association) {
+      // If no active association found, that's okay - dispatcher might be associated via dispatch company
+      // RLS will handle the access control, so we just log a warning
+      if (assocError || !association) {
+        // Check backward compatibility (profiles.company_id)
         const { data: profileCheck } = await supabase
           .from('profiles')
           .select('company_id')
           .eq('id', dispatcherProfile.id)
-          .single();
+          .maybeSingle();
 
         if (profileCheck?.company_id !== companyId) {
-          console.warn(`Dispatcher ${load.dispatcher} is not associated with company ${companyId}`);
-          // Don't throw error, just warn - allow for backward compatibility
+          console.warn(`Dispatcher ${load.dispatcher} is not directly associated with company ${companyId} (may be via dispatch company)`);
+          // Don't throw error - RLS will handle access control
         }
       }
     }
@@ -385,31 +440,68 @@ export const updateLoad = async (id: string, load: Omit<Load, 'id'>): Promise<Lo
     .from('loads')
     .update(updateData)
     .eq('id', id)
-    .select()
-    .single();
+    .select();
 
   if (error) {
     console.error("Error updating load:", error);
     throw error;
   }
 
+  if (!data || data.length === 0) {
+    // RLS might be blocking the select after update
+    // Try to fetch the load again to verify it was updated
+    const { data: updatedLoad, error: fetchError } = await supabase
+      .from('loads')
+      .select('*')
+      .eq('id', id)
+      .maybeSingle();
+    
+    if (fetchError || !updatedLoad) {
+      throw new Error('Load was updated but cannot be retrieved. This may be due to RLS policies.');
+    }
+    
+    // Use the fetched data
+    const loadData = updatedLoad;
+    return {
+      id: loadData.id,
+      company: loadData.company,
+      gross: loadData.gross,
+      miles: loadData.miles,
+      gasAmount: loadData.gas_amount,
+      gasNotes: loadData.gas_notes,
+      dropDate: loadData.drop_date,
+      dispatcher: loadData.dispatcher,
+      transporterId: loadData.transporter_id,
+      driverId: loadData.driver_id,
+      origin: loadData.origin,
+      destination: loadData.destination,
+      status: loadData.status,
+      rateConfirmationPdfUrl: loadData.rate_confirmation_pdf_url || undefined,
+      driverPayoutStatus: loadData.driver_payout_status || 'pending',
+      companyId: loadData.company_id
+    };
+  }
+
+  // Handle both single object and array response
+  const loadData = Array.isArray(data) ? data[0] : data;
+  
   return {
-    id: data.id,
-    company: data.company,
-    gross: data.gross,
-    miles: data.miles,
-    gasAmount: data.gas_amount,
-    gasNotes: data.gas_notes,
-    dropDate: data.drop_date,
-    dispatcher: data.dispatcher,
-    transporterId: data.transporter_id,
-    driverId: data.driver_id,
-    origin: data.origin,
-    destination: data.destination,
-    status: data.status,
-    rateConfirmationPdfUrl: data.rate_confirmation_pdf_url || undefined,
-    driverPayoutStatus: data.driver_payout_status || 'pending',
-    companyId: data.company_id
+    id: loadData.id,
+    company: loadData.company,
+    gross: loadData.gross,
+    miles: loadData.miles,
+    gasAmount: loadData.gas_amount,
+    gasNotes: loadData.gas_notes,
+    dropDate: loadData.drop_date,
+    dispatcher: loadData.dispatcher,
+    transporterId: loadData.transporter_id,
+    driverId: loadData.driver_id,
+    origin: loadData.origin,
+    destination: loadData.destination,
+    status: loadData.status,
+    rateConfirmationPdfUrl: loadData.rate_confirmation_pdf_url || undefined,
+    driverPayoutStatus: loadData.driver_payout_status || 'pending',
+    companyId: loadData.company_id
   };
 };
 
@@ -448,31 +540,26 @@ export const getDispatchers = async (companyId?: string): Promise<Dispatcher[]> 
     // 1. Get dispatchers from associations (invited dispatchers with profiles)
     try {
       const associations = await getCompanyDispatchers(companyId);
-      const dispatcherIds = associations.map(a => a.dispatcherId).filter(Boolean);
-
-      if (dispatcherIds.length > 0) {
-        const { data: profiles, error: profilesError } = await supabase
-          .from('profiles')
-          .select('id, name, email, phone')
-          .in('id', dispatcherIds)
-          .eq('role', 'dispatcher');
-
-        if (!profilesError && profiles && profiles.length > 0) {
-          // Map profiles to dispatchers with fee from associations
-          const associationDispatchers = profiles.map((profile: any) => {
-            const association = associations.find(a => a.dispatcherId === profile.id);
+      console.log('[getDispatchers] Associations found:', associations.length);
+      
+      // Use dispatcher data directly from associations instead of querying profiles separately
+      // This avoids RLS issues when querying profiles table directly
+      const associationDispatchers = associations
+        .filter(a => a.dispatcher && a.dispatcher.role === 'dispatcher')
+        .map((association) => {
             return {
-              id: profile.id,
-              name: profile.name,
-              email: profile.email,
-              phone: profile.phone,
-              feePercentage: association?.feePercentage || 12,
-              companyId: companyId
+            id: association.dispatcherId || association.dispatcher?.id || '',
+            name: association.dispatcher?.name || '',
+            email: association.dispatcher?.email || '',
+            phone: association.dispatcher?.phone || '',
+            feePercentage: association.feePercentage || 12,
+            companyId: companyId,
+            inviterName: association.inviter?.role === 'dispatch_company' ? association.inviter.name : undefined
             };
           });
+      
+      console.log('[getDispatchers] Mapped dispatchers from associations:', associationDispatchers.length);
           results.push(...associationDispatchers);
-        }
-      }
     } catch (error) {
       console.error('Error fetching dispatchers from associations:', error);
     }

@@ -52,16 +52,16 @@ export const getCompany = async (currentCompanyId?: string): Promise<Company | n
         .single();
 
       if (!companyError && company) {
-        // Verify association exists
-        const { data: association } = await supabase
+        // Verify association exists (use maybeSingle in case there are duplicates)
+        const { data: association, error: assocError } = await supabase
           .from('dispatcher_company_associations')
           .select('id')
           .eq('dispatcher_id', session.user.id)
           .eq('company_id', currentCompanyId)
           .eq('status', 'active')
-          .single();
+          .maybeSingle();
 
-        if (association) {
+        if (!assocError && association) {
           return {
             id: company.id,
             name: company.name,
@@ -82,18 +82,29 @@ export const getCompany = async (currentCompanyId?: string): Promise<Company | n
       console.log(`[getCompany] ${profile.role}, checking associations`);
       const activeCompanies = await getActiveCompanies(session.user.id);
       if (activeCompanies.length > 0) {
-        // Use first active company or check localStorage for saved preference
+        // Prioritize saved company from localStorage - don't switch companies automatically
         const savedCompanyId = typeof window !== 'undefined' 
           ? localStorage.getItem('currentCompanyId') 
           : null;
         
+        // Only use saved company if it exists in active companies list
+        // Don't fall back to first company if saved company isn't found (preserve user's choice)
         const selectedCompany = savedCompanyId 
-          ? activeCompanies.find(c => c.id === savedCompanyId) || activeCompanies[0]
-          : activeCompanies[0];
+          ? activeCompanies.find(c => c.id === savedCompanyId)
+          : null;
 
+        // If no saved company or saved company not in active list, return first active company
+        // This handles first-time login scenario
         if (selectedCompany) {
           return selectedCompany;
+        } else if (!savedCompanyId && activeCompanies.length > 0) {
+          // Only return first company if there's no saved preference (first time)
+          return activeCompanies[0];
         }
+        
+        // If saved company was not found in active list, return null rather than switching
+        // This prevents automatic company switching on refresh
+        return null;
       }
       
       // If dispatch company has no joined companies, fall through to use their own company

@@ -454,7 +454,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onSignIn
               {[
                 {
                   name: 'Essential',
-                  price: '$12.49',
+                  price: '$24.98',
                   period: '/month',
                   description: 'Perfect for solo owners and small dispatch operations',
                   features: [
@@ -471,7 +471,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onSignIn
                 },
                 {
                   name: 'Professional',
-                  price: '$22.49',
+                  price: '$44.98',
                   period: '/month',
                   description: 'For dispatchers and fleets that want serious visibility',
                   features: [

@@ -46,6 +46,7 @@ export const getCompanyDrivers = async (
   }
 
   try {
+    console.log('[getCompanyDrivers] Fetching drivers for companyId:', companyId);
     const { data, error } = await supabase
       .from('driver_company_associations')
       .select(`
@@ -58,10 +59,11 @@ export const getCompanyDrivers = async (
       .order('joined_at', { ascending: false });
 
     if (error) {
-      console.error('Error fetching company drivers:', error);
+      console.error('[getCompanyDrivers] Error fetching company drivers:', error);
       return [];
     }
 
+    console.log('[getCompanyDrivers] Found', data?.length || 0, 'driver associations for company', companyId);
     return (data || []).map(mapAssociation);
   } catch (error) {
     console.error('Error fetching company drivers:', error);
@@ -274,6 +276,8 @@ export const joinCompanyByDriverCode = async (
     }
 
     // 4. Update the invite code association to active
+    // Use a more specific WHERE clause to prevent race conditions
+    // Only update if status is still 'pending' and driver_id is still null
     const { data: updatedAssociation, error: updateError } = await supabase
       .from('driver_company_associations')
       .update({
@@ -285,16 +289,35 @@ export const joinCompanyByDriverCode = async (
         expires_at: null,  // Clear expiration once used
       })
       .eq('id', inviteData.id)
+      .eq('status', 'pending') // Only update if still pending
+      .is('driver_id', null) // Only update if driver_id is still null
       .select(`
         *,
         company:companies(*),
         driver:profiles!driver_id(*)
       `)
-      .single();
+      .maybeSingle();
 
     if (updateError) {
       console.error('Error updating driver association:', updateError);
       return { success: false, error: updateError.message };
+    }
+
+    // Check if update actually happened (might have been updated by another request)
+    if (!updatedAssociation) {
+      // Double-check if we're already associated (race condition - another request succeeded)
+      const { data: checkAssociation } = await supabase
+        .from('driver_company_associations')
+        .select('id, status, driver_id')
+        .eq('id', inviteData.id)
+        .maybeSingle();
+      
+      if (checkAssociation?.driver_id === driverId && checkAssociation?.status === 'active') {
+        // We're already associated - another request succeeded first
+        return { success: false, error: 'You have already joined this company.' };
+      }
+      
+      return { success: false, error: 'Invite code was already used or is no longer valid.' };
     }
 
     // 5. Update the driver's profile to link to this company if they don't have one

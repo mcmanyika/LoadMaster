@@ -45,8 +45,8 @@ export const Pricing: React.FC<PricingProps> = ({ onClose }) => {
       name: 'Essential',
       tagline: 'Perfect for small fleets',
       icon: <Zap className="w-6 h-6" />,
-      monthlyPrice: 12.49,
-      annualPrice: 10.62, // 15% off original, now 50% reduced
+      monthlyPrice: 24.98,
+      annualPrice: 21.24, // 15% off monthly price
       features: [
         { text: 'Up to 5 users', included: true },
         { text: 'Up to 50 loads/month', included: true },
@@ -67,8 +67,8 @@ export const Pricing: React.FC<PricingProps> = ({ onClose }) => {
       name: 'Professional',
       tagline: 'For growing fleets',
       icon: <Users className="w-6 h-6" />,
-      monthlyPrice: 22.49,
-      annualPrice: 19.12, // 15% off original, now 50% reduced
+      monthlyPrice: 44.98,
+      annualPrice: 38.24, // 15% off monthly price
       features: [
         { text: 'Up to 15 users', included: true },
         { text: 'Up to 500 loads/month', included: true },
