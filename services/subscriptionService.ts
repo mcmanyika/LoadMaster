@@ -29,21 +29,7 @@ export interface CreateSubscriptionData {
   status?: 'active' | 'canceled' | 'completed' | 'past_due';
 }
 
-// Plan pricing
-const PLAN_PRICES: Record<string, Record<'month' | 'year', number>> = {
-  essential: {
-    month: 24.98,
-    year: 21.24, // per month, billed annually (15% discount on monthly price)
-  },
-  professional: {
-    month: 44.98,
-    year: 38.24, // per month, billed annually (15% discount on monthly price)
-  },
-  enterprise: {
-    month: 499,
-    year: 425, // per month, billed annually (15% discount on monthly price)
-  },
-};
+import { getPlanPrices, getSubscriptionPlan } from './pricingService';
 
 /**
  * Save subscription to Supabase
@@ -59,9 +45,76 @@ export const saveSubscription = async (
   }
 
   try {
-    // Calculate amount if not provided
-    const amount = subscriptionData.amount ||
-      PLAN_PRICES[subscriptionData.plan]?.[subscriptionData.interval] || 0;
+    // Check for existing subscription by stripe_session_id to prevent duplicates
+    if (subscriptionData.stripeSessionId) {
+      const { data: existing } = await supabase
+        .from('subscriptions')
+        .select('id, plan, interval, status')
+        .eq('stripe_session_id', subscriptionData.stripeSessionId)
+        .maybeSingle();
+      
+      if (existing) {
+        console.log('⚠️ Subscription already exists for this session ID, skipping duplicate save:', {
+          subscriptionId: existing.id,
+          sessionId: subscriptionData.stripeSessionId,
+          plan: existing.plan,
+          interval: existing.interval,
+        });
+        // Return the existing subscription
+        const { data: fullData } = await supabase
+          .from('subscriptions')
+          .select('*')
+          .eq('id', existing.id)
+          .single();
+        
+        if (fullData) {
+          return {
+            subscription: {
+              id: fullData.id,
+              userId: fullData.user_id,
+              plan: fullData.plan as 'essential' | 'professional' | 'enterprise',
+              interval: fullData.interval as 'month' | 'year',
+              status: fullData.status as 'active' | 'canceled' | 'completed' | 'past_due',
+              amount: parseFloat(fullData.amount),
+              currency: fullData.currency || 'usd',
+              stripeCustomerId: fullData.stripe_customer_id,
+              stripeSubscriptionId: fullData.stripe_subscription_id,
+              stripeSessionId: fullData.stripe_session_id,
+              startedAt: fullData.started_at,
+              endedAt: fullData.ended_at,
+              canceledAt: fullData.canceled_at,
+              nextBillingDate: fullData.next_billing_date,
+              createdAt: fullData.created_at,
+              updatedAt: fullData.updated_at,
+            },
+            error: null,
+          };
+        }
+      }
+    }
+
+    // Get amount from database, fallback to provided amount or hardcoded prices
+    let amount = subscriptionData.amount;
+    
+    if (!amount) {
+      // Always get from database - no fallback
+      try {
+        amount = await getSubscriptionPlan(subscriptionData.plan, subscriptionData.interval);
+      } catch (error) {
+        console.error('Failed to fetch price from database:', error);
+        return {
+          subscription: null,
+          error: `Failed to fetch pricing for ${subscriptionData.plan} ${subscriptionData.interval} plan. Please try again.`
+        };
+      }
+      
+      if (!amount || amount === 0) {
+        return {
+          subscription: null,
+          error: `Invalid pricing for ${subscriptionData.plan} ${subscriptionData.interval} plan. Please contact support.`
+        };
+      }
+    }
 
     // Calculate next billing date
     const nextBillingDate = new Date();
@@ -92,6 +145,45 @@ export const saveSubscription = async (
       .single();
 
     if (error) {
+      // Check if it's a duplicate key error (unique constraint violation)
+      if (error.code === '23505' || error.message?.includes('duplicate') || error.message?.includes('unique')) {
+        console.log('⚠️ Duplicate subscription detected, fetching existing:', error.message);
+        
+        // Fetch the existing subscription
+        if (subscriptionData.stripeSessionId) {
+          const { data: existing } = await supabase
+            .from('subscriptions')
+            .select('*')
+            .eq('stripe_session_id', subscriptionData.stripeSessionId)
+            .single();
+          
+          if (existing) {
+            console.log('✅ Found existing subscription, returning it:', existing.id);
+            return {
+              subscription: {
+                id: existing.id,
+                userId: existing.user_id,
+                plan: existing.plan as 'essential' | 'professional' | 'enterprise',
+                interval: existing.interval as 'month' | 'year',
+                status: existing.status as 'active' | 'canceled' | 'completed' | 'past_due',
+                amount: parseFloat(existing.amount),
+                currency: existing.currency || 'usd',
+                stripeCustomerId: existing.stripe_customer_id,
+                stripeSubscriptionId: existing.stripe_subscription_id,
+                stripeSessionId: existing.stripe_session_id,
+                startedAt: existing.started_at,
+                endedAt: existing.ended_at,
+                canceledAt: existing.canceled_at,
+                nextBillingDate: existing.next_billing_date,
+                createdAt: existing.created_at,
+                updatedAt: existing.updated_at,
+              },
+              error: null,
+            };
+          }
+        }
+      }
+
       console.error('❌ Error saving subscription to database:', error);
       console.error('Error details:', {
         code: error.code,

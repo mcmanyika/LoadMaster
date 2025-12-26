@@ -45,7 +45,6 @@ import { Reports } from './components/reports/Reports';
 import { Expenses } from './components/Expenses';
 import { ErrorModal } from './components/ErrorModal';
 import { ConfirmModal } from './components/ConfirmModal';
-import { CompanySwitcher } from './components/CompanySwitcher';
 import { DispatcherCompaniesList } from './components/DispatcherCompaniesList';
 import { LandingPage } from './components/LandingPage';
 import { PrivacyPolicy } from './components/PrivacyPolicy';
@@ -53,6 +52,7 @@ import { TermsOfService } from './components/TermsOfService';
 import { ThemeProvider, useTheme } from './contexts/ThemeContext';
 import { ThemeToggle } from './components/ThemeToggle';
 import { saveSubscription } from './services/subscriptionService';
+import { getPlanPrices } from './services/pricingService';
 import { analyzeFleetPerformance } from './services/geminiService';
 import { getLoads, createLoad, updateLoad, deleteLoad, getDrivers, getDispatchers } from './services/loadService';
 import { getCurrentUser, signOut } from './services/authService';
@@ -260,12 +260,8 @@ function App() {
       
       // Auto-save subscription to Supabase
       const saveSubscriptionData = async () => {
-        const PLAN_PRICES: Record<string, Record<'month' | 'year', number>> = {
-          essential: { month: 12.49, year: 10.62 },
-          professional: { month: 22.49, year: 19.12 },
-          enterprise: { month: 249.5, year: 212.5 },
-        };
-        
+        // Get prices from database
+        const PLAN_PRICES = await getPlanPrices();
         const amount = PLAN_PRICES[plan]?.[interval] || 0;
         
         console.log('🔄 Attempting to save subscription from Checkout Session:', { 
@@ -316,12 +312,8 @@ function App() {
       
       // Auto-save subscription to Supabase
       const saveSubscriptionData = async () => {
-        const PLAN_PRICES: Record<string, Record<'month' | 'year', number>> = {
-          essential: { month: 12.49, year: 10.62 },
-          professional: { month: 22.49, year: 19.12 },
-          enterprise: { month: 249.5, year: 212.5 },
-        };
-        
+        // Get prices from database
+        const PLAN_PRICES = await getPlanPrices();
         const amount = PLAN_PRICES[plan]?.[interval] || 0;
         
         console.log('🔄 Attempting to save subscription:', { userId: user.id, plan, interval, amount });
@@ -367,12 +359,8 @@ function App() {
       // If user loads after payment, still try to save
       if (user && plan && interval) {
         const saveSubscriptionData = async () => {
-          const PLAN_PRICES: Record<string, Record<'month' | 'year', number>> = {
-            essential: { month: 12.49, year: 10.62 },
-            professional: { month: 22.49, year: 19.12 },
-            enterprise: { month: 249.5, year: 212.5 },
-          };
-          
+          // Get prices from database
+          const PLAN_PRICES = await getPlanPrices();
           const amount = PLAN_PRICES[plan]?.[interval] || 0;
           
           console.log('🔄 Attempting to save subscription (delayed):', { userId: user.id, plan, interval, amount });
@@ -415,13 +403,9 @@ function App() {
             
             // Create async function to handle the save
             const saveFromLocalStorage = async () => {
-            const PLAN_PRICES: Record<string, Record<'month' | 'year', number>> = {
-              essential: { month: 12.49, year: 10.62 },
-              professional: { month: 22.49, year: 19.12 },
-              enterprise: { month: 249.5, year: 212.5 },
-            };
-              
-              const amount = PLAN_PRICES[plan]?.[interval] || 0;
+            // Get prices from database
+            const PLAN_PRICES = await getPlanPrices();
+            const amount = PLAN_PRICES[plan]?.[interval] || 0;
               
               const result = await saveSubscription(user.id, {
                 plan: plan as 'essential' | 'professional' | 'enterprise',
@@ -1220,7 +1204,7 @@ function App() {
                 <span className="opacity-0 group-hover:opacity-100 transition-opacity duration-300 whitespace-nowrap overflow-hidden text-slate-300 dark:text-slate-300">Marketing</span>
               </button>
             )}
-            {user.role === 'owner' && (
+            {(user.role === 'owner' || user.role === 'dispatcher') && (
               <button
                 onClick={() => setView('pricing')}
                 className={`w-full flex items-center justify-center group-hover:justify-start gap-3 px-4 py-3 rounded-xl transition-colors ${view === 'pricing' ? 'bg-blue-600/10 text-blue-400 font-medium' : 'text-slate-300 dark:text-slate-300 hover:bg-slate-800'}`}
@@ -1230,7 +1214,7 @@ function App() {
                 <span className="opacity-0 group-hover:opacity-100 transition-opacity duration-300 whitespace-nowrap overflow-hidden text-slate-300 dark:text-slate-300">Pricing</span>
               </button>
             )}
-            {user.role === 'owner' && (
+            {(user.role === 'owner' || user.role === 'dispatcher') && (
               <button
                 onClick={() => setView('subscriptions')}
                 className={`w-full flex items-center justify-center group-hover:justify-start gap-3 px-4 py-3 rounded-xl transition-colors ${view === 'subscriptions' ? 'bg-blue-600/10 text-blue-400 font-medium' : 'text-slate-300 dark:text-slate-300 hover:bg-slate-800'}`}
@@ -1290,14 +1274,6 @@ function App() {
                   <p className="text-sm text-slate-500 mt-1">{companyName}</p>
                 )}
               </div>
-              {user.role === 'dispatcher' && dispatcherCompanies.length > 1 && (
-                <CompanySwitcher
-                  companies={dispatcherCompanies}
-                  currentCompanyId={currentCompanyId}
-                  pendingInvitationsCount={pendingInvitations.length}
-                  onSwitchCompany={switchCompany}
-                />
-              )}
             </div>
             <div className="flex items-center gap-4">
               <button

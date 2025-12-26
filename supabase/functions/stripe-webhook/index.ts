@@ -97,38 +97,85 @@ serve(async (req) => {
             // Get the actual amount from Stripe session (more reliable than hardcoded prices)
             let amount = 0;
 
-            // Try to get amount from session line items
-            if (session.amount_total !== null && session.amount_total !== undefined) {
-                amount = session.amount_total / 100; // Convert from cents to dollars
-            } else if (session.amount_subtotal !== null && session.amount_subtotal !== undefined) {
-                amount = session.amount_subtotal / 100; // Convert from cents to dollars
-            } else {
-                // Fallback to hardcoded prices if Stripe doesn't provide amount (50% reduced)
-                const PLAN_PRICES: Record<string, Record<string, number>> = {
-                    essential: {
-                        month: 1249, // $12.49/month
-                        year: 12745, // $127.45/year = $10.62/month (15% discount)
-                    },
-                    professional: {
-                        month: 2249, // $22.49/month
-                        year: 22945, // $229.45/year = $19.12/month (15% discount)
-                    },
-                    enterprise: {
-                        month: 249500, // $249.50/month
-                        year: 255000, // $2,550/year = $212.50/month
-                    },
-                };
-
-                const amountInCents = PLAN_PRICES[planId]?.[interval];
-                if (!amountInCents) {
-                    console.error(`Invalid plan/interval: ${planId}/${interval}`);
+            // For annual subscriptions, Stripe charges the full year amount upfront
+            // But we want to store the monthly equivalent in our database
+            // For monthly subscriptions, we store the actual monthly price
+            
+            if (interval === 'year') {
+                // For annual: always use the monthly equivalent from database
+                try {
+                    const { data: plan, error: planError } = await supabase
+                        .from('subscription_plans')
+                        .select('annual_price')
+                        .eq('plan_id', planId)
+                        .eq('is_active', true)
+                        .single();
+                    
+                    if (!planError && plan) {
+                        amount = parseFloat(plan.annual_price); // Monthly equivalent for annual billing
+                    } else {
+                        console.error('Failed to fetch annual_price from database:', planError);
+                        return new Response(
+                            JSON.stringify({
+                                error: 'Failed to fetch pricing from database',
+                                details: planError?.message
+                            }),
+                            { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+                        );
+                    }
+                } catch (error: any) {
+                    console.error('Error fetching annual_price from database:', error);
                     return new Response(
-                        JSON.stringify({ error: `Invalid plan/interval: ${planId}/${interval}` }),
-                        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+                        JSON.stringify({
+                            error: 'Failed to fetch pricing from database',
+                            details: error?.message
+                        }),
+                        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
                     );
                 }
-                amount = amountInCents / 100; // Convert to dollars
+            } else {
+                // For monthly: use amount from Stripe session or database
+                if (session.amount_total !== null && session.amount_total !== undefined) {
+                    amount = session.amount_total / 100; // Convert from cents to dollars
+                } else if (session.amount_subtotal !== null && session.amount_subtotal !== undefined) {
+                    amount = session.amount_subtotal / 100; // Convert from cents to dollars
+                } else {
+                    // Fallback: Get monthly price from database
+                    try {
+                        const { data: plan, error: planError } = await supabase
+                            .from('subscription_plans')
+                            .select('monthly_price')
+                            .eq('plan_id', planId)
+                            .eq('is_active', true)
+                            .single();
+                        
+                        if (!planError && plan) {
+                            amount = parseFloat(plan.monthly_price);
+                        } else {
+                            console.error('Failed to fetch monthly_price from database:', planError);
+                            return new Response(
+                                JSON.stringify({
+                                    error: 'Failed to fetch pricing from database',
+                                    details: planError?.message
+                                }),
+                                { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+                            );
+                        }
+                    } catch (error: any) {
+                        console.error('Error fetching monthly_price from database:', error);
+                        return new Response(
+                            JSON.stringify({
+                                error: 'Failed to fetch pricing from database',
+                                details: error?.message
+                            }),
+                            { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+                        );
+                    }
+                }
             }
+            
+            // No fallback prices - must get from database
+            // If database fetch fails, log error and use 0 (will be caught by validation below)
 
             // Calculate next billing date
             const nextBillingDate = new Date();
@@ -141,6 +188,30 @@ serve(async (req) => {
             // Save subscription to Supabase
             if (userId && userId !== 'anonymous') {
                 try {
+                    // Check for existing subscription by stripe_session_id to prevent duplicates
+                    const { data: existing } = await supabase
+                        .from('subscriptions')
+                        .select('id, plan, interval, status')
+                        .eq('stripe_session_id', session.id)
+                        .maybeSingle();
+
+                    if (existing) {
+                        console.log('⚠️ Subscription already exists for this session ID, skipping duplicate save:', {
+                            subscriptionId: existing.id,
+                            sessionId: session.id,
+                            plan: existing.plan,
+                            interval: existing.interval,
+                        });
+                        return new Response(
+                            JSON.stringify({
+                                received: true,
+                                subscriptionId: existing.id,
+                                message: 'Subscription already exists'
+                            }),
+                            { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+                        );
+                    }
+
                     const { data: subscription, error: insertError } = await supabase
                         .from('subscriptions')
                         .insert([
@@ -161,6 +232,28 @@ serve(async (req) => {
                         .single();
 
                     if (insertError) {
+                        // Check if it's a duplicate key error (unique constraint violation)
+                        if (insertError.code === '23505' || insertError.message?.includes('duplicate') || insertError.message?.includes('unique')) {
+                            console.log('⚠️ Duplicate subscription detected, fetching existing:', insertError.message);
+                            // Fetch the existing subscription
+                            const { data: existingSub } = await supabase
+                                .from('subscriptions')
+                                .select('id')
+                                .eq('stripe_session_id', session.id)
+                                .single();
+                            
+                            if (existingSub) {
+                                return new Response(
+                                    JSON.stringify({
+                                        received: true,
+                                        subscriptionId: existingSub.id,
+                                        message: 'Subscription already exists'
+                                    }),
+                                    { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+                                );
+                            }
+                        }
+                        
                         console.error('Error saving subscription:', insertError);
                         return new Response(
                             JSON.stringify({

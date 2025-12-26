@@ -43,24 +43,83 @@ serve(async (req) => {
       );
     }
 
-    // Plan pricing in cents
-    const PLAN_PRICES: Record<string, Record<string, number>> = {
-      essential: {
-        month: 2498, // $24.98/month
-        year: 25488, // $21.24/month × 12 = $254.88/year (15% discount)
-      },
-      professional: {
-        month: 4498, // $44.98/month
-        year: 45888, // $38.24/month × 12 = $458.88/year (15% discount)
-      },
-      enterprise: {
-        month: 49900, // $499/month
-        year: 510000, // $425/month × 12 = $5,100/year (15% discount)
-      },
-    };
-
-    // Get amount from pricing
-    const amount = PLAN_PRICES[planId]?.[interval];
+    // Get prices from database - REQUIRED, no fallback
+    const supabaseUrl = Deno.env.get('SUPABASE_URL');
+    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+    
+    if (!supabaseUrl || !supabaseServiceKey) {
+      console.error('Supabase not configured - SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY required');
+      return new Response(
+        JSON.stringify({
+          error: 'Server configuration error: Pricing service not available',
+        }),
+        {
+          status: 500,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        }
+      );
+    }
+    
+    let amount = 0;
+    
+    try {
+      const { createClient } = await import('https://esm.sh/@supabase/supabase-js@2');
+      const supabase = createClient(supabaseUrl, supabaseServiceKey);
+      
+      const { data: plan, error } = await supabase
+        .from('subscription_plans')
+        .select('monthly_price, annual_price, annual_total')
+        .eq('plan_id', planId)
+        .eq('is_active', true)
+        .single();
+      
+      if (error || !plan) {
+        console.error('Failed to fetch price from database:', error);
+        return new Response(
+          JSON.stringify({
+            error: `Pricing not found for plan: ${planId}. Please contact support.`,
+            details: error?.message,
+          }),
+          {
+            status: 404,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          }
+        );
+      }
+      
+      // For monthly: use monthly_price
+      // For annual: use annual_total (total amount for the year, not monthly equivalent)
+      const price = interval === 'month' 
+        ? parseFloat(plan.monthly_price) 
+        : parseFloat(plan.annual_total); // Use annual_total for the full year amount
+      
+      if (isNaN(price) || price <= 0) {
+        console.error('Invalid price from database:', price);
+        return new Response(
+          JSON.stringify({
+            error: `Invalid pricing for ${planId} ${interval} plan. Please contact support.`,
+          }),
+          {
+            status: 500,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          }
+        );
+      }
+      
+      amount = Math.round(price * 100); // Convert to cents
+    } catch (error: any) {
+      console.error('Error fetching price from database:', error);
+      return new Response(
+        JSON.stringify({
+          error: 'Failed to fetch pricing from database. Please try again later.',
+          details: error?.message,
+        }),
+        {
+          status: 500,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        }
+      );
+    }
     if (!amount) {
       return new Response(
         JSON.stringify({

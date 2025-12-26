@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Check, X, Zap, Users, Building2, ArrowRight, Mail, Phone, Loader2, AlertCircle, CheckCircle2 } from 'lucide-react';
 import { getCurrentUser } from '../services/authService';
 import { createSubscriptionIntent } from '../services/paymentIntentService';
 import { getActiveSubscription, Subscription } from '../services/subscriptionService';
+import { getSubscriptionPlans } from '../services/pricingService';
 
 interface PricingProps {
   onClose?: () => void;
@@ -39,7 +40,7 @@ export const Pricing: React.FC<PricingProps> = ({ onClose }) => {
     loadUserAndSubscription();
   }, []);
 
-  const plans = [
+  const [plans, setPlans] = useState([
     {
       id: 'essential',
       name: 'Essential',
@@ -107,8 +108,31 @@ export const Pricing: React.FC<PricingProps> = ({ onClose }) => {
       cta: 'Contact Sales',
       popular: false,
     },
-  ];
+  ]);
 
+  // Load prices from database
+  useEffect(() => {
+    const loadPrices = async () => {
+      try {
+        const dbPlans = await getSubscriptionPlans();
+        setPlans(prevPlans => prevPlans.map(plan => {
+          const dbPlan = dbPlans.find(p => p.planId === plan.id);
+          if (dbPlan) {
+            return {
+              ...plan,
+              monthlyPrice: dbPlan.monthlyPrice,
+              annualPrice: dbPlan.annualPrice,
+            };
+          }
+          return plan;
+        }));
+      } catch (error) {
+        console.error('Error loading prices from database:', error);
+        // Keep default prices if database fetch fails
+      }
+    };
+    loadPrices();
+  }, []);
 
   const handleSubscribe = async (planId: 'essential' | 'professional' | 'enterprise') => {
     // Don't allow subscription to the same plan if user already has it active

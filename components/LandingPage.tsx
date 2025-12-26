@@ -16,6 +16,7 @@ import {
   TrendingUp
 } from 'lucide-react';
 import { submitContactForm } from '../services/contactService';
+import { getSubscriptionPlans } from '../services/pricingService';
 
 interface LandingPageProps {
   onGetStarted: () => void;
@@ -40,6 +41,14 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onSignIn
   const [contactSubmitting, setContactSubmitting] = useState(false);
   const [contactError, setContactError] = useState<string | null>(null);
   const [scrolled, setScrolled] = useState(false);
+  const [pricingPlans, setPricingPlans] = useState<{
+    essential: { monthly: string };
+    professional: { monthly: string };
+  }>({
+    essential: { monthly: '$24.98' },
+    professional: { monthly: '$44.98' },
+  });
+  const [pricingLoading, setPricingLoading] = useState(true);
   const heroRef = useRef<HTMLDivElement>(null);
   const featuresRef = useRef<HTMLDivElement>(null);
   const pricingRef = useRef<HTMLDivElement>(null);
@@ -52,6 +61,33 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onSignIn
     };
     window.addEventListener('scroll', handleScroll);
     return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
+
+  // Load prices from database
+  useEffect(() => {
+    const loadPrices = async () => {
+      try {
+        setPricingLoading(true);
+        const plans = await getSubscriptionPlans();
+        const essential = plans.find(p => p.planId === 'essential');
+        const professional = plans.find(p => p.planId === 'professional');
+        
+        setPricingPlans({
+          essential: { monthly: `$${essential?.monthlyPrice.toFixed(2) || '24.98'}` },
+          professional: { monthly: `$${professional?.monthlyPrice.toFixed(2) || '44.98'}` },
+        });
+      } catch (error) {
+        console.error('Error loading prices from database:', error);
+        // Keep default prices if database fetch fails - don't break the page
+        setPricingPlans({
+          essential: { monthly: '$24.98' },
+          professional: { monthly: '$44.98' },
+        });
+      } finally {
+        setPricingLoading(false);
+      }
+    };
+    loadPrices();
   }, []);
 
   useEffect(() => {
@@ -454,7 +490,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onSignIn
               {[
                 {
                   name: 'Essential',
-                  price: '$24.98',
+                  price: pricingPlans.essential.monthly,
                   period: '/month',
                   description: 'Perfect for solo owners and small dispatch operations',
                   features: [
@@ -471,7 +507,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onSignIn
                 },
                 {
                   name: 'Professional',
-                  price: '$44.98',
+                  price: pricingPlans.professional.monthly,
                   period: '/month',
                   description: 'For dispatchers and fleets that want serious visibility',
                   features: [
