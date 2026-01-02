@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 import { submitContactForm } from '../services/contactService';
 import { getSubscriptionPlans } from '../services/pricingService';
+import { Chatbot } from './Chatbot';
 
 interface LandingPageProps {
   onGetStarted: () => void;
@@ -954,6 +955,17 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onSignIn
           transition: background-color 0.3s ease, backdrop-filter 0.3s ease;
         }
       `}</style>
+      <Chatbot 
+        systemPrompt={`You are a helpful assistant for LoadMaster, a trucking load management platform. Help users understand the platform's features, pricing, and how to get started. 
+
+Key information about LoadMaster:
+- LoadMaster is a comprehensive trucking load management platform
+- Pricing plans: Essential at $${pricingPlans.essential.monthly}/month, Professional at $${pricingPlans.professional.monthly}/month
+- Features include: Fleet management, load tracking, dispatcher management, driver management, financial reporting, and AI-powered analytics
+- Users can sign up to get started or contact for more information
+
+Be friendly, concise, and professional. Always encourage users to sign up or contact for more information.`}
+      />
     </div>
   );
 };

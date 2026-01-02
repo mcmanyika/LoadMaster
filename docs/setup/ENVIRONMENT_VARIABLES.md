@@ -81,6 +81,30 @@ GEMINI_API_KEY=AIzaSyAbC123...
 
 ---
 
+### `VITE_OPENAI_API_KEY` (Optional)
+
+**What it is:**
+OpenAI API key for the chatbot feature on the landing page.
+
+**Where to find it:**
+1. Go to [OpenAI API Keys](https://platform.openai.com/api-keys)
+2. Sign in or create an account
+3. Click "Create new secret key"
+4. Copy the key (it starts with `sk-`)
+
+**Example:**
+```env
+VITE_OPENAI_API_KEY=sk-...
+```
+
+**Security Note:**
+- This key will be exposed in the frontend bundle
+- For production, consider using a Supabase Edge Function to proxy OpenAI calls for better security
+- Set usage limits in your OpenAI account to control costs
+- The chatbot uses `gpt-4o-mini` model by default (cost-effective option)
+
+---
+
 ## Complete `.env.local` Example
 
 Create a `.env.local` file in your project root:
@@ -92,6 +116,7 @@ VITE_BACKEND_API_URL=http://localhost:3000
 
 # Optional: AI Features
 GEMINI_API_KEY=your_gemini_api_key_here
+VITE_OPENAI_API_KEY=sk-your_openai_api_key_here
 
 # Supabase (if using)
 VITE_SUPABASE_URL=https://your-project.supabase.co

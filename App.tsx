@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { 
   LayoutDashboard, 
   Truck, 
@@ -18,6 +18,8 @@ import {
   ArrowDown,
   ChevronLeft,
   ChevronRight,
+  ChevronDown,
+  Settings,
   CreditCard,
   Megaphone,
   Calendar,
@@ -194,6 +196,8 @@ function App() {
   const [aiAnalysis, setAiAnalysis] = useState<string | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [showAIModal, setShowAIModal] = useState(false);
+  const [showUserMenu, setShowUserMenu] = useState(false);
+  const userMenuRef = useRef<HTMLDivElement>(null);
   const [view, setView] = useState<'dashboard' | 'loads' | 'fleet' | 'pricing' | 'subscriptions' | 'marketing' | 'company' | 'reports' | 'expenses'>('dashboard');
   const [paymentStatus, setPaymentStatus] = useState<'success' | 'cancel' | null>(null);
   const [paymentPlan, setPaymentPlan] = useState<string | null>(null);
@@ -728,10 +732,28 @@ function App() {
     await fetchData();
   };
 
+  // Close user menu when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (userMenuRef.current && !userMenuRef.current.contains(event.target as Node)) {
+        setShowUserMenu(false);
+      }
+    };
+
+    if (showUserMenu) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [showUserMenu]);
+
   const handleSignOut = async () => {
     await signOut();
     setUser(null);
     setLoads([]);
+    setShowUserMenu(false);
     setShowAuth(false);
     setPendingPlan(null);
     // Force a page reload to ensure clean state
@@ -877,7 +899,7 @@ function App() {
   // For dispatchers: group by driver; For owners: group by dispatcher
   const chartData = useMemo(() => {
     const grouped: Record<string, { name: string, gross: number, loads: number }> = {};
-    processedLoads.forEach(load => {
+    filteredLoads.forEach(load => {
       if (user?.role === 'dispatcher') {
         // For dispatchers, group by driver
         const driverName = load.driverId ? driverMap.get(load.driverId) : 'Unassigned';
@@ -897,7 +919,7 @@ function App() {
       }
     });
     return Object.values(grouped);
-  }, [processedLoads, driverMap, user?.role]);
+  }, [filteredLoads, driverMap, user?.role]);
 
   const handleAddLoad = async (newLoadData: Omit<Load, 'id'>) => {
     try {
@@ -1204,26 +1226,6 @@ function App() {
                 <span className="opacity-0 group-hover:opacity-100 transition-opacity duration-300 whitespace-nowrap overflow-hidden text-slate-300 dark:text-slate-300">Marketing</span>
               </button>
             )}
-            {(user.role === 'owner' || user.role === 'dispatcher') && (
-              <button
-                onClick={() => setView('pricing')}
-                className={`w-full flex items-center justify-center group-hover:justify-start gap-3 px-4 py-3 rounded-xl transition-colors ${view === 'pricing' ? 'bg-blue-600/10 text-blue-400 font-medium' : 'text-slate-300 dark:text-slate-300 hover:bg-slate-800'}`}
-                title="Pricing"
-              >
-                <CreditCard size={20} className="flex-shrink-0" />
-                <span className="opacity-0 group-hover:opacity-100 transition-opacity duration-300 whitespace-nowrap overflow-hidden text-slate-300 dark:text-slate-300">Pricing</span>
-              </button>
-            )}
-            {(user.role === 'owner' || user.role === 'dispatcher') && (
-              <button
-                onClick={() => setView('subscriptions')}
-                className={`w-full flex items-center justify-center group-hover:justify-start gap-3 px-4 py-3 rounded-xl transition-colors ${view === 'subscriptions' ? 'bg-blue-600/10 text-blue-400 font-medium' : 'text-slate-300 dark:text-slate-300 hover:bg-slate-800'}`}
-                title="My Subscriptions"
-              >
-                <FileText size={20} className="flex-shrink-0" />
-                <span className="opacity-0 group-hover:opacity-100 transition-opacity duration-300 whitespace-nowrap overflow-hidden text-slate-300 dark:text-slate-300">My Subscriptions</span>
-              </button>
-            )}
             {(user.role === 'owner' || user.role === 'dispatch_company') && (
               <button
                 onClick={() => setView('company')}
@@ -1276,6 +1278,66 @@ function App() {
               </div>
             </div>
             <div className="flex items-center gap-4">
+              {user && (
+                <div className="relative" ref={userMenuRef}>
+                  <button
+                    onClick={() => setShowUserMenu(!showUserMenu)}
+                    className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 transition-colors cursor-pointer"
+                  >
+                    <div className="w-7 h-7 rounded-full bg-blue-500 flex items-center justify-center text-white font-semibold text-xs">
+                      {user.name.charAt(0).toUpperCase()}
+                    </div>
+                    <span className="text-sm font-medium text-slate-700 dark:text-slate-200">{user.name}</span>
+                    <ChevronDown size={16} className={`text-slate-500 dark:text-slate-400 transition-transform ${showUserMenu ? 'rotate-180' : ''}`} />
+                  </button>
+                  
+                  {showUserMenu && (
+                    <div className="absolute right-0 mt-2 w-48 bg-white dark:bg-slate-800 rounded-lg shadow-lg border border-slate-200 dark:border-slate-700 py-1 z-50">
+                      <button
+                        onClick={() => {
+                          setView('company');
+                          setShowUserMenu(false);
+                        }}
+                        className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
+                      >
+                        <Settings size={16} />
+                        Profile
+                      </button>
+                      <button
+                        onClick={() => {
+                          setView('subscriptions');
+                          setShowUserMenu(false);
+                        }}
+                        className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
+                      >
+                        <CreditCard size={16} />
+                        My Subscriptions
+                      </button>
+                      <button
+                        onClick={() => {
+                          setView('pricing');
+                          setShowUserMenu(false);
+                        }}
+                        className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
+                      >
+                        <DollarSign size={16} />
+                        Pricing
+                      </button>
+                      <div className="border-t border-slate-200 dark:border-slate-700 my-1"></div>
+                      <button
+                        onClick={() => {
+                          handleSignOut();
+                          setShowUserMenu(false);
+                        }}
+                        className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-red-600 dark:text-red-400 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
+                      >
+                        <LogOut size={16} />
+                        Logout
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
               <button
                 onClick={() => setShowAIModal(true)}
                 className="flex items-center gap-2 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 px-4 py-2.5 rounded-lg text-sm font-medium transition-all"
