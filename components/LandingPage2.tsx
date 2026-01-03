@@ -460,7 +460,7 @@ export const LandingPage2: React.FC<LandingPage2Props> = ({
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-16">
             <h2 className="text-4xl md:text-5xl font-bold text-slate-900 mb-4">
-              We are awesome team<br />for your business dream
+              Awesome tool for your business
             </h2>
             <p className="text-lg text-slate-600 max-w-2xl mx-auto">
               LoadMaster provides comprehensive trucking load management solutions. Streamline your operations, track loads, and grow your business with our powerful platform.
