@@ -264,4 +264,3 @@ supabase_migrations/
 ## Benefits of This Architecture
 
 1. **No Separate Backend**: Uses Supabase Edge Functions (serverless)
-2. **Simplified Deployment**: No need to manage Node.js server

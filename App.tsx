@@ -28,7 +28,8 @@ import {
   FileDown,
   Receipt,
   TrendingUp,
-  Trash
+  Trash,
+  Shield
 } from 'lucide-react';
 import { Load, DispatcherName, CalculatedLoad, UserProfile, Driver } from './types';
 import { StatsCard } from './components/StatsCard';
@@ -43,6 +44,7 @@ import { Subscriptions } from './components/Subscriptions';
 import { Marketing } from './components/Marketing';
 import { CompanySettings } from './components/CompanySettings';
 import { ProfileSetup } from './components/ProfileSetup';
+import { AdminDashboard } from './components/AdminDashboard';
 import { Reports } from './components/reports/Reports';
 import { Expenses } from './components/Expenses';
 import { ErrorModal } from './components/ErrorModal';
@@ -198,7 +200,7 @@ function App() {
   const [showAIModal, setShowAIModal] = useState(false);
   const [showUserMenu, setShowUserMenu] = useState(false);
   const userMenuRef = useRef<HTMLDivElement>(null);
-  const [view, setView] = useState<'dashboard' | 'loads' | 'fleet' | 'pricing' | 'subscriptions' | 'marketing' | 'company' | 'reports' | 'expenses'>('dashboard');
+  const [view, setView] = useState<'dashboard' | 'loads' | 'fleet' | 'pricing' | 'subscriptions' | 'marketing' | 'company' | 'reports' | 'expenses' | 'admin'>('dashboard');
   const [paymentStatus, setPaymentStatus] = useState<'success' | 'cancel' | null>(null);
   const [paymentPlan, setPaymentPlan] = useState<string | null>(null);
   const [paymentSessionId, setPaymentSessionId] = useState<string | null>(null);
@@ -1217,14 +1219,24 @@ function App() {
               </button>
             )}
             {user.email === 'partsonmanyika@gmail.com' && (
-              <button
-                onClick={() => setView('marketing')}
-                className={`w-full flex items-center justify-center group-hover:justify-start gap-3 px-4 py-3 rounded-xl transition-colors ${view === 'marketing' ? 'bg-blue-600/10 text-blue-400 font-medium' : 'text-slate-300 dark:text-slate-300 hover:bg-slate-800'}`}
-                title="Marketing"
-              >
-                <Megaphone size={20} className="flex-shrink-0" />
-                <span className="opacity-0 group-hover:opacity-100 transition-opacity duration-300 whitespace-nowrap overflow-hidden text-slate-300 dark:text-slate-300">Marketing</span>
-              </button>
+              <>
+                <button
+                  onClick={() => setView('admin')}
+                  className={`w-full flex items-center justify-center group-hover:justify-start gap-3 px-4 py-3 rounded-xl transition-colors ${view === 'admin' ? 'bg-blue-600/10 text-blue-400 font-medium' : 'text-slate-300 dark:text-slate-300 hover:bg-slate-800'}`}
+                  title="Admin Dashboard"
+                >
+                  <Shield size={20} className="flex-shrink-0" />
+                  <span className="opacity-0 group-hover:opacity-100 transition-opacity duration-300 whitespace-nowrap overflow-hidden text-slate-300 dark:text-slate-300">Admin</span>
+                </button>
+                <button
+                  onClick={() => setView('marketing')}
+                  className={`w-full flex items-center justify-center group-hover:justify-start gap-3 px-4 py-3 rounded-xl transition-colors ${view === 'marketing' ? 'bg-blue-600/10 text-blue-400 font-medium' : 'text-slate-300 dark:text-slate-300 hover:bg-slate-800'}`}
+                  title="Marketing"
+                >
+                  <Megaphone size={20} className="flex-shrink-0" />
+                  <span className="opacity-0 group-hover:opacity-100 transition-opacity duration-300 whitespace-nowrap overflow-hidden text-slate-300 dark:text-slate-300">Marketing</span>
+                </button>
+              </>
             )}
             {(user.role === 'owner' || user.role === 'dispatch_company') && (
               <button
@@ -1270,7 +1282,7 @@ function App() {
             <div className="flex items-center gap-4">
               <div>
                 <h1 className="text-2xl font-bold text-slate-800 dark:text-slate-100">
-                  {view === 'dashboard' ? 'Fleet Overview' : view === 'fleet' ? 'Fleet Management' : view === 'pricing' ? 'Pricing Plans' : view === 'subscriptions' ? 'My Subscriptions' : view === 'marketing' ? 'Marketing Management' : view === 'reports' ? 'Reports' : view === 'expenses' ? 'Expenses' : view === 'company' ? 'Company Settings' : 'Load Management'}
+                  {view === 'dashboard' ? 'Fleet Overview' : view === 'fleet' ? 'Fleet Management' : view === 'pricing' ? 'Pricing Plans' : view === 'subscriptions' ? 'My Subscriptions' : view === 'marketing' ? 'Marketing Management' : view === 'reports' ? 'Reports' : view === 'expenses' ? 'Expenses' : view === 'company' ? 'Company Settings' : view === 'admin' ? 'Admin Dashboard' : 'Load Management'}
                 </h1>
                 {companyName && user.role === 'dispatcher' && (
                   <p className="text-sm text-slate-500 mt-1">{companyName}</p>
@@ -1347,7 +1359,7 @@ function App() {
               </button>
               <ThemeToggle />
               {dataLoading && <span className="text-sm text-slate-400 dark:text-slate-500 animate-pulse">Syncing...</span>}
-               {view !== 'fleet' && view !== 'pricing' && view !== 'subscriptions' && view !== 'marketing' && view !== 'company' && view !== 'expenses' && (
+               {view !== 'fleet' && view !== 'pricing' && view !== 'subscriptions' && view !== 'marketing' && view !== 'company' && view !== 'expenses' && view !== 'admin' && (
                  <div className="flex items-center gap-2">
                   {ownerCompanyName && user.role === 'dispatcher' && (
                     <span className="text-sm text-slate-500 dark:text-slate-400">
@@ -1409,6 +1421,8 @@ function App() {
                 }
               }}
             />
+          ) : view === 'admin' ? (
+            <AdminDashboard />
           ) : (
         <div className="mx-auto px-4 py-8 space-y-8">
           
