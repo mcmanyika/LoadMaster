@@ -1109,7 +1109,7 @@ function App() {
     return (
       <ThemeProvider>
         {showAuth ? (
-          <Auth onLogin={setUser} initialMode={authMode} />
+          <Auth onLogin={setUser} initialMode={authMode} onBack={() => setShowAuth(false)} />
         ) : (
           <LandingPage2
             onGetStarted={() => {

@@ -157,6 +157,22 @@ export const LandingPage2: React.FC<LandingPage2Props> = ({
     setMobileMenuOpen(false);
   };
 
+  const handleLogoClick = () => {
+    const element = document.getElementById('home');
+    if (element) {
+      const offset = 80; // Account for fixed header height
+      const elementPosition = element.getBoundingClientRect().top;
+      const offsetPosition = elementPosition + window.pageYOffset - offset;
+
+      window.scrollTo({
+        top: offsetPosition,
+        behavior: 'smooth'
+      });
+    }
+    // Close mobile menu if open
+    setMobileMenuOpen(false);
+  };
+
   return (
     <div className="min-h-screen bg-white text-slate-900">
       {/* Navigation */}
@@ -165,12 +181,15 @@ export const LandingPage2: React.FC<LandingPage2Props> = ({
       }`}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-20">
-            <div className="flex items-center gap-2">
+            <button
+              onClick={handleLogoClick}
+              className="flex items-center gap-2 cursor-pointer hover:opacity-80 transition-opacity"
+            >
               <div className="p-2 bg-blue-600 rounded-lg">
                 <Truck className="h-6 w-6 text-white" />
               </div>
               <span className="text-2xl font-bold text-slate-900">LoadMaster</span>
-            </div>
+            </button>
 
             {/* Desktop Menu */}
             <div className="hidden md:flex items-center gap-8">
