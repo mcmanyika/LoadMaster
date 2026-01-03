@@ -50,7 +50,7 @@ import { Expenses } from './components/Expenses';
 import { ErrorModal } from './components/ErrorModal';
 import { ConfirmModal } from './components/ConfirmModal';
 import { DispatcherCompaniesList } from './components/DispatcherCompaniesList';
-import { LandingPage } from './components/LandingPage';
+import { LandingPage2 } from './components/LandingPage2';
 import { PrivacyPolicy } from './components/PrivacyPolicy';
 import { TermsOfService } from './components/TermsOfService';
 import { ThemeProvider, useTheme } from './contexts/ThemeContext';
@@ -164,6 +164,7 @@ function App() {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedDriverId, setSelectedDriverId] = useState<string>('');
   const [showAuth, setShowAuth] = useState(false);
+  const [authMode, setAuthMode] = useState<'login' | 'signup'>('login');
   const [pendingPlan, setPendingPlan] = useState<{ planId: 'essential' | 'professional'; interval: 'month' | 'year' } | null>(null);
   
   // Helper function to get current week (Monday to Saturday)
@@ -1108,11 +1109,17 @@ function App() {
     return (
       <ThemeProvider>
         {showAuth ? (
-          <Auth onLogin={setUser} />
+          <Auth onLogin={setUser} initialMode={authMode} />
         ) : (
-          <LandingPage
-            onGetStarted={() => setShowAuth(true)}
-            onSignIn={() => setShowAuth(true)}
+          <LandingPage2
+            onGetStarted={() => {
+              setAuthMode('signup');
+              setShowAuth(true);
+            }}
+            onSignIn={() => {
+              setAuthMode('login');
+              setShowAuth(true);
+            }}
             onSelectPlan={(planId, interval) => {
               setPendingPlan({ planId, interval });
               setShowAuth(true);

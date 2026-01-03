@@ -7,10 +7,11 @@ import { RegistrationSuccess } from './RegistrationSuccess';
 
 interface AuthProps {
   onLogin: (user: UserProfile) => void;
+  initialMode?: 'login' | 'signup';
 }
 
-export const Auth: React.FC<AuthProps> = ({ onLogin }) => {
-  const [isLogin, setIsLogin] = useState(true);
+export const Auth: React.FC<AuthProps> = ({ onLogin, initialMode = 'login' }) => {
+  const [isLogin, setIsLogin] = useState(initialMode === 'login');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [registrationSuccess, setRegistrationSuccess] = useState<{ user: UserProfile; name: string; role: string } | null>(null);
