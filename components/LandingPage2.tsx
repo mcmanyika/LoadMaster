@@ -448,7 +448,7 @@ export const LandingPage2: React.FC<LandingPage2Props> = ({
               </div>
               <h4 className="text-xl font-bold text-slate-900 mb-3">Book Your Providers</h4>
               <p className="text-slate-600">
-                Manage dispatchers and drivers efficiently. Streamline your booking process and optimize your fleet operations.
+                Manage dispatchers and drivers efficiently. Streamline your load tracking process and optimize your fleet operations.
               </p>
             </div>
           </div>
@@ -463,7 +463,7 @@ export const LandingPage2: React.FC<LandingPage2Props> = ({
               Awesome tool for your business
             </h2>
             <p className="text-lg text-slate-600 max-w-2xl mx-auto">
-              LoadMaster provides comprehensive trucking load management solutions. Streamline your operations, track loads, and grow your business with our powerful platform.
+              Streamline your load tracking process and optimize your fleet operations.
             </p>
           </div>
           <div className="grid md:grid-cols-3 gap-8">
