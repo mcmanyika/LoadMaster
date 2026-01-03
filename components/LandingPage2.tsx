@@ -769,7 +769,7 @@ export const LandingPage2: React.FC<LandingPage2Props> = ({
           </div>
           <div className="border-t border-slate-800 pt-8 flex flex-col md:flex-row justify-between items-center">
             <p className="text-slate-400 text-sm">
-              © 2024. All rights reserved. Designed by LoadMaster.
+              © 2024. All rights reserved.
             </p>
             <div className="flex gap-6 mt-4 md:mt-0">
               {onPrivacyClick && (
