@@ -75,36 +75,38 @@ export const Chatbot: React.FC<ChatbotProps> = ({
   return (
     <>
       {/* Chat Button */}
-      <button
-        onClick={() => setIsOpen(!isOpen)}
-        className="fixed bottom-6 right-6 z-50 w-14 h-14 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white rounded-full shadow-lg shadow-blue-600/50 hover:shadow-blue-600/70 flex items-center justify-center transition-all duration-300 hover:scale-110 active:scale-95"
-        aria-label="Open chatbot"
-      >
-        {isOpen ? <X size={24} /> : <MessageSquare size={24} />}
-      </button>
+      {!isOpen && (
+        <button
+          onClick={() => setIsOpen(!isOpen)}
+          className="fixed bottom-6 right-6 z-50 w-14 h-14 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white rounded-full shadow-lg shadow-blue-600/50 hover:shadow-blue-600/70 flex items-center justify-center transition-all duration-300 hover:scale-110 active:scale-95"
+          aria-label="Open chatbot"
+        >
+          <MessageSquare size={24} />
+        </button>
+      )}
 
       {/* Chat Window */}
       {isOpen && (
-        <div className="fixed bottom-24 right-6 z-50 w-96 h-[600px] bg-white dark:bg-slate-800 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-700 flex flex-col overflow-hidden">
-          {/* Header */}
-          <div className="bg-gradient-to-r from-blue-600 to-blue-700 p-4 flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center">
-                <MessageSquare size={20} className="text-white" />
-              </div>
-              <div>
-                <h3 className="text-white font-semibold">LoadMaster Assistant</h3>
-                <p className="text-blue-100 text-xs">Ask me anything!</p>
-              </div>
-            </div>
-            <button
-              onClick={() => setIsOpen(false)}
-              className="text-white hover:bg-white/20 rounded-lg p-1 transition-colors"
-              aria-label="Close chatbot"
-            >
-              <X size={20} />
-            </button>
+        <div className="fixed bottom-6 right-6 z-50 w-96 h-[600px] bg-white dark:bg-slate-800 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-700 flex flex-col overflow-hidden">
+      {/* Header */}
+      <div className="bg-gradient-to-r from-blue-600 to-blue-700 p-4 flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center">
+            <MessageSquare size={20} className="text-white" />
           </div>
+          <div>
+            <h3 className="text-white font-semibold">LoadMaster Assistant</h3>
+            <p className="text-blue-100 text-xs">Ask me anything!</p>
+          </div>
+        </div>
+        <button
+          onClick={() => setIsOpen(false)}
+          className="text-white hover:bg-white/20 rounded-lg p-1 transition-colors"
+          aria-label="Close chatbot"
+        >
+          <X size={20} />
+        </button>
+      </div>
 
           {/* Messages */}
           <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-slate-50 dark:bg-slate-900">

@@ -1749,7 +1749,7 @@ function App() {
                               </div>
                             </td>
                             <td className="p-4">
-                              <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                              <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium whitespace-nowrap ${
                                 load.status === 'Factored' 
                                   ? 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-800 dark:text-emerald-300' 
                                   : 'bg-amber-100 dark:bg-amber-900/30 text-amber-800 dark:text-amber-300'
