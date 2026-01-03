@@ -162,7 +162,7 @@ export const getUserStatistics = async (filters?: AdminFilters): Promise<UserSta
     // Get all profiles
     const { data: profiles, error } = await supabase
       .from('profiles')
-      .select('id, email, name, role, status, subscription_plan, created_at')
+      .select('id, email, name, role, status, subscription_plan, company_id, created_at')
       .order('created_at', { ascending: false });
 
     if (error) throw error;
@@ -171,7 +171,72 @@ export const getUserStatistics = async (filters?: AdminFilters): Promise<UserSta
     
     // Apply company filter if provided
     if (filters?.companyId) {
-      users = users.filter(u => u.company_id === filters.companyId);
+      // Get all user IDs associated with this company through various means:
+      // 1. Direct company_id in profiles
+      // 2. Dispatcher associations
+      // 3. Driver associations
+      // 4. Company owner
+      
+      const associatedUserIds = new Set<string>();
+      
+      // 1. Users with direct company_id
+      const directUsers = users.filter(u => u.company_id === filters.companyId);
+      directUsers.forEach(u => associatedUserIds.add(u.id));
+      
+      // 2. Get company owner
+      const { data: company } = await supabase
+        .from('companies')
+        .select('owner_id')
+        .eq('id', filters.companyId)
+        .single();
+      
+      if (company?.owner_id) {
+        associatedUserIds.add(company.owner_id);
+      }
+      
+      // 3. Get dispatchers associated with this company
+      const { data: dispatcherAssociations, error: dispatcherError } = await supabase
+        .from('dispatcher_company_associations')
+        .select('dispatcher_id')
+        .eq('company_id', filters.companyId)
+        .eq('status', 'active');
+      
+      if (dispatcherError) {
+        console.error('[getUserStatistics] Error fetching dispatcher associations:', dispatcherError);
+      } else if (dispatcherAssociations) {
+        dispatcherAssociations.forEach(a => {
+          if (a.dispatcher_id) associatedUserIds.add(a.dispatcher_id);
+        });
+      }
+      
+      // 4. Get drivers associated with this company
+      const { data: driverAssociations, error: driverError } = await supabase
+        .from('driver_company_associations')
+        .select('driver_id')
+        .eq('company_id', filters.companyId)
+        .eq('status', 'active');
+      
+      if (driverError) {
+        console.error('[getUserStatistics] Error fetching driver associations:', driverError);
+      } else if (driverAssociations) {
+        driverAssociations.forEach(a => {
+          if (a.driver_id) associatedUserIds.add(a.driver_id);
+        });
+      }
+      
+      // Filter users to only those associated with the company
+      users = users.filter(u => associatedUserIds.has(u.id));
+      
+      // Debug logging
+      console.log('[getUserStatistics] Company filter applied:', {
+        companyId: filters.companyId,
+        associatedUserIds: Array.from(associatedUserIds),
+        filteredUsersCount: users.length,
+        directUsersCount: directUsers.length,
+        dispatcherAssociationsCount: dispatcherAssociations?.length || 0,
+        driverAssociationsCount: driverAssociations?.length || 0,
+        ownerId: company?.owner_id,
+      });
     }
     
     const thirtyDaysAgo = new Date();
