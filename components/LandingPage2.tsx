@@ -19,7 +19,8 @@ import {
   Target,
   Rocket,
   Award,
-  MessageSquare
+  MessageSquare,
+  Star
 } from 'lucide-react';
 import { submitContactForm } from '../services/contactService';
 import { getSubscriptionPlans } from '../services/pricingService';
@@ -455,66 +456,66 @@ export const LandingPage2: React.FC<LandingPage2Props> = ({
         </div>
       </section>
 
-      {/* We are awesome team section */}
-      <section id="about" className="py-20 bg-white">
+      {/* Testimonials Section */}
+      <section className="py-20 bg-slate-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-16">
             <h2 className="text-4xl md:text-5xl font-bold text-slate-900 mb-4">
-              Awesome tool for your business
+              What our customers say
             </h2>
             <p className="text-lg text-slate-600 max-w-2xl mx-auto">
-              Streamline your load tracking process and optimize your fleet operations.
+              Don't just take our word for it. See what trucking companies are saying about LoadMaster.
             </p>
           </div>
           <div className="grid md:grid-cols-3 gap-8">
-            <div 
-              className="relative"
-              style={{
-                animation: 'fadeInUp 0.8s ease-out 0.2s both',
-              }}
-            >
-              <div className="absolute -left-4 top-0 w-12 h-12 bg-blue-600 rounded-full flex items-center justify-center text-white font-bold text-xl">
-                1
-              </div>
-              <div className="pl-8 pt-6">
-                <h3 className="text-2xl font-bold text-slate-900 mb-3">Project Initialization</h3>
-                <p className="text-slate-600">
-                  Get started quickly with our intuitive setup process. Create your company profile and start managing loads in minutes.
+            {[
+              {
+                name: 'Michael Rodriguez',
+                company: 'Rodriguez Transport',
+                role: 'Fleet Manager',
+                rating: 5,
+                feedback: 'LoadMaster has completely transformed how we manage our fleet. The real-time tracking and dispatcher coordination features have saved us countless hours. Our efficiency has increased by 40% since switching to LoadMaster.',
+              },
+              {
+                name: 'Sarah Chen',
+                company: 'Chen Logistics',
+                role: 'Operations Director',
+                rating: 5,
+                feedback: 'The analytics and reporting tools are incredible. We can now make data-driven decisions that have directly improved our bottom line. The 24/7 support team is also fantastic - they\'re always there when we need help.',
+              },
+              {
+                name: 'James Thompson',
+                company: 'Thompson Freight',
+                role: 'Owner',
+                rating: 5,
+                feedback: 'As a small fleet owner, I was worried about the complexity, but LoadMaster is so intuitive. We were up and running in days, not weeks. The cost savings from better route optimization alone paid for the subscription in the first month.',
+              },
+            ].map((testimonial, index) => (
+              <div
+                key={index}
+                className="bg-white p-8 rounded-xl shadow-sm hover:shadow-lg transition-shadow"
+                style={{
+                  animation: `fadeInUp 0.8s ease-out ${0.2 + index * 0.1}s both`,
+                }}
+              >
+                <div className="flex items-center gap-1 mb-4">
+                  {[...Array(testimonial.rating)].map((_, i) => (
+                    <Star
+                      key={i}
+                      className="h-5 w-5 text-yellow-400 fill-yellow-400"
+                    />
+                  ))}
+                </div>
+                <p className="text-slate-700 mb-6 italic">
+                  "{testimonial.feedback}"
                 </p>
+                <div className="border-t border-slate-200 pt-4">
+                  <p className="font-semibold text-slate-900">{testimonial.name}</p>
+                  <p className="text-sm text-slate-600">{testimonial.role}</p>
+                  <p className="text-sm text-blue-600 font-medium">{testimonial.company}</p>
+                </div>
               </div>
-            </div>
-            <div 
-              className="relative"
-              style={{
-                animation: 'fadeInUp 0.8s ease-out 0.4s both',
-              }}
-            >
-              <div className="absolute -left-4 top-0 w-12 h-12 bg-blue-600 rounded-full flex items-center justify-center text-white font-bold text-xl">
-                2
-              </div>
-              <div className="pl-8 pt-6">
-                <h3 className="text-2xl font-bold text-slate-900 mb-3">Looking for Creative</h3>
-                <p className="text-slate-600">
-                  Leverage AI-powered analytics and insights to optimize your routes, reduce costs, and maximize efficiency.
-                </p>
-              </div>
-            </div>
-            <div 
-              className="relative"
-              style={{
-                animation: 'fadeInUp 0.8s ease-out 0.6s both',
-              }}
-            >
-              <div className="absolute -left-4 top-0 w-12 h-12 bg-blue-600 rounded-full flex items-center justify-center text-white font-bold text-xl">
-                3
-              </div>
-              <div className="pl-8 pt-6">
-                <h3 className="text-2xl font-bold text-slate-900 mb-3">Market Development</h3>
-                <p className="text-slate-600">
-                  Scale your operations with confidence. Connect with more partners and expand your trucking business.
-                </p>
-              </div>
-            </div>
+            ))}
           </div>
         </div>
       </section>
