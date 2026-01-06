@@ -1,10 +1,24 @@
-import React, { useState, useEffect, useMemo } from 'react';
-import { UserProfile, CalculatedLoad, Driver, Dispatcher } from '../types';
-import { getLoads, getDispatchers, getDrivers } from '../services/loadService';
-import { analyzeRoutes, RouteAnalysis, RouteAnalysisFilters, getRouteColor } from '../services/routeAnalysisService';
-import { PlacesAutocomplete } from './PlacesAutocomplete';
-import { supabase } from '../services/supabaseClient';
-import { Route, Filter, X, TrendingUp, DollarSign, MapPin, Calendar, Maximize2 } from 'lucide-react';
+import React, { useState, useEffect, useMemo } from "react";
+import { UserProfile, CalculatedLoad, Driver, Dispatcher } from "../types";
+import { getLoads, getDispatchers, getDrivers } from "../services/loadService";
+import {
+  analyzeRoutes,
+  RouteAnalysis,
+  RouteAnalysisFilters,
+  getRouteColor,
+} from "../services/routeAnalysisService";
+import { PlacesAutocomplete } from "./PlacesAutocomplete";
+import { supabase } from "../services/supabaseClient";
+import {
+  Route,
+  Filter,
+  X,
+  TrendingUp,
+  DollarSign,
+  MapPin,
+  Calendar,
+  Maximize2,
+} from "lucide-react";
 import {
   ScatterChart,
   Scatter,
@@ -14,13 +28,13 @@ import {
   Tooltip,
   Legend,
   ResponsiveContainer,
-  Cell
-} from 'recharts';
+  Cell,
+} from "recharts";
 
 // Helper functions for scatter chart
 const getBubbleSize = (
-  amount: number, 
-  minSize: number = 8, 
+  amount: number,
+  minSize: number = 8,
   maxSize: number = 50,
   minAmount: number = 0,
   maxAmount: number = 5000
@@ -28,7 +42,7 @@ const getBubbleSize = (
   // Normalize amount to 0-1 range based on actual data range
   const range = maxAmount - minAmount;
   if (range <= 0) return (minSize + maxSize) / 2; // Default size if no range
-  
+
   const normalized = (amount - minAmount) / range;
   // Clamp between 0 and 1
   const clamped = Math.max(0, Math.min(1, normalized));
@@ -36,10 +50,10 @@ const getBubbleSize = (
 };
 
 const getBubbleColor = (averageRatePerMile: number): string => {
-  if (averageRatePerMile > 2.5) return '#10b981'; // Green - very profitable
-  if (averageRatePerMile > 2.0) return '#3b82f6'; // Blue - profitable
-  if (averageRatePerMile > 1.5) return '#f59e0b'; // Orange - moderate
-  return '#ef4444'; // Red - low profitability
+  if (averageRatePerMile > 2.5) return "#10b981"; // Green - very profitable
+  if (averageRatePerMile > 2.0) return "#3b82f6"; // Blue - profitable
+  if (averageRatePerMile > 1.5) return "#f59e0b"; // Orange - moderate
+  return "#ef4444"; // Red - low profitability
 };
 
 interface RouteAnalysisProps {
@@ -47,23 +61,32 @@ interface RouteAnalysisProps {
   companyId?: string;
 }
 
-export const RouteAnalysisComponent: React.FC<RouteAnalysisProps> = ({ user, companyId }) => {
+export const RouteAnalysisComponent: React.FC<RouteAnalysisProps> = ({
+  user,
+  companyId,
+}) => {
   const [routes, setRoutes] = useState<RouteAnalysis[]>([]);
-  const [selectedRoute, setSelectedRoute] = useState<RouteAnalysis | null>(null);
+  const [selectedRoute, setSelectedRoute] = useState<RouteAnalysis | null>(
+    null
+  );
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [loads, setLoads] = useState<CalculatedLoad[]>([]);
   const [drivers, setDrivers] = useState<Driver[]>([]);
   const [dispatchers, setDispatchers] = useState<Dispatcher[]>([]);
   const [isChartModalOpen, setIsChartModalOpen] = useState(false);
-  const [activeCategories, setActiveCategories] = useState<Set<string>>(new Set(['high', 'profitable', 'moderate', 'low']));
-  
+  const [activeCategories, setActiveCategories] = useState<Set<string>>(
+    new Set(["high", "profitable", "moderate", "low"])
+  );
+
   const [filters, setFilters] = useState<RouteAnalysisFilters>({
-    pickup: '',
-    destination: ''
+    pickup: "",
+    destination: "",
   });
-  
-  const [sortBy, setSortBy] = useState<'loads' | 'gross' | 'rate' | 'profit'>('loads');
+
+  const [sortBy, setSortBy] = useState<"loads" | "gross" | "rate" | "profit">(
+    "loads"
+  );
 
   // Fetch loads and calculate - analyze ALL data regardless of company/dispatcher
   useEffect(() => {
@@ -76,85 +99,90 @@ export const RouteAnalysisComponent: React.FC<RouteAnalysisProps> = ({ user, com
     try {
       // Fetch ALL loads without any company or dispatcher filters
       const loadsData = await getLoads();
-      
+
       // Extract unique company IDs from loads to fetch dispatchers and drivers
-      const uniqueCompanyIds = [...new Set(loadsData.map(load => load.companyId).filter(Boolean))];
-      
+      const uniqueCompanyIds = [
+        ...new Set(loadsData.map((load) => load.companyId).filter(Boolean)),
+      ];
+
       // Fetch all dispatchers and drivers from all companies that have loads
       const [allDispatchersData, allDriversData] = await Promise.all([
         // Fetch dispatchers from all companies
         Promise.all(
-          uniqueCompanyIds.map(companyId => getDispatchers(companyId))
-        ).then(results => results.flat()),
+          uniqueCompanyIds.map((companyId) => getDispatchers(companyId))
+        ).then((results) => results.flat()),
         // Fetch drivers from all companies
         Promise.all(
-          uniqueCompanyIds.map(companyId => getDrivers(companyId))
-        ).then(results => results.flat())
+          uniqueCompanyIds.map((companyId) => getDrivers(companyId))
+        ).then((results) => results.flat()),
       ]);
-      
+
       // Also try to get dispatchers and drivers without company filter (if RLS allows)
       let additionalDispatchers: Dispatcher[] = [];
       let additionalDrivers: Driver[] = [];
-      
+
       try {
         if (supabase) {
           // Try to get all dispatchers
           const { data: allDispatchers } = await supabase
-            .from('dispatchers')
-            .select('*');
+            .from("dispatchers")
+            .select("*");
           if (allDispatchers) {
             additionalDispatchers = allDispatchers.map((d: any) => ({
-              id: d.id || '',
-              name: d.name || '',
-              email: d.email || '',
-              phone: d.phone || '',
+              id: d.id || "",
+              name: d.name || "",
+              email: d.email || "",
+              phone: d.phone || "",
               feePercentage: d.fee_percentage || 12,
-              companyId: d.company_id || ''
+              companyId: d.company_id || "",
             }));
           }
-          
+
           // Try to get all drivers
           const { data: allDrivers } = await supabase
-            .from('drivers')
-            .select('*');
+            .from("drivers")
+            .select("*");
           if (allDrivers) {
             additionalDrivers = allDrivers.map((d: any) => ({
               id: d.id,
               name: d.name,
-              transporterId: d.transporter_id || '',
-              phone: d.phone || '',
-              email: d.email || '',
-              companyId: d.company_id || '',
-              payType: d.pay_type || 'percentage_of_net',
-              payPercentage: d.pay_percentage || 50
+              transporterId: d.transporter_id || "",
+              phone: d.phone || "",
+              email: d.email || "",
+              companyId: d.company_id || "",
+              payType: d.pay_type || "percentage_of_net",
+              payPercentage: d.pay_percentage || 50,
             }));
           }
         }
       } catch (err) {
-        console.warn('Could not fetch all dispatchers/drivers directly, using company-specific data:', err);
+        console.warn(
+          "Could not fetch all dispatchers/drivers directly, using company-specific data:",
+          err
+        );
       }
-      
+
       // Combine and deduplicate dispatchers and drivers
       const dispatchersMap = new Map<string, Dispatcher>();
-      [...allDispatchersData, ...additionalDispatchers].forEach(d => {
+      [...allDispatchersData, ...additionalDispatchers].forEach((d) => {
         if (d.id && !dispatchersMap.has(d.id)) {
           dispatchersMap.set(d.id, d);
         }
       });
-      
+
       const driversMap = new Map<string, Driver>();
-      [...allDriversData, ...additionalDrivers].forEach(d => {
+      [...allDriversData, ...additionalDrivers].forEach((d) => {
         if (d.id && !driversMap.has(d.id)) {
           driversMap.set(d.id, d);
         }
       });
-      
+
       setLoads(loadsData);
       setDrivers(Array.from(driversMap.values()));
       setDispatchers(Array.from(dispatchersMap.values()));
     } catch (err: any) {
-      console.error('Error fetching data:', err);
-      setError(err.message || 'Failed to load data');
+      console.error("Error fetching data:", err);
+      setError(err.message || "Failed to load data");
     } finally {
       setLoading(false);
     }
@@ -163,50 +191,58 @@ export const RouteAnalysisComponent: React.FC<RouteAnalysisProps> = ({ user, com
   // Calculate processed loads with dispatch fees and driver pay (same logic as App.tsx)
   const processedLoads: CalculatedLoad[] = useMemo(() => {
     const dispatcherFeeMap = new Map<string, number>();
-    dispatchers.forEach(dispatcher => {
+    dispatchers.forEach((dispatcher) => {
       dispatcherFeeMap.set(dispatcher.name, dispatcher.feePercentage || 12);
     });
 
-    const driverPayConfigMap = new Map<string, { payType: string, payPercentage: number }>();
-    drivers.forEach(driver => {
+    const driverPayConfigMap = new Map<
+      string,
+      { payType: string; payPercentage: number }
+    >();
+    drivers.forEach((driver) => {
       driverPayConfigMap.set(driver.id, {
-        payType: driver.payType || 'percentage_of_net',
-        payPercentage: driver.payPercentage || 50
+        payType: driver.payType || "percentage_of_net",
+        payPercentage: driver.payPercentage || 50,
       });
     });
 
-    return loads.map(load => {
+    return loads.map((load) => {
       const feePercentage = dispatcherFeeMap.get(load.dispatcher) || 12;
       const dispatchFee = load.gross * (feePercentage / 100);
-      
-      const driverConfig = load.driverId ? driverPayConfigMap.get(load.driverId) : null;
-      const payType = driverConfig?.payType || 'percentage_of_net';
+
+      const driverConfig = load.driverId
+        ? driverPayConfigMap.get(load.driverId)
+        : null;
+      const payType = driverConfig?.payType || "percentage_of_net";
       const payPercentage = driverConfig?.payPercentage || 50;
-      
+
       let driverGasShare: number;
       let companyGasShare: number;
       let driverPay: number;
-      
-      if (payType === 'percentage_of_gross') {
+
+      if (payType === "percentage_of_gross") {
         driverGasShare = 0;
         companyGasShare = load.gasAmount;
         driverPay = load.gross * (payPercentage / 100);
       } else {
         driverGasShare = load.gasAmount * 0.5;
         companyGasShare = load.gasAmount * 0.5;
-        driverPay = (load.gross - dispatchFee) * (payPercentage / 100) - driverGasShare;
+        driverPay =
+          (load.gross - dispatchFee) * (payPercentage / 100) - driverGasShare;
       }
-      
+
       const netProfit = load.gross - dispatchFee - driverPay - companyGasShare;
-      
-      const driverName = load.driverId ? drivers.find(d => d.id === load.driverId)?.name : undefined;
+
+      const driverName = load.driverId
+        ? drivers.find((d) => d.id === load.driverId)?.name
+        : undefined;
 
       return {
         ...load,
         dispatchFee,
         driverPay,
         netProfit,
-        driverName
+        driverName,
       };
     });
   }, [loads, dispatchers, drivers]);
@@ -222,26 +258,26 @@ export const RouteAnalysisComponent: React.FC<RouteAnalysisProps> = ({ user, com
       setLoading(true);
       try {
         const analyzedRoutes = await analyzeRoutes(processedLoads, filters);
-        
+
         // Sort routes
         const sorted = [...analyzedRoutes].sort((a, b) => {
           switch (sortBy) {
-            case 'gross':
+            case "gross":
               return b.averageGross - a.averageGross;
-            case 'rate':
+            case "rate":
               return b.averageRatePerMile - a.averageRatePerMile;
-            case 'profit':
+            case "profit":
               return b.averageNetProfit - a.averageNetProfit;
-            case 'loads':
+            case "loads":
             default:
               return b.totalLoads - a.totalLoads;
           }
         });
-        
+
         setRoutes(sorted);
       } catch (err: any) {
-        console.error('Error analyzing routes:', err);
-        setError(err.message || 'Failed to analyze routes');
+        console.error("Error analyzing routes:", err);
+        setError(err.message || "Failed to analyze routes");
       } finally {
         setLoading(false);
       }
@@ -252,7 +288,7 @@ export const RouteAnalysisComponent: React.FC<RouteAnalysisProps> = ({ user, com
 
   // Toggle category visibility
   const toggleCategory = (category: string) => {
-    setActiveCategories(prev => {
+    setActiveCategories((prev) => {
       const newSet = new Set(prev);
       if (newSet.has(category)) {
         newSet.delete(category);
@@ -265,22 +301,25 @@ export const RouteAnalysisComponent: React.FC<RouteAnalysisProps> = ({ user, com
 
   // Prepare chart data from routes
   const chartData = useMemo(() => {
-    const locationMap = new Map<string, {
-      name: string;
-      totalLoads: number;
-      totalGross: number;
-      totalNetProfit: number;
-      averageGross: number;
-      averageNetProfit: number;
-      averageRatePerMile: number;
-      routes: RouteAnalysis[];
-    }>();
+    const locationMap = new Map<
+      string,
+      {
+        name: string;
+        totalLoads: number;
+        totalGross: number;
+        totalNetProfit: number;
+        averageGross: number;
+        averageNetProfit: number;
+        averageRatePerMile: number;
+        routes: RouteAnalysis[];
+      }
+    >();
 
-    routes.forEach(route => {
+    routes.forEach((route) => {
       // Extract state from destination (e.g., "Dallas, TX" -> "TX" or "Toronto, ON" -> "ON")
-      const destinationParts = route.destination.split(',');
-      let stateName = '';
-      
+      const destinationParts = route.destination.split(",");
+      let stateName = "";
+
       if (destinationParts.length > 1) {
         // Get the last part which should be the state/province
         stateName = destinationParts[destinationParts.length - 1].trim();
@@ -293,7 +332,7 @@ export const RouteAnalysisComponent: React.FC<RouteAnalysisProps> = ({ user, com
           stateName = route.destination; // Use full destination if we can't parse
         }
       }
-      
+
       const stateKey = stateName.toLowerCase();
 
       if (!locationMap.has(stateKey)) {
@@ -305,7 +344,7 @@ export const RouteAnalysisComponent: React.FC<RouteAnalysisProps> = ({ user, com
           averageGross: 0,
           averageNetProfit: 0,
           averageRatePerMile: 0,
-          routes: []
+          routes: [],
         });
       }
       const stateData = locationMap.get(stateKey)!;
@@ -320,21 +359,27 @@ export const RouteAnalysisComponent: React.FC<RouteAnalysisProps> = ({ user, com
       if (data.totalLoads > 0) {
         data.averageGross = data.totalGross / data.totalLoads;
         data.averageNetProfit = data.totalNetProfit / data.totalLoads;
-        const totalMiles = data.routes.reduce((sum, r) => sum + r.totalMiles, 0);
-        const totalGross = data.routes.reduce((sum, r) => sum + r.totalGross, 0);
+        const totalMiles = data.routes.reduce(
+          (sum, r) => sum + r.totalMiles,
+          0
+        );
+        const totalGross = data.routes.reduce(
+          (sum, r) => sum + r.totalGross,
+          0
+        );
         data.averageRatePerMile = totalMiles > 0 ? totalGross / totalMiles : 0;
       }
     });
 
     // Transform to Recharts format
     const points = Array.from(locationMap.values())
-      .map(point => {
+      .map((point) => {
         const ratePerMile = point.averageRatePerMile;
-        let category = 'low';
-        if (ratePerMile > 2.5) category = 'high';
-        else if (ratePerMile > 2.0) category = 'profitable';
-        else if (ratePerMile > 1.5) category = 'moderate';
-        
+        let category = "low";
+        if (ratePerMile > 2.5) category = "high";
+        else if (ratePerMile > 2.0) category = "profitable";
+        else if (ratePerMile > 1.5) category = "moderate";
+
         return {
           state: point.name,
           averageGross: point.averageGross,
@@ -343,26 +388,27 @@ export const RouteAnalysisComponent: React.FC<RouteAnalysisProps> = ({ user, com
           averageNetProfit: point.averageNetProfit,
           totalGross: point.totalGross,
           color: getBubbleColor(ratePerMile),
-          category: category
+          category: category,
         };
       })
-      .filter(point => activeCategories.has(point.category))
+      .filter((point) => activeCategories.has(point.category))
       .sort((a, b) => b.averageGross - a.averageGross); // Sort by average gross descending
-    
+
     // Calculate size based on actual data range for better proportionality
     if (points.length > 0) {
-      const maxGross = Math.max(...points.map(p => p.averageGross));
-      const minGross = Math.min(...points.map(p => p.averageGross));
+      const maxGross = Math.max(...points.map((p) => p.averageGross));
+      const minGross = Math.min(...points.map((p) => p.averageGross));
       const range = maxGross - minGross;
-      
-      return points.map(point => ({
+
+      return points.map((point) => ({
         ...point,
-        size: range > 0 
-          ? getBubbleSize(point.averageGross, 8, 50, minGross, maxGross)
-          : 25 // Default size if all values are the same
+        size:
+          range > 0
+            ? getBubbleSize(point.averageGross, 8, 50, minGross, maxGross)
+            : 25, // Default size if all values are the same
       }));
     }
-    
+
     return points;
   }, [routes, activeCategories]);
 
@@ -376,24 +422,30 @@ export const RouteAnalysisComponent: React.FC<RouteAnalysisProps> = ({ user, com
 
   const handleResetFilters = () => {
     setFilters({
-      pickup: '',
-      destination: ''
+      pickup: "",
+      destination: "",
     });
   };
 
   return (
     <>
-      <svg width="0" height="0" style={{ position: 'absolute' }}>
+      <svg width="0" height="0" style={{ position: "absolute" }}>
         <defs>
-          <filter id="bubbleShadow" x="-50%" y="-50%" width="200%" height="200%">
-            <feGaussianBlur in="SourceAlpha" stdDeviation="3"/>
-            <feOffset dx="0" dy="2" result="offsetblur"/>
+          <filter
+            id="bubbleShadow"
+            x="-50%"
+            y="-50%"
+            width="200%"
+            height="200%"
+          >
+            <feGaussianBlur in="SourceAlpha" stdDeviation="3" />
+            <feOffset dx="0" dy="2" result="offsetblur" />
             <feComponentTransfer>
-              <feFuncA type="linear" slope="0.3"/>
+              <feFuncA type="linear" slope="0.3" />
             </feComponentTransfer>
             <feMerge>
-              <feMergeNode/>
-              <feMergeNode in="SourceGraphic"/>
+              <feMergeNode />
+              <feMergeNode in="SourceGraphic" />
             </feMerge>
           </filter>
           <radialGradient id="bubbleGradient" cx="30%" cy="30%" r="80%">
@@ -406,515 +458,668 @@ export const RouteAnalysisComponent: React.FC<RouteAnalysisProps> = ({ user, com
         </defs>
       </svg>
       <div className="p-6">
-      <div className="mb-6">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-bold text-slate-900 dark:text-slate-100 mb-2">Route Analysis</h1>
-            <p className="text-slate-600 dark:text-slate-400">
-              Analyze route profitability and visualize your most common routes on the map
-            </p>
-          </div>
-          {!loading && routes.length > 0 && (
-            <div className="text-right">
-              <p className="text-sm text-slate-500 dark:text-slate-400">Showing</p>
-              <p className="text-2xl font-bold text-blue-600 dark:text-blue-400">{routes.length}</p>
-              <p className="text-sm text-slate-500 dark:text-slate-400">
-                {routes.length === 1 ? 'route' : 'routes'}
+        <div className="mb-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-3xl font-bold text-slate-900 dark:text-slate-100 mb-2">
+                Route Analysis
+              </h1>
+              <p className="text-slate-600 dark:text-slate-400">
+                Analyze route profitability and visualize your most common
+                routes on the map
               </p>
             </div>
-          )}
-        </div>
-      </div>
-
-      {error && (
-        <div className="mb-6 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-900/30 rounded-lg p-4">
-          <p className="text-red-800 dark:text-red-300">{error}</p>
-        </div>
-      )}
-
-      {/* Filters */}
-      <div className="mb-6 bg-white dark:bg-slate-800 rounded-lg p-4 border border-slate-200 dark:border-slate-700">
-        <div className="flex flex-wrap gap-4 items-end">
-          <div className="flex-1 min-w-[200px]">
-            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
-              Pickup (Origin)
-            </label>
-            <PlacesAutocomplete
-              value={filters.pickup || ''}
-              onChange={(value) => setFilters({ ...filters, pickup: value })}
-              placeholder="City, ST/Province"
-              className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-white"
-            />
-          </div>
-          <div className="flex-1 min-w-[200px]">
-            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
-              Destination
-            </label>
-            <PlacesAutocomplete
-              value={filters.destination || ''}
-              onChange={(value) => setFilters({ ...filters, destination: value })}
-              placeholder="City, ST/Province"
-              className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-white"
-            />
-          </div>
-          <div className="flex gap-2">
-            <button
-              onClick={handleResetFilters}
-              className="px-4 py-2 border border-slate-300 dark:border-slate-600 rounded-lg text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors"
-            >
-              Reset
-            </button>
-          </div>
-        </div>
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Left: Route List */}
-        <div className="lg:col-span-1 space-y-4">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-xl font-semibold text-slate-900 dark:text-slate-100">Routes</h2>
-            <select
-              value={sortBy}
-              onChange={(e) => setSortBy(e.target.value as typeof sortBy)}
-              className="px-3 py-1.5 text-sm border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-white"
-            >
-              <option value="loads">Sort by Loads</option>
-              <option value="gross">Sort by Avg Gross</option>
-              <option value="rate">Sort by Rate/Mile</option>
-              <option value="profit">Sort by Net Profit</option>
-            </select>
-          </div>
-
-          {loading ? (
-            <div className="text-center py-8">
-              <div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-              <p className="text-slate-600 dark:text-slate-400">Analyzing routes...</p>
-            </div>
-          ) : routes.length === 0 ? (
-            <div className="text-center py-8 text-slate-600 dark:text-slate-400">
-              <MapPin className="w-12 h-12 mx-auto mb-4 opacity-50" />
-              <p>No routes found matching your filters</p>
-            </div>
-          ) : (
-            <div className="space-y-3 max-h-[600px] overflow-y-auto">
-              {routes.map((route) => {
-                const color = getRouteColor(route);
-                return (
-                  <div
-                    key={route.routeId}
-                    onClick={() => handleRouteClick(route)}
-                    className={`p-4 border-2 rounded-lg cursor-pointer transition-all ${
-                      selectedRoute?.routeId === route.routeId
-                        ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20'
-                        : 'border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600 bg-white dark:bg-slate-800'
-                    }`}
-                  >
-                    <div className="flex items-start justify-between mb-2">
-                      <div className="flex-1">
-                        <h3 className="font-semibold text-slate-900 dark:text-slate-100">
-                          {route.origin} → {route.destination}
-                        </h3>
-                        <p className="text-sm text-slate-600 dark:text-slate-400">
-                          {route.totalLoads} load{route.totalLoads !== 1 ? 's' : ''}
-                        </p>
-                      </div>
-                      <div
-                        className="w-4 h-4 rounded-full flex-shrink-0 mt-1"
-                        style={{ backgroundColor: color }}
-                        title={`Rate: $${route.averageRatePerMile.toFixed(2)}/mile`}
-                      />
-                    </div>
-                    <div className="grid grid-cols-2 gap-2 mt-3 text-sm">
-                      <div>
-                        <p className="text-slate-500 dark:text-slate-400">Avg Gross</p>
-                        <p className="font-semibold text-green-600 dark:text-green-400">
-                          ${route.averageGross.toFixed(2)}
-                        </p>
-                      </div>
-                      <div>
-                        <p className="text-slate-500 dark:text-slate-400">Rate/Mile</p>
-                        <p className="font-semibold text-blue-600 dark:text-blue-400">
-                          ${route.averageRatePerMile.toFixed(2)}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </div>
-
-        {/* Right: Scatter Chart Visualization */}
-        <div className="lg:col-span-2">
-          <div className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 overflow-hidden p-6">
-            {loading ? (
-              <div className="flex items-center justify-center h-[600px]">
-                <div className="text-center">
-                  <div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-                  <p className="text-slate-600 dark:text-slate-400">Updating chart...</p>
-                </div>
-              </div>
-            ) : chartData.length === 0 ? (
-              <div className="flex items-center justify-center h-[600px]">
-                <div className="text-center">
-                  <MapPin className="w-12 h-12 mx-auto mb-4 opacity-50 text-slate-400" />
-                  <p className="text-slate-600 dark:text-slate-400">No route data available</p>
-                  <p className="text-sm text-slate-500 dark:text-slate-500 mt-2">
-                    {routes.length > 0 ? 'No destination data found' : 'No routes found matching your filters'}
-                  </p>
-                </div>
-              </div>
-            ) : (
-              <div>
-                <div className="flex items-center justify-between mb-2">
-                  <div>
-                    <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100">
-                      Average Charges by Destination State
-                    </h3>
-                  </div>
-                  <button
-                    onClick={() => setIsChartModalOpen(true)}
-                    className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
-                    title="View fullscreen"
-                  >
-                    <Maximize2 className="w-4 h-4" />
-                    <span className="text-sm">Fullscreen</span>
-                  </button>
-                </div>
-                <ResponsiveContainer width="100%" height={600}>
-                  <ScatterChart
-                    margin={{ top: 80, right: 40, bottom: 100, left: 80 }}
-                  >
-                    <CartesianGrid strokeDasharray="3 3" className="stroke-slate-300 dark:stroke-slate-600" />
-                    <XAxis
-                      type="category"
-                      dataKey="state"
-                      name="State"
-                      angle={-45}
-                      textAnchor="end"
-                      height={100}
-                      className="text-slate-600 dark:text-slate-400"
-                      tick={{ fill: 'currentColor', fontSize: 12 }}
-                    />
-                    <YAxis
-                      type="number"
-                      dataKey="averageGross"
-                      name="Average Gross"
-                      label={{ value: 'Average Charges ($)', angle: -90, position: 'left', offset: 15 }}
-                      className="text-slate-600 dark:text-slate-400"
-                      tick={{ fill: 'currentColor', fontSize: 12 }}
-                      tickFormatter={(value) => `$${value.toLocaleString()}`}
-                    />
-                    <Tooltip
-                      cursor={{ strokeDasharray: '3 3' }}
-                      content={({ active, payload }) => {
-                        if (active && payload && payload[0]) {
-                          const data = payload[0].payload;
-                          return (
-                            <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg p-3 shadow-lg">
-                              <p className="font-bold text-slate-900 dark:text-slate-100 mb-2">{data.state}</p>
-                              <div className="space-y-1 text-sm">
-                                <div className="flex justify-between gap-4">
-                                  <span className="text-slate-600 dark:text-slate-400">Avg Gross:</span>
-                                  <span className="font-semibold text-green-600 dark:text-green-400">
-                                    ${data.averageGross.toFixed(2)}
-                                  </span>
-                                </div>
-                                <div className="flex justify-between gap-4">
-                                  <span className="text-slate-600 dark:text-slate-400">Total Loads:</span>
-                                  <span className="font-semibold">{data.totalLoads}</span>
-                                </div>
-                                <div className="flex justify-between gap-4">
-                                  <span className="text-slate-600 dark:text-slate-400">Rate/Mile:</span>
-                                  <span className="font-semibold text-blue-600 dark:text-blue-400">
-                                    ${data.averageRatePerMile.toFixed(2)}
-                                  </span>
-                                </div>
-                                <div className="flex justify-between gap-4">
-                                  <span className="text-slate-600 dark:text-slate-400">Total Gross:</span>
-                                  <span className="font-semibold text-green-600 dark:text-green-400">
-                                    ${data.totalGross.toFixed(2)}
-                                  </span>
-                                </div>
-                              </div>
-                            </div>
-                          );
-                        }
-                        return null;
-                      }}
-                    />
-                    <Legend
-                      wrapperStyle={{ paddingTop: '20px' }}
-                      content={() => (
-                        <div className="flex flex-wrap gap-4 justify-center text-sm">
-                          <div 
-                            className={`flex items-center gap-2 cursor-pointer transition-opacity ${
-                              activeCategories.has('high') ? 'opacity-100' : 'opacity-40'
-                            }`}
-                            onClick={() => toggleCategory('high')}
-                          >
-                            <div className={`w-4 h-4 rounded-full bg-green-500 ${activeCategories.has('high') ? '' : 'line-through'}`}></div>
-                            <span className="text-slate-600 dark:text-slate-400">High Profitability (&gt;$2.50/mi)</span>
-                          </div>
-                          <div 
-                            className={`flex items-center gap-2 cursor-pointer transition-opacity ${
-                              activeCategories.has('profitable') ? 'opacity-100' : 'opacity-40'
-                            }`}
-                            onClick={() => toggleCategory('profitable')}
-                          >
-                            <div className={`w-4 h-4 rounded-full bg-blue-500 ${activeCategories.has('profitable') ? '' : 'line-through'}`}></div>
-                            <span className="text-slate-600 dark:text-slate-400">Profitable ($2.00-$2.50/mi)</span>
-                          </div>
-                          <div 
-                            className={`flex items-center gap-2 cursor-pointer transition-opacity ${
-                              activeCategories.has('moderate') ? 'opacity-100' : 'opacity-40'
-                            }`}
-                            onClick={() => toggleCategory('moderate')}
-                          >
-                            <div className={`w-4 h-4 rounded-full bg-orange-500 ${activeCategories.has('moderate') ? '' : 'line-through'}`}></div>
-                            <span className="text-slate-600 dark:text-slate-400">Moderate ($1.50-$2.00/mi)</span>
-                          </div>
-                          <div 
-                            className={`flex items-center gap-2 cursor-pointer transition-opacity ${
-                              activeCategories.has('low') ? 'opacity-100' : 'opacity-40'
-                            }`}
-                            onClick={() => toggleCategory('low')}
-                          >
-                            <div className={`w-4 h-4 rounded-full bg-red-500 ${activeCategories.has('low') ? '' : 'line-through'}`}></div>
-                            <span className="text-slate-600 dark:text-slate-400">Low (&lt;$1.50/mi)</span>
-                          </div>
-                        </div>
-                      )}
-                    />
-                    <Scatter
-                      name="Destinations"
-                      data={chartData}
-                      fill="#8884d8"
-                      shape={(props: any) => {
-                        const { cx, cy, payload } = props;
-                        const size = payload.size || 20;
-                        const index = chartData.findIndex(d => d.state === payload.state);
-                        return (
-                          <g>
-                            <circle
-                              cx={cx}
-                              cy={cy}
-                              r={size / 2}
-                              fill={payload.color}
-                              stroke="#fff"
-                              strokeWidth={2}
-                              opacity={0.9}
-                              filter="url(#bubbleShadow)"
-                              style={{
-                                cursor: 'pointer',
-                                pointerEvents: 'all'
-                              }}
-                            />
-                            <circle
-                              cx={cx}
-                              cy={cy}
-                              r={size / 2}
-                              fill="url(#bubbleGradient)"
-                              opacity={0.7}
-                              style={{ pointerEvents: 'none' }}
-                            />
-                          </g>
-                        );
-                      }}
-                    >
-                      {chartData.map((entry, index) => (
-                        <Cell
-                          key={`cell-${index}`}
-                          fill={entry.color}
-                        />
-                      ))}
-                    </Scatter>
-                  </ScatterChart>
-                </ResponsiveContainer>
+            {!loading && routes.length > 0 && (
+              <div className="text-right">
+                <p className="text-sm text-slate-500 dark:text-slate-400">
+                  Showing
+                </p>
+                <p className="text-2xl font-bold text-blue-600 dark:text-blue-400">
+                  {routes.length}
+                </p>
+                <p className="text-sm text-slate-500 dark:text-slate-400">
+                  {routes.length === 1 ? "route" : "routes"}
+                </p>
               </div>
             )}
           </div>
         </div>
-      </div>
 
-      {/* Fullscreen Chart Modal */}
-      {isChartModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-75 p-4" onClick={() => setIsChartModalOpen(false)}>
-          <div className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 w-full h-full max-w-7xl max-h-[95vh] flex flex-col" onClick={(e) => e.stopPropagation()}>
-            <div className="flex items-center justify-between p-6 border-b border-slate-200 dark:border-slate-700">
-              <div>
-                <h2 className="text-2xl font-bold text-slate-900 dark:text-slate-100">
-                  Average Charges by Destination State
-                </h2>
-              </div>
+        {error && (
+          <div className="mb-6 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-900/30 rounded-lg p-4">
+            <p className="text-red-800 dark:text-red-300">{error}</p>
+          </div>
+        )}
+
+        {/* Filters */}
+        <div className="mb-6 bg-white dark:bg-slate-800 rounded-lg p-4 border border-slate-200 dark:border-slate-700">
+          <div className="flex flex-wrap gap-4 items-end">
+            <div className="flex-1 min-w-[200px]">
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                Pickup (Origin)
+              </label>
+              <PlacesAutocomplete
+                value={filters.pickup || ""}
+                onChange={(value) => setFilters({ ...filters, pickup: value })}
+                placeholder="City, ST/Province"
+                className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-white"
+              />
+            </div>
+            <div className="flex-1 min-w-[200px]">
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                Destination
+              </label>
+              <PlacesAutocomplete
+                value={filters.destination || ""}
+                onChange={(value) =>
+                  setFilters({ ...filters, destination: value })
+                }
+                placeholder="City, ST/Province"
+                className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-white"
+              />
+            </div>
+            <div className="flex gap-2">
               <button
-                onClick={() => setIsChartModalOpen(false)}
-                className="p-2 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors"
-                aria-label="Close modal"
+                onClick={handleResetFilters}
+                className="px-4 py-2 border border-slate-300 dark:border-slate-600 rounded-lg text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors"
               >
-                <X className="w-6 h-6 text-slate-600 dark:text-slate-400" />
+                Reset
               </button>
             </div>
-            <div className="flex-1 p-6 overflow-auto">
-              {chartData.length > 0 && (
-                <ResponsiveContainer width="100%" height="100%" minHeight={600}>
-                  <ScatterChart
-                    margin={{ top: 80, right: 40, bottom: 100, left: 80 }}
-                  >
-                    <CartesianGrid strokeDasharray="3 3" className="stroke-slate-300 dark:stroke-slate-600" />
-                    <XAxis
-                      type="category"
-                      dataKey="state"
-                      name="State"
-                      angle={-45}
-                      textAnchor="end"
-                      height={100}
-                      className="text-slate-600 dark:text-slate-400"
-                      tick={{ fill: 'currentColor', fontSize: 12 }}
-                    />
-                    <YAxis
-                      type="number"
-                      dataKey="averageGross"
-                      name="Average Gross"
-                      label={{ value: 'Average Charges ($)', angle: -90, position: 'left', offset: 15 }}
-                      className="text-slate-600 dark:text-slate-400"
-                      tick={{ fill: 'currentColor', fontSize: 12 }}
-                      tickFormatter={(value) => `$${value.toLocaleString()}`}
-                    />
-                    <Tooltip
-                      cursor={{ strokeDasharray: '3 3' }}
-                      content={({ active, payload }) => {
-                        if (active && payload && payload[0]) {
-                          const data = payload[0].payload;
-                          return (
-                            <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg p-3 shadow-lg">
-                              <p className="font-bold text-slate-900 dark:text-slate-100 mb-2">{data.state}</p>
-                              <div className="space-y-1 text-sm">
-                                <div className="flex justify-between gap-4">
-                                  <span className="text-slate-600 dark:text-slate-400">Avg Gross:</span>
-                                  <span className="font-semibold text-green-600 dark:text-green-400">
-                                    ${data.averageGross.toFixed(2)}
-                                  </span>
-                                </div>
-                                <div className="flex justify-between gap-4">
-                                  <span className="text-slate-600 dark:text-slate-400">Total Loads:</span>
-                                  <span className="font-semibold">{data.totalLoads}</span>
-                                </div>
-                                <div className="flex justify-between gap-4">
-                                  <span className="text-slate-600 dark:text-slate-400">Rate/Mile:</span>
-                                  <span className="font-semibold text-blue-600 dark:text-blue-400">
-                                    ${data.averageRatePerMile.toFixed(2)}
-                                  </span>
-                                </div>
-                                <div className="flex justify-between gap-4">
-                                  <span className="text-slate-600 dark:text-slate-400">Total Gross:</span>
-                                  <span className="font-semibold text-green-600 dark:text-green-400">
-                                    ${data.totalGross.toFixed(2)}
-                                  </span>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* Left: Route List */}
+          <div className="lg:col-span-1 space-y-4">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-xl font-semibold text-slate-900 dark:text-slate-100">
+                Routes
+              </h2>
+              <select
+                value={sortBy}
+                onChange={(e) => setSortBy(e.target.value as typeof sortBy)}
+                className="px-3 py-1.5 text-sm border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-white"
+              >
+                <option value="loads">Sort by Loads</option>
+                <option value="gross">Sort by Avg Gross</option>
+                <option value="rate">Sort by Rate/Mile</option>
+                <option value="profit">Sort by Net Profit</option>
+              </select>
+            </div>
+
+            {loading ? (
+              <div className="text-center py-8">
+                <div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+                <p className="text-slate-600 dark:text-slate-400">
+                  Analyzing routes...
+                </p>
+              </div>
+            ) : routes.length === 0 ? (
+              <div className="text-center py-8 text-slate-600 dark:text-slate-400">
+                <MapPin className="w-12 h-12 mx-auto mb-4 opacity-50" />
+                <p>No routes found matching your filters</p>
+              </div>
+            ) : (
+              <div className="space-y-3 max-h-[600px] overflow-y-auto">
+                {routes.map((route) => {
+                  const color = getRouteColor(route);
+                  return (
+                    <div
+                      key={route.routeId}
+                      onClick={() => handleRouteClick(route)}
+                      className={`p-4 border-2 rounded-lg cursor-pointer transition-all ${
+                        selectedRoute?.routeId === route.routeId
+                          ? "border-blue-500 bg-blue-50 dark:bg-blue-900/20"
+                          : "border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600 bg-white dark:bg-slate-800"
+                      }`}
+                    >
+                      <div className="flex items-start justify-between mb-2">
+                        <div className="flex-1">
+                          <h3 className="font-semibold text-slate-900 dark:text-slate-100">
+                            {route.origin} → {route.destination}
+                          </h3>
+                          <p className="text-sm text-slate-600 dark:text-slate-400">
+                            {route.totalLoads} load
+                            {route.totalLoads !== 1 ? "s" : ""}
+                          </p>
+                        </div>
+                        <div
+                          className="w-4 h-4 rounded-full flex-shrink-0 mt-1"
+                          style={{ backgroundColor: color }}
+                          title={`Rate: $${route.averageRatePerMile.toFixed(
+                            2
+                          )}/mile`}
+                        />
+                      </div>
+                      <div className="grid grid-cols-2 gap-2 mt-3 text-sm">
+                        <div>
+                          <p className="text-slate-500 dark:text-slate-400">
+                            Avg Gross
+                          </p>
+                          <p className="font-semibold text-green-600 dark:text-green-400">
+                            ${route.averageGross.toFixed(2)}
+                          </p>
+                        </div>
+                        <div>
+                          <p className="text-slate-500 dark:text-slate-400">
+                            Rate/Mile
+                          </p>
+                          <p className="font-semibold text-blue-600 dark:text-blue-400">
+                            ${route.averageRatePerMile.toFixed(2)}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
+          {/* Right: Scatter Chart Visualization */}
+          <div className="lg:col-span-2">
+            <div className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 overflow-hidden p-6">
+              {loading ? (
+                <div className="flex items-center justify-center h-[600px]">
+                  <div className="text-center">
+                    <div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+                    <p className="text-slate-600 dark:text-slate-400">
+                      Updating chart...
+                    </p>
+                  </div>
+                </div>
+              ) : chartData.length === 0 ? (
+                <div className="flex items-center justify-center h-[600px]">
+                  <div className="text-center">
+                    <MapPin className="w-12 h-12 mx-auto mb-4 opacity-50 text-slate-400" />
+                    <p className="text-slate-600 dark:text-slate-400">
+                      No route data available
+                    </p>
+                    <p className="text-sm text-slate-500 dark:text-slate-500 mt-2">
+                      {routes.length > 0
+                        ? "No destination data found"
+                        : "No routes found matching your filters"}
+                    </p>
+                  </div>
+                </div>
+              ) : (
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <div>
+                      <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100">
+                        Average Charges by Destination State
+                      </h3>
+                    </div>
+                    <button
+                      onClick={() => setIsChartModalOpen(true)}
+                      className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
+                      title="View fullscreen"
+                    >
+                      <Maximize2 className="w-4 h-4" />
+                      <span className="text-sm">Fullscreen</span>
+                    </button>
+                  </div>
+                  <ResponsiveContainer width="100%" height={600}>
+                    <ScatterChart
+                      margin={{ top: 80, right: 40, bottom: 100, left: 80 }}
+                    >
+                      <CartesianGrid
+                        strokeDasharray="3 3"
+                        className="stroke-slate-300 dark:stroke-slate-600"
+                      />
+                      <XAxis
+                        type="category"
+                        dataKey="state"
+                        name="State"
+                        angle={-45}
+                        textAnchor="end"
+                        height={100}
+                        className="text-slate-600 dark:text-slate-400"
+                        tick={{ fill: "currentColor", fontSize: 12 }}
+                      />
+                      <YAxis
+                        type="number"
+                        dataKey="averageGross"
+                        name="Average Gross"
+                        label={{
+                          value: "Average Charges ($)",
+                          angle: -90,
+                          position: "left",
+                          offset: 15,
+                        }}
+                        className="text-slate-600 dark:text-slate-400"
+                        tick={{ fill: "currentColor", fontSize: 12 }}
+                        tickFormatter={(value) => `$${value.toLocaleString()}`}
+                      />
+                      <Tooltip
+                        cursor={{ strokeDasharray: "3 3" }}
+                        content={({ active, payload }) => {
+                          if (active && payload && payload[0]) {
+                            const data = payload[0].payload;
+                            return (
+                              <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg p-3 shadow-lg">
+                                <p className="font-bold text-slate-900 dark:text-slate-100 mb-2">
+                                  {data.state}
+                                </p>
+                                <div className="space-y-1 text-sm">
+                                  <div className="flex justify-between gap-4">
+                                    <span className="text-slate-600 dark:text-slate-400">
+                                      Avg Gross:
+                                    </span>
+                                    <span className="font-semibold text-green-600 dark:text-green-400">
+                                      ${data.averageGross.toFixed(2)}
+                                    </span>
+                                  </div>
+                                  <div className="flex justify-between gap-4">
+                                    <span className="text-slate-600 dark:text-slate-400">
+                                      Total Loads:
+                                    </span>
+                                    <span className="font-semibold">
+                                      {data.totalLoads}
+                                    </span>
+                                  </div>
+                                  <div className="flex justify-between gap-4">
+                                    <span className="text-slate-600 dark:text-slate-400">
+                                      Rate/Mile:
+                                    </span>
+                                    <span className="font-semibold text-blue-600 dark:text-blue-400">
+                                      ${data.averageRatePerMile.toFixed(2)}
+                                    </span>
+                                  </div>
+                                  <div className="flex justify-between gap-4">
+                                    <span className="text-slate-600 dark:text-slate-400">
+                                      Total Gross:
+                                    </span>
+                                    <span className="font-semibold text-green-600 dark:text-green-400">
+                                      ${data.totalGross.toFixed(2)}
+                                    </span>
+                                  </div>
                                 </div>
                               </div>
+                            );
+                          }
+                          return null;
+                        }}
+                      />
+                      <Legend
+                        wrapperStyle={{ paddingTop: "20px" }}
+                        content={() => (
+                          <div className="flex flex-wrap gap-4 justify-center text-sm">
+                            <div
+                              className={`flex items-center gap-2 cursor-pointer transition-opacity ${
+                                activeCategories.has("high")
+                                  ? "opacity-100"
+                                  : "opacity-40"
+                              }`}
+                              onClick={() => toggleCategory("high")}
+                            >
+                              <div
+                                className={`w-4 h-4 rounded-full bg-green-500 ${
+                                  activeCategories.has("high")
+                                    ? ""
+                                    : "line-through"
+                                }`}
+                              ></div>
+                              <span className="text-slate-600 dark:text-slate-400">
+                                High Profitability (&gt;$2.50/mi)
+                              </span>
                             </div>
+                            <div
+                              className={`flex items-center gap-2 cursor-pointer transition-opacity ${
+                                activeCategories.has("profitable")
+                                  ? "opacity-100"
+                                  : "opacity-40"
+                              }`}
+                              onClick={() => toggleCategory("profitable")}
+                            >
+                              <div
+                                className={`w-4 h-4 rounded-full bg-blue-500 ${
+                                  activeCategories.has("profitable")
+                                    ? ""
+                                    : "line-through"
+                                }`}
+                              ></div>
+                              <span className="text-slate-600 dark:text-slate-400">
+                                Profitable ($2.00-$2.50/mi)
+                              </span>
+                            </div>
+                            <div
+                              className={`flex items-center gap-2 cursor-pointer transition-opacity ${
+                                activeCategories.has("moderate")
+                                  ? "opacity-100"
+                                  : "opacity-40"
+                              }`}
+                              onClick={() => toggleCategory("moderate")}
+                            >
+                              <div
+                                className={`w-4 h-4 rounded-full bg-orange-500 ${
+                                  activeCategories.has("moderate")
+                                    ? ""
+                                    : "line-through"
+                                }`}
+                              ></div>
+                              <span className="text-slate-600 dark:text-slate-400">
+                                Moderate ($1.50-$2.00/mi)
+                              </span>
+                            </div>
+                            <div
+                              className={`flex items-center gap-2 cursor-pointer transition-opacity ${
+                                activeCategories.has("low")
+                                  ? "opacity-100"
+                                  : "opacity-40"
+                              }`}
+                              onClick={() => toggleCategory("low")}
+                            >
+                              <div
+                                className={`w-4 h-4 rounded-full bg-red-500 ${
+                                  activeCategories.has("low")
+                                    ? ""
+                                    : "line-through"
+                                }`}
+                              ></div>
+                              <span className="text-slate-600 dark:text-slate-400">
+                                Low (&lt;$1.50/mi)
+                              </span>
+                            </div>
+                          </div>
+                        )}
+                      />
+                      <Scatter
+                        name="Destinations"
+                        data={chartData}
+                        fill="#8884d8"
+                        shape={(props: any) => {
+                          const { cx, cy, payload } = props;
+                          const size = payload.size || 20;
+                          const index = chartData.findIndex(
+                            (d) => d.state === payload.state
                           );
-                        }
-                        return null;
-                      }}
-                    />
-                    <Legend
-                      wrapperStyle={{ paddingTop: '20px' }}
-                      content={() => (
-                        <div className="flex flex-wrap gap-4 justify-center text-sm">
-                          <div 
-                            className={`flex items-center gap-2 cursor-pointer transition-opacity ${
-                              activeCategories.has('high') ? 'opacity-100' : 'opacity-40'
-                            }`}
-                            onClick={() => toggleCategory('high')}
-                          >
-                            <div className={`w-4 h-4 rounded-full bg-green-500 ${activeCategories.has('high') ? '' : 'line-through'}`}></div>
-                            <span className="text-slate-600 dark:text-slate-400">High Profitability (&gt;$2.50/mi)</span>
-                          </div>
-                          <div 
-                            className={`flex items-center gap-2 cursor-pointer transition-opacity ${
-                              activeCategories.has('profitable') ? 'opacity-100' : 'opacity-40'
-                            }`}
-                            onClick={() => toggleCategory('profitable')}
-                          >
-                            <div className={`w-4 h-4 rounded-full bg-blue-500 ${activeCategories.has('profitable') ? '' : 'line-through'}`}></div>
-                            <span className="text-slate-600 dark:text-slate-400">Profitable ($2.00-$2.50/mi)</span>
-                          </div>
-                          <div 
-                            className={`flex items-center gap-2 cursor-pointer transition-opacity ${
-                              activeCategories.has('moderate') ? 'opacity-100' : 'opacity-40'
-                            }`}
-                            onClick={() => toggleCategory('moderate')}
-                          >
-                            <div className={`w-4 h-4 rounded-full bg-orange-500 ${activeCategories.has('moderate') ? '' : 'line-through'}`}></div>
-                            <span className="text-slate-600 dark:text-slate-400">Moderate ($1.50-$2.00/mi)</span>
-                          </div>
-                          <div 
-                            className={`flex items-center gap-2 cursor-pointer transition-opacity ${
-                              activeCategories.has('low') ? 'opacity-100' : 'opacity-40'
-                            }`}
-                            onClick={() => toggleCategory('low')}
-                          >
-                            <div className={`w-4 h-4 rounded-full bg-red-500 ${activeCategories.has('low') ? '' : 'line-through'}`}></div>
-                            <span className="text-slate-600 dark:text-slate-400">Low (&lt;$1.50/mi)</span>
-                          </div>
-                        </div>
-                      )}
-                    />
-                    <Scatter
-                      name="Destinations"
-                      data={chartData}
-                      fill="#8884d8"
-                      shape={(props: any) => {
-                        const { cx, cy, payload } = props;
-                        const size = payload.size || 20;
-                        const index = chartData.findIndex(d => d.state === payload.state);
-                        return (
-                          <g>
-                            <circle
-                              cx={cx}
-                              cy={cy}
-                              r={size / 2}
-                              fill={payload.color}
-                              stroke="#fff"
-                              strokeWidth={2}
-                              opacity={0.9}
-                              filter="url(#bubbleShadow)"
-                              style={{
-                                cursor: 'pointer',
-                                pointerEvents: 'all'
-                              }}
-                            />
-                            <circle
-                              cx={cx}
-                              cy={cy}
-                              r={size / 2}
-                              fill="url(#bubbleGradient)"
-                              opacity={0.7}
-                              style={{ pointerEvents: 'none' }}
-                            />
-                          </g>
-                        );
-                      }}
-                    >
-                      {chartData.map((entry, index) => (
-                        <Cell
-                          key={`cell-${index}`}
-                          fill={entry.color}
-                        />
-                      ))}
-                    </Scatter>
-                  </ScatterChart>
-                </ResponsiveContainer>
+                          return (
+                            <g>
+                              <circle
+                                cx={cx}
+                                cy={cy}
+                                r={size / 2}
+                                fill={payload.color}
+                                stroke="#fff"
+                                strokeWidth={2}
+                                opacity={0.9}
+                                filter="url(#bubbleShadow)"
+                                style={{
+                                  cursor: "pointer",
+                                  pointerEvents: "all",
+                                }}
+                              />
+                              <circle
+                                cx={cx}
+                                cy={cy}
+                                r={size / 2}
+                                fill="url(#bubbleGradient)"
+                                opacity={0.7}
+                                style={{ pointerEvents: "none" }}
+                              />
+                            </g>
+                          );
+                        }}
+                      >
+                        {chartData.map((entry, index) => (
+                          <Cell key={`cell-${index}`} fill={entry.color} />
+                        ))}
+                      </Scatter>
+                    </ScatterChart>
+                  </ResponsiveContainer>
+                </div>
               )}
             </div>
           </div>
         </div>
-      )}
+
+        {/* Fullscreen Chart Modal */}
+        {isChartModalOpen && (
+          <div
+            className="fixed inset-0 z-50 bg-white dark:bg-slate-800 flex flex-col"
+            onClick={() => setIsChartModalOpen(false)}
+          >
+            <div
+              className="flex-1 flex flex-col"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex items-center justify-between p-6 border-b border-slate-200 dark:border-slate-700">
+                <div>
+                  <h2 className="text-2xl font-bold text-slate-900 dark:text-slate-100">
+                    Average Charges by Destination State
+                  </h2>
+                </div>
+                <button
+                  onClick={() => setIsChartModalOpen(false)}
+                  className="p-2 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors"
+                  aria-label="Close modal"
+                >
+                  <X className="w-6 h-6 text-slate-600 dark:text-slate-400" />
+                </button>
+              </div>
+              <div className="flex-1 p-6 overflow-auto">
+                {chartData.length > 0 && (
+                  <ResponsiveContainer
+                    width="100%"
+                    height="100%"
+                    minHeight={600}
+                  >
+                    <ScatterChart
+                      margin={{ top: 80, right: 40, bottom: 100, left: 80 }}
+                    >
+                      <CartesianGrid
+                        strokeDasharray="3 3"
+                        className="stroke-slate-300 dark:stroke-slate-600"
+                      />
+                      <XAxis
+                        type="category"
+                        dataKey="state"
+                        name="State"
+                        angle={-45}
+                        textAnchor="end"
+                        height={100}
+                        className="text-slate-600 dark:text-slate-400"
+                        tick={{ fill: "currentColor", fontSize: 12 }}
+                      />
+                      <YAxis
+                        type="number"
+                        dataKey="averageGross"
+                        name="Average Gross"
+                        label={{
+                          value: "Average Charges ($)",
+                          angle: -90,
+                          position: "left",
+                          offset: 15,
+                        }}
+                        className="text-slate-600 dark:text-slate-400"
+                        tick={{ fill: "currentColor", fontSize: 12 }}
+                        tickFormatter={(value) => `$${value.toLocaleString()}`}
+                      />
+                      <Tooltip
+                        cursor={{ strokeDasharray: "3 3" }}
+                        content={({ active, payload }) => {
+                          if (active && payload && payload[0]) {
+                            const data = payload[0].payload;
+                            return (
+                              <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg p-3 shadow-lg">
+                                <p className="font-bold text-slate-900 dark:text-slate-100 mb-2">
+                                  {data.state}
+                                </p>
+                                <div className="space-y-1 text-sm">
+                                  <div className="flex justify-between gap-4">
+                                    <span className="text-slate-600 dark:text-slate-400">
+                                      Avg Gross:
+                                    </span>
+                                    <span className="font-semibold text-green-600 dark:text-green-400">
+                                      ${data.averageGross.toFixed(2)}
+                                    </span>
+                                  </div>
+                                  <div className="flex justify-between gap-4">
+                                    <span className="text-slate-600 dark:text-slate-400">
+                                      Total Loads:
+                                    </span>
+                                    <span className="font-semibold">
+                                      {data.totalLoads}
+                                    </span>
+                                  </div>
+                                  <div className="flex justify-between gap-4">
+                                    <span className="text-slate-600 dark:text-slate-400">
+                                      Rate/Mile:
+                                    </span>
+                                    <span className="font-semibold text-blue-600 dark:text-blue-400">
+                                      ${data.averageRatePerMile.toFixed(2)}
+                                    </span>
+                                  </div>
+                                  <div className="flex justify-between gap-4">
+                                    <span className="text-slate-600 dark:text-slate-400">
+                                      Total Gross:
+                                    </span>
+                                    <span className="font-semibold text-green-600 dark:text-green-400">
+                                      ${data.totalGross.toFixed(2)}
+                                    </span>
+                                  </div>
+                                </div>
+                              </div>
+                            );
+                          }
+                          return null;
+                        }}
+                      />
+                      <Legend
+                        wrapperStyle={{ paddingTop: "20px" }}
+                        content={() => (
+                          <div className="flex flex-wrap gap-4 justify-center text-sm">
+                            <div
+                              className={`flex items-center gap-2 cursor-pointer transition-opacity ${
+                                activeCategories.has("high")
+                                  ? "opacity-100"
+                                  : "opacity-40"
+                              }`}
+                              onClick={() => toggleCategory("high")}
+                            >
+                              <div
+                                className={`w-4 h-4 rounded-full bg-green-500 ${
+                                  activeCategories.has("high")
+                                    ? ""
+                                    : "line-through"
+                                }`}
+                              ></div>
+                              <span className="text-slate-600 dark:text-slate-400">
+                                High Profitability (&gt;$2.50/mi)
+                              </span>
+                            </div>
+                            <div
+                              className={`flex items-center gap-2 cursor-pointer transition-opacity ${
+                                activeCategories.has("profitable")
+                                  ? "opacity-100"
+                                  : "opacity-40"
+                              }`}
+                              onClick={() => toggleCategory("profitable")}
+                            >
+                              <div
+                                className={`w-4 h-4 rounded-full bg-blue-500 ${
+                                  activeCategories.has("profitable")
+                                    ? ""
+                                    : "line-through"
+                                }`}
+                              ></div>
+                              <span className="text-slate-600 dark:text-slate-400">
+                                Profitable ($2.00-$2.50/mi)
+                              </span>
+                            </div>
+                            <div
+                              className={`flex items-center gap-2 cursor-pointer transition-opacity ${
+                                activeCategories.has("moderate")
+                                  ? "opacity-100"
+                                  : "opacity-40"
+                              }`}
+                              onClick={() => toggleCategory("moderate")}
+                            >
+                              <div
+                                className={`w-4 h-4 rounded-full bg-orange-500 ${
+                                  activeCategories.has("moderate")
+                                    ? ""
+                                    : "line-through"
+                                }`}
+                              ></div>
+                              <span className="text-slate-600 dark:text-slate-400">
+                                Moderate ($1.50-$2.00/mi)
+                              </span>
+                            </div>
+                            <div
+                              className={`flex items-center gap-2 cursor-pointer transition-opacity ${
+                                activeCategories.has("low")
+                                  ? "opacity-100"
+                                  : "opacity-40"
+                              }`}
+                              onClick={() => toggleCategory("low")}
+                            >
+                              <div
+                                className={`w-4 h-4 rounded-full bg-red-500 ${
+                                  activeCategories.has("low")
+                                    ? ""
+                                    : "line-through"
+                                }`}
+                              ></div>
+                              <span className="text-slate-600 dark:text-slate-400">
+                                Low (&lt;$1.50/mi)
+                              </span>
+                            </div>
+                          </div>
+                        )}
+                      />
+                      <Scatter
+                        name="Destinations"
+                        data={chartData}
+                        fill="#8884d8"
+                        shape={(props: any) => {
+                          const { cx, cy, payload } = props;
+                          const size = payload.size || 20;
+                          const index = chartData.findIndex(
+                            (d) => d.state === payload.state
+                          );
+                          return (
+                            <g>
+                              <circle
+                                cx={cx}
+                                cy={cy}
+                                r={size / 2}
+                                fill={payload.color}
+                                stroke="#fff"
+                                strokeWidth={2}
+                                opacity={0.9}
+                                filter="url(#bubbleShadow)"
+                                style={{
+                                  cursor: "pointer",
+                                  pointerEvents: "all",
+                                }}
+                              />
+                              <circle
+                                cx={cx}
+                                cy={cy}
+                                r={size / 2}
+                                fill="url(#bubbleGradient)"
+                                opacity={0.7}
+                                style={{ pointerEvents: "none" }}
+                              />
+                            </g>
+                          );
+                        }}
+                      >
+                        {chartData.map((entry, index) => (
+                          <Cell key={`cell-${index}`} fill={entry.color} />
+                        ))}
+                      </Scatter>
+                    </ScatterChart>
+                  </ResponsiveContainer>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </>
   );
 };
-
