@@ -299,7 +299,7 @@ export const LandingPage2: React.FC<LandingPage2Props> = ({
               }}
             >
               <img
-                src="/images/hero-2.png"
+                src="/images/hero-3.png"
                 alt="LoadMaster Dashboard"
                 className="w-full h-auto rounded-2xl shadow-2xl hover:scale-[1.02] transition-transform duration-500"
               />
@@ -463,11 +463,11 @@ export const LandingPage2: React.FC<LandingPage2Props> = ({
               }}
             >
               <div className="w-16 h-16 bg-blue-100 rounded-lg flex items-center justify-center mb-6">
-                <Users className="h-8 w-8 text-blue-600" />
+                <TrendingUp className="h-8 w-8 text-blue-600" />
               </div>
-              <h4 className="text-xl font-bold text-slate-900 mb-3">Fleet Management</h4>
+              <h4 className="text-xl font-bold text-slate-900 mb-3">Route Analysis</h4>
               <p className="text-slate-600">
-                Manage dispatchers and drivers efficiently. Streamline your load tracking process and optimize your fleet operations.
+                Analyze route profitability with detailed insights. Visualize average charges, identify profitable routes, and optimize your operations with interactive charts.
               </p>
             </div>
             <div 
