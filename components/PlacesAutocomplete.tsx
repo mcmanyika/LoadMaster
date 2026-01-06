@@ -21,7 +21,7 @@ declare global {
 export const PlacesAutocomplete: React.FC<PlacesAutocompleteProps> = ({
   value,
   onChange,
-  placeholder = 'City, ST',
+  placeholder = 'City, ST/Province',
   className = '',
   required = false,
   onPlaceSelect
@@ -122,7 +122,7 @@ export const PlacesAutocomplete: React.FC<PlacesAutocompleteProps> = ({
       // Create Autocomplete instance
       const autocomplete = new window.google.maps.places.Autocomplete(inputRef.current, {
         types: ['(cities)'], // Restrict to cities
-        componentRestrictions: { country: 'us' }, // Restrict to US
+        componentRestrictions: { country: ['us', 'ca'] }, // Restrict to US and Canada
         fields: ['formatted_address', 'address_components', 'geometry', 'name']
       });
 
@@ -133,7 +133,7 @@ export const PlacesAutocomplete: React.FC<PlacesAutocompleteProps> = ({
         const place = autocomplete.getPlace();
         
         if (place.formatted_address || place.name) {
-          // Try to extract city and state
+          // Try to extract city and state/province
           let formattedValue = '';
           
           if (place.address_components) {
@@ -155,6 +155,8 @@ export const PlacesAutocomplete: React.FC<PlacesAutocompleteProps> = ({
                 .replace(/,?\s*USA\s*$/i, '')
                 .replace(/,?\s*United States\s*$/i, '')
                 .replace(/,?\s*US\s*$/i, '')
+                .replace(/,?\s*Canada\s*$/i, '')
+                .replace(/,?\s*CA\s*$/i, '')
                 .trim();
             }
           } else if (place.formatted_address) {
@@ -163,6 +165,8 @@ export const PlacesAutocomplete: React.FC<PlacesAutocompleteProps> = ({
               .replace(/,?\s*USA\s*$/i, '')
               .replace(/,?\s*United States\s*$/i, '')
               .replace(/,?\s*US\s*$/i, '')
+              .replace(/,?\s*Canada\s*$/i, '')
+              .replace(/,?\s*CA\s*$/i, '')
               .trim();
           } else if (place.name) {
             formattedValue = place.name;
