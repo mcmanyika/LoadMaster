@@ -1,20 +1,41 @@
-import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { GoogleMap, Marker, Polyline, InfoWindow } from '@react-google-maps/api';
+import React, { useState, useEffect, useMemo } from 'react';
 import { UserProfile, CalculatedLoad, Driver, Dispatcher } from '../types';
 import { getLoads, getDispatchers, getDrivers } from '../services/loadService';
-import { analyzeRoutes, RouteAnalysis, RouteAnalysisFilters, getRouteColor, getRouteStrokeWeight } from '../services/routeAnalysisService';
+import { analyzeRoutes, RouteAnalysis, RouteAnalysisFilters, getRouteColor } from '../services/routeAnalysisService';
 import { PlacesAutocomplete } from './PlacesAutocomplete';
 import { supabase } from '../services/supabaseClient';
-import { Route, Filter, X, TrendingUp, DollarSign, MapPin, Calendar } from 'lucide-react';
+import { Route, Filter, X, TrendingUp, DollarSign, MapPin, Calendar, Maximize2 } from 'lucide-react';
+import {
+  ScatterChart,
+  Scatter,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  Legend,
+  ResponsiveContainer,
+  Cell
+} from 'recharts';
 
-// Helper functions for scatter map
-const getScatterPointSize = (totalLoads: number, minSize: number = 20, maxSize: number = 80): number => {
-  // Normalize to 0-1 range (assuming max 100 loads for scaling)
-  const normalized = Math.min(totalLoads / 100, 1);
-  return minSize + (maxSize - minSize) * normalized;
+// Helper functions for scatter chart
+const getBubbleSize = (
+  amount: number, 
+  minSize: number = 8, 
+  maxSize: number = 50,
+  minAmount: number = 0,
+  maxAmount: number = 5000
+): number => {
+  // Normalize amount to 0-1 range based on actual data range
+  const range = maxAmount - minAmount;
+  if (range <= 0) return (minSize + maxSize) / 2; // Default size if no range
+  
+  const normalized = (amount - minAmount) / range;
+  // Clamp between 0 and 1
+  const clamped = Math.max(0, Math.min(1, normalized));
+  return minSize + (maxSize - minSize) * clamped;
 };
 
-const getScatterPointColor = (averageRatePerMile: number): string => {
+const getBubbleColor = (averageRatePerMile: number): string => {
   if (averageRatePerMile > 2.5) return '#10b981'; // Green - very profitable
   if (averageRatePerMile > 2.0) return '#3b82f6'; // Blue - profitable
   if (averageRatePerMile > 1.5) return '#f59e0b'; // Orange - moderate
@@ -26,26 +47,16 @@ interface RouteAnalysisProps {
   companyId?: string;
 }
 
-// Google Maps API key
-const GOOGLE_MAPS_API_KEY = import.meta.env.VITE_GOOGLE_PLACES_API_KEY || '';
-
-// Default map center (US center)
-const DEFAULT_CENTER = { lat: 39.8283, lng: -98.5795 };
-const DEFAULT_ZOOM = 4;
-
 export const RouteAnalysisComponent: React.FC<RouteAnalysisProps> = ({ user, companyId }) => {
   const [routes, setRoutes] = useState<RouteAnalysis[]>([]);
   const [selectedRoute, setSelectedRoute] = useState<RouteAnalysis | null>(null);
-  const [selectedPointIndex, setSelectedPointIndex] = useState<number | null>(null);
-  const [mapCenter, setMapCenter] = useState(DEFAULT_CENTER);
-  const [mapZoom, setMapZoom] = useState(DEFAULT_ZOOM);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [loads, setLoads] = useState<CalculatedLoad[]>([]);
   const [drivers, setDrivers] = useState<Driver[]>([]);
   const [dispatchers, setDispatchers] = useState<Dispatcher[]>([]);
-  const [isMapLoaded, setIsMapLoaded] = useState(false);
-  const mapRef = useRef<google.maps.Map | null>(null);
+  const [isChartModalOpen, setIsChartModalOpen] = useState(false);
+  const [activeCategories, setActiveCategories] = useState<Set<string>>(new Set(['high', 'profitable', 'moderate', 'low']));
   
   const [filters, setFilters] = useState<RouteAnalysisFilters>({
     pickup: '',
@@ -53,52 +64,6 @@ export const RouteAnalysisComponent: React.FC<RouteAnalysisProps> = ({ user, com
   });
   
   const [sortBy, setSortBy] = useState<'loads' | 'gross' | 'rate' | 'profit'>('loads');
-
-  // Check if Google Maps is already loaded (from PlacesAutocomplete)
-  useEffect(() => {
-    const checkGoogleMaps = () => {
-      if (window.google && window.google.maps) {
-        setIsMapLoaded(true);
-        return true;
-      }
-      return false;
-    };
-
-    if (checkGoogleMaps()) {
-      return;
-    }
-
-    // Wait for Google Maps to load (it might be loading from PlacesAutocomplete)
-    const interval = setInterval(() => {
-      if (checkGoogleMaps()) {
-        clearInterval(interval);
-      }
-    }, 100);
-
-    // If not loaded after 5 seconds, try to load it
-    const timeout = setTimeout(() => {
-      if (!checkGoogleMaps() && GOOGLE_MAPS_API_KEY) {
-        const script = document.createElement('script');
-        script.src = `https://maps.googleapis.com/maps/api/js?key=${GOOGLE_MAPS_API_KEY}&libraries=places,geocoding`;
-        script.async = true;
-        script.defer = true;
-        script.onload = () => {
-          setTimeout(() => {
-            if (window.google && window.google.maps) {
-              setIsMapLoaded(true);
-            }
-          }, 100);
-        };
-        document.head.appendChild(script);
-      }
-      clearInterval(interval);
-    }, 5000);
-
-    return () => {
-      clearInterval(interval);
-      clearTimeout(timeout);
-    };
-  }, []);
 
   // Fetch loads and calculate - analyze ALL data regardless of company/dispatcher
   useEffect(() => {
@@ -274,41 +239,6 @@ export const RouteAnalysisComponent: React.FC<RouteAnalysisProps> = ({ user, com
         });
         
         setRoutes(sorted);
-        
-        // Auto-fit bounds to show all filtered routes
-        if (sorted.length > 0 && window.google && window.google.maps) {
-          const routesWithCoords = sorted.filter(r => r.originCoords && r.destinationCoords);
-          if (routesWithCoords.length > 0) {
-            const bounds = new window.google.maps.LatLngBounds();
-            routesWithCoords.forEach(route => {
-              bounds.extend(route.originCoords!);
-              bounds.extend(route.destinationCoords!);
-            });
-            
-            // Set map center and zoom to fit bounds
-            const center = bounds.getCenter();
-            setMapCenter({ lat: center.lat(), lng: center.lng() });
-            
-            // Calculate appropriate zoom level
-            const ne = bounds.getNorthEast();
-            const sw = bounds.getSouthWest();
-            const latDiff = ne.lat() - sw.lat();
-            const lngDiff = ne.lng() - sw.lng();
-            const maxDiff = Math.max(latDiff, lngDiff);
-            
-            let zoom = 4;
-            if (maxDiff < 0.1) zoom = 8;
-            else if (maxDiff < 0.5) zoom = 6;
-            else if (maxDiff < 2) zoom = 5;
-            else zoom = 4;
-            
-            setMapZoom(zoom);
-          } else if (sorted[0].originCoords) {
-            // Fallback: center on first route
-            setMapCenter(sorted[0].originCoords);
-            setMapZoom(5);
-          }
-        }
       } catch (err: any) {
         console.error('Error analyzing routes:', err);
         setError(err.message || 'Failed to analyze routes');
@@ -320,11 +250,23 @@ export const RouteAnalysisComponent: React.FC<RouteAnalysisProps> = ({ user, com
     analyze();
   }, [processedLoads, filters, sortBy]);
 
-  // Aggregate locations for scatter map
-  const scatterPoints = useMemo(() => {
+  // Toggle category visibility
+  const toggleCategory = (category: string) => {
+    setActiveCategories(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(category)) {
+        newSet.delete(category);
+      } else {
+        newSet.add(category);
+      }
+      return newSet;
+    });
+  };
+
+  // Prepare chart data from routes
+  const chartData = useMemo(() => {
     const locationMap = new Map<string, {
       name: string;
-      coords: { lat: number; lng: number };
       totalLoads: number;
       totalGross: number;
       totalNetProfit: number;
@@ -335,14 +277,28 @@ export const RouteAnalysisComponent: React.FC<RouteAnalysisProps> = ({ user, com
     }>();
 
     routes.forEach(route => {
-      if (!route.destinationCoords) return;
+      // Extract state from destination (e.g., "Dallas, TX" -> "TX" or "Toronto, ON" -> "ON")
+      const destinationParts = route.destination.split(',');
+      let stateName = '';
+      
+      if (destinationParts.length > 1) {
+        // Get the last part which should be the state/province
+        stateName = destinationParts[destinationParts.length - 1].trim();
+      } else {
+        // Fallback: if no comma, try to extract state abbreviation from the end
+        const parts = route.destination.trim().split(/\s+/);
+        if (parts.length > 1) {
+          stateName = parts[parts.length - 1];
+        } else {
+          stateName = route.destination; // Use full destination if we can't parse
+        }
+      }
+      
+      const stateKey = stateName.toLowerCase();
 
-      // Only process destinations
-      const destKey = `${route.destinationCoords.lat},${route.destinationCoords.lng}`;
-      if (!locationMap.has(destKey)) {
-        locationMap.set(destKey, {
-          name: route.destination,
-          coords: route.destinationCoords,
+      if (!locationMap.has(stateKey)) {
+        locationMap.set(stateKey, {
+          name: stateName,
           totalLoads: 0,
           totalGross: 0,
           totalNetProfit: 0,
@@ -352,11 +308,11 @@ export const RouteAnalysisComponent: React.FC<RouteAnalysisProps> = ({ user, com
           routes: []
         });
       }
-      const destData = locationMap.get(destKey)!;
-      destData.totalLoads += route.totalLoads;
-      destData.totalGross += route.totalGross;
-      destData.totalNetProfit += route.totalNetProfit;
-      destData.routes.push(route);
+      const stateData = locationMap.get(stateKey)!;
+      stateData.totalLoads += route.totalLoads;
+      stateData.totalGross += route.totalGross;
+      stateData.totalNetProfit += route.totalNetProfit;
+      stateData.routes.push(route);
     });
 
     // Calculate averages
@@ -364,67 +320,54 @@ export const RouteAnalysisComponent: React.FC<RouteAnalysisProps> = ({ user, com
       if (data.totalLoads > 0) {
         data.averageGross = data.totalGross / data.totalLoads;
         data.averageNetProfit = data.totalNetProfit / data.totalLoads;
-        // Calculate average rate per mile from all routes
         const totalMiles = data.routes.reduce((sum, r) => sum + r.totalMiles, 0);
         const totalGross = data.routes.reduce((sum, r) => sum + r.totalGross, 0);
         data.averageRatePerMile = totalMiles > 0 ? totalGross / totalMiles : 0;
       }
     });
 
-    const points = Array.from(locationMap.values()).filter(p => p.coords && p.coords.lat && p.coords.lng);
-    console.log('Scatter points calculated:', points.length, 'from', routes.length, 'routes');
-    if (points.length === 0 && routes.length > 0) {
-      const routesWithCoords = routes.filter(r => r.originCoords && r.destinationCoords);
-      console.warn('No scatter points created. Routes with coords:', routesWithCoords.length, 'out of', routes.length);
+    // Transform to Recharts format
+    const points = Array.from(locationMap.values())
+      .map(point => {
+        const ratePerMile = point.averageRatePerMile;
+        let category = 'low';
+        if (ratePerMile > 2.5) category = 'high';
+        else if (ratePerMile > 2.0) category = 'profitable';
+        else if (ratePerMile > 1.5) category = 'moderate';
+        
+        return {
+          state: point.name,
+          averageGross: point.averageGross,
+          totalLoads: point.totalLoads,
+          averageRatePerMile: ratePerMile,
+          averageNetProfit: point.averageNetProfit,
+          totalGross: point.totalGross,
+          color: getBubbleColor(ratePerMile),
+          category: category
+        };
+      })
+      .filter(point => activeCategories.has(point.category))
+      .sort((a, b) => b.averageGross - a.averageGross); // Sort by average gross descending
+    
+    // Calculate size based on actual data range for better proportionality
+    if (points.length > 0) {
+      const maxGross = Math.max(...points.map(p => p.averageGross));
+      const minGross = Math.min(...points.map(p => p.averageGross));
+      const range = maxGross - minGross;
+      
+      return points.map(point => ({
+        ...point,
+        size: range > 0 
+          ? getBubbleSize(point.averageGross, 8, 50, minGross, maxGross)
+          : 25 // Default size if all values are the same
+      }));
     }
+    
     return points;
-  }, [routes]);
-
-  // Update map bounds when routes change (after filtering)
-  useEffect(() => {
-    if (mapRef.current && scatterPoints.length > 0 && window.google && window.google.maps) {
-      const bounds = new window.google.maps.LatLngBounds();
-      scatterPoints.forEach(point => {
-        bounds.extend(point.coords);
-      });
-      mapRef.current.fitBounds(bounds);
-    }
-  }, [scatterPoints]);
+  }, [routes, activeCategories]);
 
   const handleRouteClick = (route: RouteAnalysis) => {
     setSelectedRoute(route);
-    if (route.originCoords && route.destinationCoords && mapRef.current && window.google && window.google.maps) {
-      // Create bounds to fit both origin and destination
-      const bounds = new window.google.maps.LatLngBounds();
-      bounds.extend(route.originCoords);
-      bounds.extend(route.destinationCoords);
-      
-      // Fit bounds with padding for better view
-      mapRef.current.fitBounds(bounds, { padding: 100 });
-      
-      // Update center and zoom state for consistency
-      const center = bounds.getCenter();
-      setMapCenter({ lat: center.lat(), lng: center.lng() });
-      
-      // Calculate zoom level based on distance
-      const ne = bounds.getNorthEast();
-      const sw = bounds.getSouthWest();
-      const latDiff = ne.lat() - sw.lat();
-      const lngDiff = ne.lng() - sw.lng();
-      const maxDiff = Math.max(latDiff, lngDiff);
-      
-      let zoom = 6;
-      if (maxDiff < 0.1) zoom = 10;
-      else if (maxDiff < 0.5) zoom = 8;
-      else if (maxDiff < 2) zoom = 7;
-      else zoom = 6;
-      
-      setMapZoom(zoom);
-    } else if (route.originCoords) {
-      // Fallback if no destination coords
-      setMapCenter(route.originCoords);
-      setMapZoom(8);
-    }
   };
 
   const handleApplyFilters = () => {
@@ -432,36 +375,37 @@ export const RouteAnalysisComponent: React.FC<RouteAnalysisProps> = ({ user, com
   };
 
   const handleResetFilters = () => {
-    setFilters({});
+    setFilters({
+      pickup: '',
+      destination: ''
+    });
   };
 
-  if (!GOOGLE_MAPS_API_KEY) {
-    return (
-      <div className="p-6">
-        <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-900/30 rounded-lg p-4">
-          <p className="text-yellow-800 dark:text-yellow-300">
-            Google Maps API key not configured. Please set VITE_GOOGLE_PLACES_API_KEY in your .env file.
-          </p>
-        </div>
-      </div>
-    );
-  }
-
-  if (!isMapLoaded) {
-    return (
-      <div className="p-6">
-        <div className="flex items-center justify-center h-64">
-          <div className="text-center">
-            <div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-            <p className="text-slate-600 dark:text-slate-400">Loading map...</p>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
   return (
-    <div className="p-6">
+    <>
+      <svg width="0" height="0" style={{ position: 'absolute' }}>
+        <defs>
+          <filter id="bubbleShadow" x="-50%" y="-50%" width="200%" height="200%">
+            <feGaussianBlur in="SourceAlpha" stdDeviation="3"/>
+            <feOffset dx="0" dy="2" result="offsetblur"/>
+            <feComponentTransfer>
+              <feFuncA type="linear" slope="0.3"/>
+            </feComponentTransfer>
+            <feMerge>
+              <feMergeNode/>
+              <feMergeNode in="SourceGraphic"/>
+            </feMerge>
+          </filter>
+          <radialGradient id="bubbleGradient" cx="30%" cy="30%" r="80%">
+            <stop offset="0%" stopColor="rgba(255,255,255,0.9)" />
+            <stop offset="25%" stopColor="rgba(255,255,255,0.6)" />
+            <stop offset="50%" stopColor="rgba(255,255,255,0.3)" />
+            <stop offset="75%" stopColor="rgba(255,255,255,0.1)" />
+            <stop offset="100%" stopColor="rgba(0,0,0,0)" />
+          </radialGradient>
+        </defs>
+      </svg>
+      <div className="p-6">
       <div className="mb-6">
         <div className="flex items-center justify-between">
           <div>
@@ -601,158 +545,376 @@ export const RouteAnalysisComponent: React.FC<RouteAnalysisProps> = ({ user, com
           )}
         </div>
 
-        {/* Right: Map Visualization */}
+        {/* Right: Scatter Chart Visualization */}
         <div className="lg:col-span-2">
-          <div className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 overflow-hidden">
-            {loading && (
+          <div className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 overflow-hidden p-6">
+            {loading ? (
               <div className="flex items-center justify-center h-[600px]">
                 <div className="text-center">
                   <div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-                  <p className="text-slate-600 dark:text-slate-400">Updating map...</p>
+                  <p className="text-slate-600 dark:text-slate-400">Updating chart...</p>
                 </div>
               </div>
-            )}
-            {!loading && routes.length === 0 && (
+            ) : chartData.length === 0 ? (
               <div className="flex items-center justify-center h-[600px]">
                 <div className="text-center">
                   <MapPin className="w-12 h-12 mx-auto mb-4 opacity-50 text-slate-400" />
-                  <p className="text-slate-600 dark:text-slate-400">No routes found matching your filters</p>
+                  <p className="text-slate-600 dark:text-slate-400">No route data available</p>
+                  <p className="text-sm text-slate-500 dark:text-slate-500 mt-2">
+                    {routes.length > 0 ? 'No destination data found' : 'No routes found matching your filters'}
+                  </p>
                 </div>
               </div>
-            )}
-            {!loading && isMapLoaded && window.google && (
-              <GoogleMap
-                mapContainerStyle={{ width: '100%', height: '600px' }}
-                center={mapCenter}
-                zoom={mapZoom}
-                options={{
-                  mapTypeControl: true,
-                  streetViewControl: false,
-                  fullscreenControl: true,
-                }}
-                onLoad={(map) => {
-                  mapRef.current = map;
-                  // Fit bounds to all scatter points when map loads
-                  if (scatterPoints.length > 0 && window.google && window.google.maps) {
-                    const bounds = new window.google.maps.LatLngBounds();
-                    scatterPoints.forEach(point => {
-                      bounds.extend(point.coords);
-                    });
-                    map.fitBounds(bounds);
-                  }
-                }}
-              >
-              {/* Scatter Points */}
-              {scatterPoints.length > 0 ? scatterPoints.map((point, index) => {
-                if (!point.coords || !point.coords.lat || !point.coords.lng) {
-                  return null;
-                }
-                const pointSize = getScatterPointSize(point.totalLoads);
-                const pointColor = getScatterPointColor(point.averageRatePerMile);
-                const isSelected = selectedRoute && point.routes.some(r => r.routeId === selectedRoute.routeId);
-                
-                return (
-                  <React.Fragment key={`scatter-${index}`}>
-                    <Marker
-                      position={point.coords}
-                      icon={{
-                        url: 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(`
-                          <svg width="${pointSize}" height="${pointSize}" viewBox="0 0 ${pointSize} ${pointSize}" xmlns="http://www.w3.org/2000/svg">
-                            <circle cx="${pointSize/2}" cy="${pointSize/2}" r="${pointSize/2 - 2}" fill="${pointColor}" stroke="#fff" stroke-width="3" opacity="0.8"/>
-                          </svg>
-                        `),
-                        scaledSize: new window.google.maps.Size(pointSize, pointSize),
-                        anchor: new window.google.maps.Point(pointSize/2, pointSize/2),
-                      }}
-                      onClick={() => {
-                        // Select the first route from this location
-                        if (point.routes.length > 0) {
-                          handleRouteClick(point.routes[0]);
-                        }
-                        setSelectedPointIndex(index);
-                      }}
-                      zIndex={isSelected ? 1000 : 100}
+            ) : (
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <div>
+                    <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100">
+                      Average Charges by Destination State
+                    </h3>
+                  </div>
+                  <button
+                    onClick={() => setIsChartModalOpen(true)}
+                    className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
+                    title="View fullscreen"
+                  >
+                    <Maximize2 className="w-4 h-4" />
+                    <span className="text-sm">Fullscreen</span>
+                  </button>
+                </div>
+                <ResponsiveContainer width="100%" height={600}>
+                  <ScatterChart
+                    margin={{ top: 80, right: 40, bottom: 100, left: 80 }}
+                  >
+                    <CartesianGrid strokeDasharray="3 3" className="stroke-slate-300 dark:stroke-slate-600" />
+                    <XAxis
+                      type="category"
+                      dataKey="state"
+                      name="State"
+                      angle={-45}
+                      textAnchor="end"
+                      height={100}
+                      className="text-slate-600 dark:text-slate-400"
+                      tick={{ fill: 'currentColor', fontSize: 12 }}
                     />
-                    {selectedPointIndex === index && (
-                      <InfoWindow
-                        position={point.coords}
-                        onCloseClick={() => {
-                          setSelectedPointIndex(null);
-                          setSelectedRoute(null);
-                        }}
-                      >
-                        <div className="p-2 min-w-[200px]">
-                          <h3 className="font-bold text-slate-900 mb-2">{point.name}</h3>
-                          <div className="space-y-1 text-sm">
-                            <div className="flex justify-between">
-                              <span className="text-slate-600">Total Loads:</span>
-                              <span className="font-semibold">{point.totalLoads}</span>
+                    <YAxis
+                      type="number"
+                      dataKey="averageGross"
+                      name="Average Gross"
+                      label={{ value: 'Average Charges ($)', angle: -90, position: 'left', offset: 15 }}
+                      className="text-slate-600 dark:text-slate-400"
+                      tick={{ fill: 'currentColor', fontSize: 12 }}
+                      tickFormatter={(value) => `$${value.toLocaleString()}`}
+                    />
+                    <Tooltip
+                      cursor={{ strokeDasharray: '3 3' }}
+                      content={({ active, payload }) => {
+                        if (active && payload && payload[0]) {
+                          const data = payload[0].payload;
+                          return (
+                            <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg p-3 shadow-lg">
+                              <p className="font-bold text-slate-900 dark:text-slate-100 mb-2">{data.state}</p>
+                              <div className="space-y-1 text-sm">
+                                <div className="flex justify-between gap-4">
+                                  <span className="text-slate-600 dark:text-slate-400">Avg Gross:</span>
+                                  <span className="font-semibold text-green-600 dark:text-green-400">
+                                    ${data.averageGross.toFixed(2)}
+                                  </span>
+                                </div>
+                                <div className="flex justify-between gap-4">
+                                  <span className="text-slate-600 dark:text-slate-400">Total Loads:</span>
+                                  <span className="font-semibold">{data.totalLoads}</span>
+                                </div>
+                                <div className="flex justify-between gap-4">
+                                  <span className="text-slate-600 dark:text-slate-400">Rate/Mile:</span>
+                                  <span className="font-semibold text-blue-600 dark:text-blue-400">
+                                    ${data.averageRatePerMile.toFixed(2)}
+                                  </span>
+                                </div>
+                                <div className="flex justify-between gap-4">
+                                  <span className="text-slate-600 dark:text-slate-400">Total Gross:</span>
+                                  <span className="font-semibold text-green-600 dark:text-green-400">
+                                    ${data.totalGross.toFixed(2)}
+                                  </span>
+                                </div>
+                              </div>
                             </div>
-                            <div className="flex justify-between">
-                              <span className="text-slate-600">Total Gross:</span>
-                              <span className="font-semibold text-green-600">
-                                ${point.totalGross.toFixed(2)}
-                              </span>
-                            </div>
-                            <div className="flex justify-between">
-                              <span className="text-slate-600">Avg Gross:</span>
-                              <span className="font-semibold text-green-600">
-                                ${point.averageGross.toFixed(2)}
-                              </span>
-                            </div>
-                            <div className="flex justify-between">
-                              <span className="text-slate-600">Rate/Mile:</span>
-                              <span className="font-semibold text-blue-600">
-                                ${point.averageRatePerMile.toFixed(2)}
-                              </span>
-                            </div>
-                            <div className="flex justify-between">
-                              <span className="text-slate-600">Avg Net Profit:</span>
-                              <span className="font-semibold text-emerald-600">
-                                ${point.averageNetProfit.toFixed(2)}
-                              </span>
-                            </div>
-                            <div className="pt-2 mt-2 border-t border-slate-200">
-                              <p className="text-xs text-slate-500">
-                                {point.routes.length} {point.routes.length === 1 ? 'route' : 'routes'}
-                              </p>
-                            </div>
+                          );
+                        }
+                        return null;
+                      }}
+                    />
+                    <Legend
+                      wrapperStyle={{ paddingTop: '20px' }}
+                      content={() => (
+                        <div className="flex flex-wrap gap-4 justify-center text-sm">
+                          <div 
+                            className={`flex items-center gap-2 cursor-pointer transition-opacity ${
+                              activeCategories.has('high') ? 'opacity-100' : 'opacity-40'
+                            }`}
+                            onClick={() => toggleCategory('high')}
+                          >
+                            <div className={`w-4 h-4 rounded-full bg-green-500 ${activeCategories.has('high') ? '' : 'line-through'}`}></div>
+                            <span className="text-slate-600 dark:text-slate-400">High Profitability (&gt;$2.50/mi)</span>
+                          </div>
+                          <div 
+                            className={`flex items-center gap-2 cursor-pointer transition-opacity ${
+                              activeCategories.has('profitable') ? 'opacity-100' : 'opacity-40'
+                            }`}
+                            onClick={() => toggleCategory('profitable')}
+                          >
+                            <div className={`w-4 h-4 rounded-full bg-blue-500 ${activeCategories.has('profitable') ? '' : 'line-through'}`}></div>
+                            <span className="text-slate-600 dark:text-slate-400">Profitable ($2.00-$2.50/mi)</span>
+                          </div>
+                          <div 
+                            className={`flex items-center gap-2 cursor-pointer transition-opacity ${
+                              activeCategories.has('moderate') ? 'opacity-100' : 'opacity-40'
+                            }`}
+                            onClick={() => toggleCategory('moderate')}
+                          >
+                            <div className={`w-4 h-4 rounded-full bg-orange-500 ${activeCategories.has('moderate') ? '' : 'line-through'}`}></div>
+                            <span className="text-slate-600 dark:text-slate-400">Moderate ($1.50-$2.00/mi)</span>
+                          </div>
+                          <div 
+                            className={`flex items-center gap-2 cursor-pointer transition-opacity ${
+                              activeCategories.has('low') ? 'opacity-100' : 'opacity-40'
+                            }`}
+                            onClick={() => toggleCategory('low')}
+                          >
+                            <div className={`w-4 h-4 rounded-full bg-red-500 ${activeCategories.has('low') ? '' : 'line-through'}`}></div>
+                            <span className="text-slate-600 dark:text-slate-400">Low (&lt;$1.50/mi)</span>
                           </div>
                         </div>
-                      </InfoWindow>
-                    )}
-                  </React.Fragment>
-                );
-              }).filter(Boolean) : (
-                <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', zIndex: 1000, pointerEvents: 'none' }}>
-                  <div className="text-center p-4 bg-white dark:bg-slate-800 rounded-lg shadow-lg border border-slate-200 dark:border-slate-700">
-                    <MapPin className="w-12 h-12 mx-auto mb-4 opacity-50 text-slate-400" />
-                    <p className="text-slate-600 dark:text-slate-400">No location data available</p>
-                    <p className="text-sm text-slate-500 dark:text-slate-500 mt-2">
-                      {routes.length > 0 ? `Found ${routes.length} routes, but geocoding may be in progress...` : 'No routes found'}
-                    </p>
-                  </div>
-                </div>
-              )}
-              
-              {/* Optional: Show connections between frequently connected locations */}
-              {selectedRoute && selectedRoute.originCoords && selectedRoute.destinationCoords && (
-                <Polyline
-                  path={[selectedRoute.originCoords, selectedRoute.destinationCoords]}
-                  options={{
-                    strokeColor: getRouteColor(selectedRoute),
-                    strokeWeight: getRouteStrokeWeight(selectedRoute.totalLoads),
-                    strokeOpacity: 0.6,
-                    zIndex: 50,
-                  }}
-                />
-              )}
-              </GoogleMap>
+                      )}
+                    />
+                    <Scatter
+                      name="Destinations"
+                      data={chartData}
+                      fill="#8884d8"
+                      shape={(props: any) => {
+                        const { cx, cy, payload } = props;
+                        const size = payload.size || 20;
+                        const index = chartData.findIndex(d => d.state === payload.state);
+                        return (
+                          <g>
+                            <circle
+                              cx={cx}
+                              cy={cy}
+                              r={size / 2}
+                              fill={payload.color}
+                              stroke="#fff"
+                              strokeWidth={2}
+                              opacity={0.9}
+                              filter="url(#bubbleShadow)"
+                              style={{
+                                cursor: 'pointer',
+                                pointerEvents: 'all'
+                              }}
+                            />
+                            <circle
+                              cx={cx}
+                              cy={cy}
+                              r={size / 2}
+                              fill="url(#bubbleGradient)"
+                              opacity={0.7}
+                              style={{ pointerEvents: 'none' }}
+                            />
+                          </g>
+                        );
+                      }}
+                    >
+                      {chartData.map((entry, index) => (
+                        <Cell
+                          key={`cell-${index}`}
+                          fill={entry.color}
+                        />
+                      ))}
+                    </Scatter>
+                  </ScatterChart>
+                </ResponsiveContainer>
+              </div>
             )}
           </div>
         </div>
       </div>
-    </div>
+
+      {/* Fullscreen Chart Modal */}
+      {isChartModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-75 p-4" onClick={() => setIsChartModalOpen(false)}>
+          <div className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 w-full h-full max-w-7xl max-h-[95vh] flex flex-col" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between p-6 border-b border-slate-200 dark:border-slate-700">
+              <div>
+                <h2 className="text-2xl font-bold text-slate-900 dark:text-slate-100">
+                  Average Charges by Destination State
+                </h2>
+              </div>
+              <button
+                onClick={() => setIsChartModalOpen(false)}
+                className="p-2 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors"
+                aria-label="Close modal"
+              >
+                <X className="w-6 h-6 text-slate-600 dark:text-slate-400" />
+              </button>
+            </div>
+            <div className="flex-1 p-6 overflow-auto">
+              {chartData.length > 0 && (
+                <ResponsiveContainer width="100%" height="100%" minHeight={600}>
+                  <ScatterChart
+                    margin={{ top: 80, right: 40, bottom: 100, left: 80 }}
+                  >
+                    <CartesianGrid strokeDasharray="3 3" className="stroke-slate-300 dark:stroke-slate-600" />
+                    <XAxis
+                      type="category"
+                      dataKey="state"
+                      name="State"
+                      angle={-45}
+                      textAnchor="end"
+                      height={100}
+                      className="text-slate-600 dark:text-slate-400"
+                      tick={{ fill: 'currentColor', fontSize: 12 }}
+                    />
+                    <YAxis
+                      type="number"
+                      dataKey="averageGross"
+                      name="Average Gross"
+                      label={{ value: 'Average Charges ($)', angle: -90, position: 'left', offset: 15 }}
+                      className="text-slate-600 dark:text-slate-400"
+                      tick={{ fill: 'currentColor', fontSize: 12 }}
+                      tickFormatter={(value) => `$${value.toLocaleString()}`}
+                    />
+                    <Tooltip
+                      cursor={{ strokeDasharray: '3 3' }}
+                      content={({ active, payload }) => {
+                        if (active && payload && payload[0]) {
+                          const data = payload[0].payload;
+                          return (
+                            <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg p-3 shadow-lg">
+                              <p className="font-bold text-slate-900 dark:text-slate-100 mb-2">{data.state}</p>
+                              <div className="space-y-1 text-sm">
+                                <div className="flex justify-between gap-4">
+                                  <span className="text-slate-600 dark:text-slate-400">Avg Gross:</span>
+                                  <span className="font-semibold text-green-600 dark:text-green-400">
+                                    ${data.averageGross.toFixed(2)}
+                                  </span>
+                                </div>
+                                <div className="flex justify-between gap-4">
+                                  <span className="text-slate-600 dark:text-slate-400">Total Loads:</span>
+                                  <span className="font-semibold">{data.totalLoads}</span>
+                                </div>
+                                <div className="flex justify-between gap-4">
+                                  <span className="text-slate-600 dark:text-slate-400">Rate/Mile:</span>
+                                  <span className="font-semibold text-blue-600 dark:text-blue-400">
+                                    ${data.averageRatePerMile.toFixed(2)}
+                                  </span>
+                                </div>
+                                <div className="flex justify-between gap-4">
+                                  <span className="text-slate-600 dark:text-slate-400">Total Gross:</span>
+                                  <span className="font-semibold text-green-600 dark:text-green-400">
+                                    ${data.totalGross.toFixed(2)}
+                                  </span>
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        }
+                        return null;
+                      }}
+                    />
+                    <Legend
+                      wrapperStyle={{ paddingTop: '20px' }}
+                      content={() => (
+                        <div className="flex flex-wrap gap-4 justify-center text-sm">
+                          <div 
+                            className={`flex items-center gap-2 cursor-pointer transition-opacity ${
+                              activeCategories.has('high') ? 'opacity-100' : 'opacity-40'
+                            }`}
+                            onClick={() => toggleCategory('high')}
+                          >
+                            <div className={`w-4 h-4 rounded-full bg-green-500 ${activeCategories.has('high') ? '' : 'line-through'}`}></div>
+                            <span className="text-slate-600 dark:text-slate-400">High Profitability (&gt;$2.50/mi)</span>
+                          </div>
+                          <div 
+                            className={`flex items-center gap-2 cursor-pointer transition-opacity ${
+                              activeCategories.has('profitable') ? 'opacity-100' : 'opacity-40'
+                            }`}
+                            onClick={() => toggleCategory('profitable')}
+                          >
+                            <div className={`w-4 h-4 rounded-full bg-blue-500 ${activeCategories.has('profitable') ? '' : 'line-through'}`}></div>
+                            <span className="text-slate-600 dark:text-slate-400">Profitable ($2.00-$2.50/mi)</span>
+                          </div>
+                          <div 
+                            className={`flex items-center gap-2 cursor-pointer transition-opacity ${
+                              activeCategories.has('moderate') ? 'opacity-100' : 'opacity-40'
+                            }`}
+                            onClick={() => toggleCategory('moderate')}
+                          >
+                            <div className={`w-4 h-4 rounded-full bg-orange-500 ${activeCategories.has('moderate') ? '' : 'line-through'}`}></div>
+                            <span className="text-slate-600 dark:text-slate-400">Moderate ($1.50-$2.00/mi)</span>
+                          </div>
+                          <div 
+                            className={`flex items-center gap-2 cursor-pointer transition-opacity ${
+                              activeCategories.has('low') ? 'opacity-100' : 'opacity-40'
+                            }`}
+                            onClick={() => toggleCategory('low')}
+                          >
+                            <div className={`w-4 h-4 rounded-full bg-red-500 ${activeCategories.has('low') ? '' : 'line-through'}`}></div>
+                            <span className="text-slate-600 dark:text-slate-400">Low (&lt;$1.50/mi)</span>
+                          </div>
+                        </div>
+                      )}
+                    />
+                    <Scatter
+                      name="Destinations"
+                      data={chartData}
+                      fill="#8884d8"
+                      shape={(props: any) => {
+                        const { cx, cy, payload } = props;
+                        const size = payload.size || 20;
+                        const index = chartData.findIndex(d => d.state === payload.state);
+                        return (
+                          <g>
+                            <circle
+                              cx={cx}
+                              cy={cy}
+                              r={size / 2}
+                              fill={payload.color}
+                              stroke="#fff"
+                              strokeWidth={2}
+                              opacity={0.9}
+                              filter="url(#bubbleShadow)"
+                              style={{
+                                cursor: 'pointer',
+                                pointerEvents: 'all'
+                              }}
+                            />
+                            <circle
+                              cx={cx}
+                              cy={cy}
+                              r={size / 2}
+                              fill="url(#bubbleGradient)"
+                              opacity={0.7}
+                              style={{ pointerEvents: 'none' }}
+                            />
+                          </g>
+                        );
+                      }}
+                    >
+                      {chartData.map((entry, index) => (
+                        <Cell
+                          key={`cell-${index}`}
+                          fill={entry.color}
+                        />
+                      ))}
+                    </Scatter>
+                  </ScatterChart>
+                </ResponsiveContainer>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+      </div>
+    </>
   );
 };
 
