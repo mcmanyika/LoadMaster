@@ -12,15 +12,16 @@ import {
   MapPin,
   Menu,
   X,
-  BarChart3,
-  DollarSign,
   FileText,
-  BrainCircuit,
   Target,
   Rocket,
   Award,
   MessageSquare,
-  Star
+  Star,
+  Clock,
+  Calculator,
+  Receipt,
+  Route
 } from 'lucide-react';
 import { submitContactForm } from '../services/contactService';
 import { getSubscriptionPlans } from '../services/pricingService';
@@ -417,11 +418,11 @@ export const LandingPage2: React.FC<LandingPage2Props> = ({
               }}
             >
               <div className="w-16 h-16 bg-blue-100 rounded-lg flex items-center justify-center mb-6">
-                <TrendingUp className="h-8 w-8 text-blue-600" />
+                <Clock className="h-8 w-8 text-blue-600" />
               </div>
-              <h4 className="text-xl font-bold text-slate-900 mb-3">Expand Your Reach</h4>
+              <h4 className="text-xl font-bold text-slate-900 mb-3">Real-Time Load Tracking</h4>
               <p className="text-slate-600">
-                Connect with more dispatchers and drivers. Grow your fleet management capabilities with our comprehensive platform.
+                Track loads from pickup to delivery with real-time status updates. Monitor your entire fleet operations from one dashboard.
               </p>
             </div>
             <div 
@@ -431,11 +432,11 @@ export const LandingPage2: React.FC<LandingPage2Props> = ({
               }}
             >
               <div className="w-16 h-16 bg-blue-100 rounded-lg flex items-center justify-center mb-6">
-                <BarChart3 className="h-8 w-8 text-blue-600" />
+                <Calculator className="h-8 w-8 text-blue-600" />
               </div>
-              <h4 className="text-xl font-bold text-slate-900 mb-3">Annualized Growth</h4>
+              <h4 className="text-xl font-bold text-slate-900 mb-3">Automated Financial Calculations</h4>
               <p className="text-slate-600">
-                Track your business growth with detailed analytics and reporting. Make data-driven decisions for your trucking operations.
+                Automatically calculate driver pay, dispatch fees, and net profit. Eliminate manual calculations and reduce errors.
               </p>
             </div>
             <div 
@@ -445,11 +446,53 @@ export const LandingPage2: React.FC<LandingPage2Props> = ({
               }}
             >
               <div className="w-16 h-16 bg-blue-100 rounded-lg flex items-center justify-center mb-6">
+                <FileText className="h-8 w-8 text-blue-600" />
+              </div>
+              <h4 className="text-xl font-bold text-slate-900 mb-3">Rate Confirmation Management</h4>
+              <p className="text-slate-600">
+                Upload and store Rate Confirmation PDFs securely in the cloud. Easy access and retrieval for all your load documents.
+              </p>
+            </div>
+            <div 
+              className="bg-white p-8 rounded-xl shadow-sm hover:shadow-lg transition-shadow"
+              style={{
+                animation: 'fadeInUp 0.8s ease-out 0.8s both',
+              }}
+            >
+              <div className="w-16 h-16 bg-blue-100 rounded-lg flex items-center justify-center mb-6">
                 <Users className="h-8 w-8 text-blue-600" />
               </div>
-              <h4 className="text-xl font-bold text-slate-900 mb-3">Book Your Providers</h4>
+              <h4 className="text-xl font-bold text-slate-900 mb-3">Fleet Management</h4>
               <p className="text-slate-600">
                 Manage dispatchers and drivers efficiently. Streamline your load tracking process and optimize your fleet operations.
+              </p>
+            </div>
+            <div 
+              className="bg-white p-8 rounded-xl shadow-sm hover:shadow-lg transition-shadow"
+              style={{
+                animation: 'fadeInUp 0.8s ease-out 1s both',
+              }}
+            >
+              <div className="w-16 h-16 bg-blue-100 rounded-lg flex items-center justify-center mb-6">
+                <Receipt className="h-8 w-8 text-blue-600" />
+              </div>
+              <h4 className="text-xl font-bold text-slate-900 mb-3">Expense Tracking</h4>
+              <p className="text-slate-600">
+                Track all expenses per load including fuel, maintenance, and other costs. Get a complete financial picture of each trip.
+              </p>
+            </div>
+            <div 
+              className="bg-white p-8 rounded-xl shadow-sm hover:shadow-lg transition-shadow"
+              style={{
+                animation: 'fadeInUp 0.8s ease-out 1.2s both',
+              }}
+            >
+              <div className="w-16 h-16 bg-blue-100 rounded-lg flex items-center justify-center mb-6">
+                <Route className="h-8 w-8 text-blue-600" />
+              </div>
+              <h4 className="text-xl font-bold text-slate-900 mb-3">Automatic Distance Calculation</h4>
+              <p className="text-slate-600">
+                Automatically calculate miles between origin and destination using Google Maps integration. Accurate distance tracking for every load.
               </p>
             </div>
           </div>
