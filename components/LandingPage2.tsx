@@ -196,7 +196,6 @@ export const LandingPage2: React.FC<LandingPage2Props> = ({
             {/* Desktop Menu */}
             <div className="hidden md:flex items-center gap-8">
               <a href="#home" onClick={(e) => handleNavClick(e, 'home')} className="text-slate-700 hover:text-blue-600 transition-colors">Home</a>
-              <a href="#about" onClick={(e) => handleNavClick(e, 'about')} className="text-slate-700 hover:text-blue-600 transition-colors">About Us</a>
               <a href="#services" onClick={(e) => handleNavClick(e, 'services')} className="text-slate-700 hover:text-blue-600 transition-colors">Services</a>
               <a href="#pricing" onClick={(e) => handleNavClick(e, 'pricing')} className="text-slate-700 hover:text-blue-600 transition-colors">Pricing</a>
               <a href="#contact" onClick={(e) => handleNavClick(e, 'contact')} className="text-slate-700 hover:text-blue-600 transition-colors">Contact</a>
@@ -227,7 +226,6 @@ export const LandingPage2: React.FC<LandingPage2Props> = ({
           {mobileMenuOpen && (
             <div className="md:hidden pb-4 space-y-2">
               <a href="#home" onClick={(e) => handleNavClick(e, 'home')} className="block py-2 text-slate-700">Home</a>
-              <a href="#about" onClick={(e) => handleNavClick(e, 'about')} className="block py-2 text-slate-700">About Us</a>
               <a href="#services" onClick={(e) => handleNavClick(e, 'services')} className="block py-2 text-slate-700">Services</a>
               <a href="#pricing" onClick={(e) => handleNavClick(e, 'pricing')} className="block py-2 text-slate-700">Pricing</a>
               <a href="#contact" onClick={(e) => handleNavClick(e, 'contact')} className="block py-2 text-slate-700">Contact</a>
