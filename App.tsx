@@ -29,7 +29,8 @@ import {
   Receipt,
   TrendingUp,
   Trash,
-  Shield
+  Shield,
+  Route
 } from 'lucide-react';
 import { Load, DispatcherName, CalculatedLoad, UserProfile, Driver } from './types';
 import { StatsCard } from './components/StatsCard';
@@ -47,6 +48,7 @@ import { ProfileSetup } from './components/ProfileSetup';
 import { AdminDashboard } from './components/AdminDashboard';
 import { Reports } from './components/reports/Reports';
 import { Expenses } from './components/Expenses';
+import { RouteAnalysisComponent } from './components/RouteAnalysis';
 import { ErrorModal } from './components/ErrorModal';
 import { ConfirmModal } from './components/ConfirmModal';
 import { DispatcherCompaniesList } from './components/DispatcherCompaniesList';
@@ -201,7 +203,7 @@ function App() {
   const [showAIModal, setShowAIModal] = useState(false);
   const [showUserMenu, setShowUserMenu] = useState(false);
   const userMenuRef = useRef<HTMLDivElement>(null);
-  const [view, setView] = useState<'dashboard' | 'loads' | 'fleet' | 'pricing' | 'subscriptions' | 'marketing' | 'company' | 'reports' | 'expenses' | 'admin'>('dashboard');
+  const [view, setView] = useState<'dashboard' | 'loads' | 'fleet' | 'pricing' | 'subscriptions' | 'marketing' | 'company' | 'reports' | 'expenses' | 'admin' | 'route-analysis'>('dashboard');
   const [paymentStatus, setPaymentStatus] = useState<'success' | 'cancel' | null>(null);
   const [paymentPlan, setPaymentPlan] = useState<string | null>(null);
   const [paymentSessionId, setPaymentSessionId] = useState<string | null>(null);
@@ -440,6 +442,8 @@ function App() {
       }
     } else if (paymentParam === 'cancelled') {
       setPaymentStatus('cancel');
+      // Clear pending_payment from localStorage since payment was cancelled
+      localStorage.removeItem('pending_payment');
       // Clear URL parameters
       window.history.replaceState({}, document.title, window.location.pathname);
     }
@@ -1214,6 +1218,15 @@ function App() {
                 <span className="opacity-0 group-hover:opacity-100 transition-opacity duration-300 whitespace-nowrap overflow-hidden text-slate-300 dark:text-slate-300">Reports</span>
               </button>
             )}
+            {/* Route Analysis - visible to all roles */}
+            <button
+              onClick={() => setView('route-analysis')}
+              className={`w-full flex items-center justify-center group-hover:justify-start gap-3 px-4 py-3 rounded-xl transition-colors ${view === 'route-analysis' ? 'bg-blue-600/10 text-blue-400 font-medium' : 'text-slate-300 dark:text-slate-300 hover:bg-slate-800'}`}
+              title="Route Analysis"
+            >
+              <Route size={20} className="flex-shrink-0" />
+              <span className="opacity-0 group-hover:opacity-100 transition-opacity duration-300 whitespace-nowrap overflow-hidden text-slate-300 dark:text-slate-300">Route Analysis</span>
+            </button>
             {/* Expenses - only for owners */}
             {user.role === 'owner' && (
               <button
@@ -1289,7 +1302,7 @@ function App() {
             <div className="flex items-center gap-4">
               <div>
                 <h1 className="text-2xl font-bold text-slate-800 dark:text-slate-100">
-                  {view === 'dashboard' ? 'Fleet Overview' : view === 'fleet' ? 'Fleet Management' : view === 'pricing' ? 'Pricing Plans' : view === 'subscriptions' ? 'My Subscriptions' : view === 'marketing' ? 'Marketing Management' : view === 'reports' ? 'Reports' : view === 'expenses' ? 'Expenses' : view === 'company' ? 'Company Settings' : view === 'admin' ? 'Admin Dashboard' : 'Load Management'}
+                  {view === 'dashboard' ? 'Fleet Overview' : view === 'fleet' ? 'Fleet Management' : view === 'pricing' ? 'Pricing Plans' : view === 'subscriptions' ? 'My Subscriptions' : view === 'marketing' ? 'Marketing Management' : view === 'reports' ? 'Reports' : view === 'expenses' ? 'Expenses' : view === 'company' ? 'Company Settings' : view === 'admin' ? 'Admin Dashboard' : view === 'route-analysis' ? 'Route Analysis' : 'Load Management'}
                 </h1>
                 {companyName && user.role === 'dispatcher' && (
                   <p className="text-sm text-slate-500 mt-1">{companyName}</p>
@@ -1430,6 +1443,18 @@ function App() {
             />
           ) : view === 'admin' ? (
             <AdminDashboard />
+          ) : view === 'route-analysis' ? (
+            company ? (
+              <div className="mx-auto px-4 py-8">
+                <RouteAnalysisComponent user={user} companyId={currentCompanyId || company.id} />
+              </div>
+            ) : (
+              <div className="mx-auto px-4 py-8">
+                <div className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 p-12 text-center">
+                  <p className="text-slate-500 dark:text-slate-400">Please set up your company first in Company Settings.</p>
+                </div>
+              </div>
+            )
           ) : (
         <div className="mx-auto px-4 py-8 space-y-8">
           

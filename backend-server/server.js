@@ -214,8 +214,8 @@ const PLAN_PRICES = {
     year: 45888, // $38.24/month × 12 = $458.88/year (15% discount)
   },
   enterprise: {
-    month: 49900, // $499/month
-    year: 510000, // $425/month × 12 = $5,100/year (15% discount)
+    month: 6747, // $67.47/month
+    year: 68820, // $57.35/month × 12 = $688.20/year (15% discount)
   },
 };
 

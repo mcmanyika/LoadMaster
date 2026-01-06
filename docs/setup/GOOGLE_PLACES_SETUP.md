@@ -21,7 +21,7 @@ The Load Form uses Google Places Autocomplete to provide city suggestions as use
 
 ### 2. Enable Required APIs
 
-**IMPORTANT:** You need to enable **THREE** APIs:
+**IMPORTANT:** You need to enable **FOUR** APIs:
 
 1. **Maps JavaScript API** (Required)
    - In the Google Cloud Console, navigate to **APIs & Services** > **Library**
@@ -38,7 +38,12 @@ The Load Form uses Google Places Autocomplete to provide city suggestions as use
    - Search for "Distance Matrix API"
    - Click on **Distance Matrix API** and click **Enable**
 
-**Note:** All three APIs must be enabled. The Maps JavaScript API loads the client-side library, the Places API provides the autocomplete functionality, and the Distance Matrix API calculates distances between cities to auto-populate the miles field.
+4. **Geocoding API** (Required for Route Analysis map visualization)
+   - Still in **APIs & Services** > **Library**
+   - Search for "Geocoding API"
+   - Click on **Geocoding API** and click **Enable**
+
+**Note:** All four APIs must be enabled. The Maps JavaScript API loads the client-side library, the Places API provides the autocomplete functionality, the Distance Matrix API calculates distances between cities, and the Geocoding API converts city names to coordinates for the Route Analysis map visualization.
 
 ### 3. Create an API Key
 
@@ -50,10 +55,11 @@ The Load Form uses Google Places Autocomplete to provide city suggestions as use
 
 1. Click on your newly created API key to edit it
 2. Under **API restrictions**, select **Restrict key**
-3. Under **Select APIs**, choose **ALL THREE**:
+3. Under **Select APIs**, choose **ALL FOUR**:
    - **Maps JavaScript API**
    - **Places API**
    - **Distance Matrix API**
+   - **Geocoding API**
 4. Under **Application restrictions**, you can optionally restrict by:
    - **HTTP referrers** (for web apps): Add your domain(s)
    - **IP addresses**: Add your server IPs

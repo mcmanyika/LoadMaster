@@ -84,6 +84,11 @@ export const LandingPage2: React.FC<LandingPage2Props> = ({
     const loadPrices = async () => {
       try {
         const plans = await getSubscriptionPlans();
+        // Ensure plans is an array before calling .find()
+        if (!Array.isArray(plans)) {
+          console.warn('getSubscriptionPlans did not return an array:', plans);
+          return;
+        }
         const essential = plans.find(p => p.planId === 'essential');
         const professional = plans.find(p => p.planId === 'professional');
         

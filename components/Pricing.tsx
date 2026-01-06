@@ -22,16 +22,41 @@ export const Pricing: React.FC<PricingProps> = ({ onClose }) => {
   React.useEffect(() => {
     const loadUserAndSubscription = async () => {
       try {
+        // Check for cancelled payment in URL
+        const urlParams = new URLSearchParams(window.location.search);
+        const paymentParam = urlParams.get('payment');
+        
+        // If payment was cancelled, clear pending_payment
+        if (paymentParam === 'cancelled') {
+          localStorage.removeItem('pending_payment');
+          // Clear URL parameter
+          window.history.replaceState({}, document.title, window.location.pathname);
+        }
+        
         const currentUser = await getCurrentUser();
         setUser(currentUser);
         
         if (currentUser?.id) {
           setLoadingSubscription(true);
           const { subscription } = await getActiveSubscription(currentUser.id);
+          
+          // If we have a pending_payment but no active subscription, clear it
+          const pendingPayment = localStorage.getItem('pending_payment');
+          if (pendingPayment && !subscription) {
+            console.log('Clearing pending_payment - no active subscription found');
+            localStorage.removeItem('pending_payment');
+          }
+          
+          // Only set active subscription if it actually exists
           setActiveSubscription(subscription);
+        } else {
+          // If no user, clear any pending payment
+          localStorage.removeItem('pending_payment');
         }
       } catch (err) {
         console.error('Error loading user or subscription:', err);
+        // On error, clear pending_payment to be safe
+        localStorage.removeItem('pending_payment');
       } finally {
         setLoadingSubscription(false);
       }
@@ -91,8 +116,8 @@ export const Pricing: React.FC<PricingProps> = ({ onClose }) => {
       name: 'Enterprise',
       tagline: 'For large operations',
       icon: <Building2 className="w-6 h-6" />,
-      monthlyPrice: null,
-      annualPrice: null,
+      monthlyPrice: 67.47,
+      annualPrice: 57.35, // 15% off monthly price
       features: [
         { text: 'Unlimited users', included: true },
         { text: 'Unlimited loads', included: true },
@@ -105,7 +130,7 @@ export const Pricing: React.FC<PricingProps> = ({ onClose }) => {
         { text: 'Unlimited data retention', included: true },
         { text: 'Custom billing & invoicing', included: true },
       ],
-      cta: 'Contact Sales',
+      cta: 'Start Free Trial',
       popular: false,
     },
   ]);
@@ -115,19 +140,23 @@ export const Pricing: React.FC<PricingProps> = ({ onClose }) => {
     const loadPrices = async () => {
       try {
         const dbPlans = await getSubscriptionPlans();
+        console.log('📊 Prices loaded from database:', dbPlans);
         setPlans(prevPlans => prevPlans.map(plan => {
           const dbPlan = dbPlans.find(p => p.planId === plan.id);
           if (dbPlan) {
+            console.log(`💰 ${plan.id} plan: Database price = $${dbPlan.monthlyPrice}/month`);
             return {
               ...plan,
               monthlyPrice: dbPlan.monthlyPrice,
               annualPrice: dbPlan.annualPrice,
             };
           }
+          console.log(`⚠️ ${plan.id} plan: Using hardcoded fallback price = $${plan.monthlyPrice}/month`);
           return plan;
         }));
       } catch (error) {
         console.error('Error loading prices from database:', error);
+        console.log('⚠️ Using hardcoded fallback prices due to database error');
         // Keep default prices if database fetch fails
       }
     };
@@ -141,11 +170,7 @@ export const Pricing: React.FC<PricingProps> = ({ onClose }) => {
       return;
     }
 
-    if (planId === 'enterprise') {
-      // For enterprise, open email client
-      window.location.href = `mailto:sales@loadmaster.com?subject=Enterprise Plan Inquiry&body=Hi, I'm interested in the Enterprise plan. Please contact me.`;
-      return;
-    }
+    // Enterprise is now a regular subscribable plan
 
     setError(null);
     setLoadingPlan(planId);

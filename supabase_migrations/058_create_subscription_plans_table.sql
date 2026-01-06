@@ -29,7 +29,7 @@ INSERT INTO subscription_plans (plan_id, name, monthly_price, annual_price, annu
 VALUES
   ('essential', 'Essential', 24.98, 21.24, 254.88, true),
   ('professional', 'Professional', 44.98, 38.24, 458.88, true),
-  ('enterprise', 'Enterprise', 499.00, 425.00, 5100.00, true)
+  ('enterprise', 'Enterprise', 67.47, 57.35, 688.20, true)
 ON CONFLICT (plan_id) DO UPDATE
 SET
   monthly_price = EXCLUDED.monthly_price,
