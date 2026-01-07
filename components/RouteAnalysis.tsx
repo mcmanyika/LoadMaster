@@ -90,7 +90,7 @@ export const RouteAnalysisComponent: React.FC<RouteAnalysisProps> = ({
     "loads"
   );
   const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 10;
+  const itemsPerPage = 5;
 
   // Fetch loads and calculate - analyze ALL data regardless of company/dispatcher
   useEffect(() => {
@@ -611,21 +611,42 @@ export const RouteAnalysisComponent: React.FC<RouteAnalysisProps> = ({
 
         {/* Filters */}
         <div className="mb-6 bg-white dark:bg-slate-800 rounded-lg p-4 border border-slate-200 dark:border-slate-700">
+          <div className="flex items-center gap-2 mb-4">
+            <Filter className="w-5 h-5 text-slate-600 dark:text-slate-400" />
+            <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100">
+              Filters
+            </h3>
+            {(filters.pickup || filters.destination) && (
+              <span className="ml-auto text-sm text-blue-600 dark:text-blue-400 font-medium">
+                {[filters.pickup, filters.destination].filter(Boolean).length} active
+              </span>
+            )}
+          </div>
           <div className="flex flex-wrap gap-4 items-end">
             <div className="flex-1 min-w-[200px]">
               <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
                 Pickup (Origin)
+                {filters.pickup && (
+                  <span className="ml-2 text-xs text-blue-600 dark:text-blue-400">●</span>
+                )}
               </label>
               <PlacesAutocomplete
                 value={filters.pickup || ""}
                 onChange={(value) => setFilters({ ...filters, pickup: value })}
                 placeholder="City, ST/Province"
-                className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-white"
+                className={`w-full px-3 py-2 border rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-white ${
+                  filters.pickup
+                    ? "border-blue-500 dark:border-blue-500"
+                    : "border-slate-300 dark:border-slate-600"
+                }`}
               />
             </div>
             <div className="flex-1 min-w-[200px]">
               <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
                 Destination
+                {filters.destination && (
+                  <span className="ml-2 text-xs text-blue-600 dark:text-blue-400">●</span>
+                )}
               </label>
               <PlacesAutocomplete
                 value={filters.destination || ""}
@@ -633,16 +654,23 @@ export const RouteAnalysisComponent: React.FC<RouteAnalysisProps> = ({
                   setFilters({ ...filters, destination: value })
                 }
                 placeholder="City, ST/Province"
-                className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-white"
+                className={`w-full px-3 py-2 border rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-white ${
+                  filters.destination
+                    ? "border-blue-500 dark:border-blue-500"
+                    : "border-slate-300 dark:border-slate-600"
+                }`}
               />
             </div>
             <div className="flex gap-2">
-              <button
-                onClick={handleResetFilters}
-                className="px-4 py-2 border border-slate-300 dark:border-slate-600 rounded-lg text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors"
-              >
-                Reset
-              </button>
+              {(filters.pickup || filters.destination) && (
+                <button
+                  onClick={handleResetFilters}
+                  className="flex items-center gap-2 px-4 py-2 border border-slate-300 dark:border-slate-600 rounded-lg text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors"
+                >
+                  <X size={16} />
+                  Reset
+                </button>
+              )}
             </div>
           </div>
         </div>
@@ -802,7 +830,7 @@ export const RouteAnalysisComponent: React.FC<RouteAnalysisProps> = ({
           <div className="hidden lg:block lg:col-span-2">
             <div className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 overflow-hidden p-6">
               {loading ? (
-                <div className="flex items-center justify-center h-[600px]">
+                <div className="flex items-center justify-center h-[750px]">
                   <div className="text-center">
                     <div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
                     <p className="text-slate-600 dark:text-slate-400">
@@ -811,7 +839,7 @@ export const RouteAnalysisComponent: React.FC<RouteAnalysisProps> = ({
                   </div>
                 </div>
               ) : chartData.length === 0 ? (
-                <div className="flex items-center justify-center h-[600px]">
+                <div className="flex items-center justify-center h-[750px]">
                   <div className="text-center">
                     <MapPin className="w-12 h-12 mx-auto mb-4 opacity-50 text-slate-400" />
                     <p className="text-slate-600 dark:text-slate-400">
@@ -841,7 +869,7 @@ export const RouteAnalysisComponent: React.FC<RouteAnalysisProps> = ({
                       <span className="text-sm">Fullscreen</span>
                     </button>
                   </div>
-                  <ResponsiveContainer width="100%" height={600}>
+                  <ResponsiveContainer width="100%" height={750}>
                     <ScatterChart
                       margin={{ top: 80, right: 40, bottom: 100, left: 80 }}
                     >
