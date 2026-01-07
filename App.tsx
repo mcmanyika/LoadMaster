@@ -32,7 +32,8 @@ import {
   Shield,
   Route,
   Menu,
-  Gift
+  Gift,
+  Clock
 } from 'lucide-react';
 import { Load, DispatcherName, CalculatedLoad, UserProfile, Driver } from './types';
 import { StatsCard } from './components/StatsCard';
@@ -55,6 +56,8 @@ import { AffiliateDashboard } from './components/AffiliateDashboard';
 import { ErrorModal } from './components/ErrorModal';
 import { ConfirmModal } from './components/ConfirmModal';
 import { DispatcherCompaniesList } from './components/DispatcherCompaniesList';
+import { SubscriptionGuard } from './components/SubscriptionGuard';
+import { canAccessFeature, isInTrialPeriod, checkSubscriptionAccess } from './services/subscriptionAccessService';
 import { LandingPage2 } from './components/LandingPage2';
 import { PrivacyPolicy } from './components/PrivacyPolicy';
 import { TermsOfService } from './components/TermsOfService';
@@ -224,6 +227,10 @@ function App() {
     isOpen: false,
     loadId: null
   });
+  const [hasSubscriptionAccess, setHasSubscriptionAccess] = useState<boolean | null>(null);
+  const [checkingAccess, setCheckingAccess] = useState(false);
+  const [isInTrial, setIsInTrial] = useState<boolean>(false);
+  const [trialDaysRemaining, setTrialDaysRemaining] = useState<number | null>(null);
 
   // Check URL parameters for payment status on mount and auto-save subscription
   useEffect(() => {
@@ -562,6 +569,38 @@ function App() {
     }
   }, [user, pendingPlan]);
 
+  // Check subscription access and trial status when user changes
+  useEffect(() => {
+    const checkAccess = async () => {
+      if (!user) {
+        setHasSubscriptionAccess(null);
+        setIsInTrial(false);
+        setTrialDaysRemaining(null);
+        return;
+      }
+
+      setCheckingAccess(true);
+      const access = await canAccessFeature(user);
+      setHasSubscriptionAccess(access);
+      
+      // Check trial status
+      const inTrial = await isInTrialPeriod(user.id);
+      setIsInTrial(inTrial);
+      
+      // Get detailed access info including trial days remaining
+      if (inTrial) {
+        const accessInfo = await checkSubscriptionAccess(user);
+        setTrialDaysRemaining(accessInfo.trialDaysRemaining || null);
+      } else {
+        setTrialDaysRemaining(null);
+      }
+      
+      setCheckingAccess(false);
+    };
+
+    checkAccess();
+  }, [user]);
+
   // Redirect owners and dispatch companies without a company to Settings page
   useEffect(() => {
     if (user && (user.role === 'owner' || user.role === 'dispatch_company') && !authLoading) {
@@ -783,8 +822,31 @@ function App() {
     };
   }, [isMobileMenuOpen]);
 
+  // Define restricted views that require subscription
+  const restrictedViews: (typeof view)[] = [
+    'dashboard',
+    'loads',
+    'fleet',
+    'reports',
+    'expenses',
+    'route-analysis',
+    'marketing',
+    'company',
+    'admin'
+  ];
+
   // Helper function to handle view change and close mobile menu
-  const handleViewChange = (newView: typeof view) => {
+  const handleViewChange = async (newView: typeof view) => {
+    // Check if the view is restricted and user doesn't have access
+    if (restrictedViews.includes(newView) && user) {
+      const access = await canAccessFeature(user);
+      if (!access) {
+        // Redirect to pricing if no access
+        setView('pricing');
+        setIsMobileMenuOpen(false);
+        return;
+      }
+    }
     setView(newView);
     setIsMobileMenuOpen(false);
   };
@@ -1293,7 +1355,8 @@ function App() {
                 <span>Expenses</span>
               </button>
             )}
-            {user.email === 'partsonmanyika@gmail.com' && (
+            {/* Admin and Marketing - only for superusers */}
+            {user.role === 'superuser' && (
               <>
                 <button
                   onClick={() => handleViewChange('admin')}
@@ -1408,7 +1471,8 @@ function App() {
                 <span className="opacity-0 group-hover:opacity-100 transition-opacity duration-300 whitespace-nowrap overflow-hidden text-slate-300 dark:text-slate-300">Expenses</span>
               </button>
             )}
-            {user.email === 'partsonmanyika@gmail.com' && (
+            {/* Admin and Marketing - only for superusers */}
+            {user.role === 'superuser' && (
               <>
                 <button
                   onClick={() => setView('admin')}
@@ -1558,6 +1622,18 @@ function App() {
                   )}
                 </div>
               )}
+              {/* Trial Badge */}
+              {isInTrial && trialDaysRemaining !== null && (
+                <button
+                  onClick={() => handleViewChange('pricing')}
+                  className="flex items-center gap-1 md:gap-2 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-700 hover:bg-blue-100 dark:hover:bg-blue-900/30 text-blue-600 dark:text-blue-400 px-2 md:px-3 py-2 rounded-lg text-xs md:text-sm font-medium transition-all"
+                  title={`Trial: ${trialDaysRemaining} ${trialDaysRemaining === 1 ? 'day' : 'days'} remaining`}
+                >
+                  <Clock size={16} />
+                  <span className="hidden sm:inline">Trial</span>
+                  <span className="hidden md:inline">({trialDaysRemaining}d)</span>
+                </button>
+              )}
               <button
                 onClick={() => setShowAIModal(true)}
                 className="flex items-center gap-1 md:gap-2 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 px-2 md:px-4 py-2.5 rounded-lg text-sm font-medium transition-all"
@@ -1592,70 +1668,74 @@ function App() {
             <Pricing />
           ) : view === 'subscriptions' ? (
             <Subscriptions userId={user.id} />
-          ) : view === 'marketing' ? (
-            <div className="max-w-7xl mx-auto px-6 py-8">
-              <Marketing user={user} />
-            </div>
-          ) : view === 'reports' ? (
-            <div className="mx-auto px-4 py-8">
-              <Reports user={user} companyId={currentCompanyId || company?.id} />
-            </div>
-          ) : view === 'expenses' ? (
-            company ? (
-              <div className="mx-auto px-4 py-8">
-                <Expenses user={user} companyId={company.id} />
-              </div>
-            ) : (
-              <div className="mx-auto px-4 py-8">
-                <div className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 p-12 text-center">
-                  <p className="text-slate-500 dark:text-slate-400">Please set up your company first in Company Settings.</p>
-                </div>
-              </div>
-            )
-          ) : view === 'company' ? (
-            <CompanySettings 
-              user={user} 
-              onCompanyCreated={async () => {
-                // Refresh user data to get updated companyId
-                const updatedUser = await getCurrentUser();
-                if (updatedUser) {
-                  setUser(updatedUser);
-                }
-                // Refresh company data
-                const companyData = await getCompany();
-                if (companyData) {
-                  setCompanyName(companyData.name);
-                  setCompany({ id: companyData.id, name: companyData.name });
-                }
-              }}
-            />
-          ) : view === 'admin' ? (
-            <AdminDashboard />
-          ) : view === 'route-analysis' ? (
-            company ? (
-              <div className="mx-auto px-4 py-8">
-                <RouteAnalysisComponent user={user} companyId={currentCompanyId || company.id} />
-              </div>
-            ) : (
-              <div className="mx-auto px-4 py-8">
-                <div className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 p-12 text-center">
-                  <p className="text-slate-500 dark:text-slate-400">Please set up your company first in Company Settings.</p>
-                </div>
-              </div>
-            )
           ) : view === 'affiliates' ? (
             <div className="mx-auto px-4 py-8">
               <AffiliateDashboard user={user} />
             </div>
           ) : (
-        <div className="mx-auto px-4 py-8 space-y-8">
-          
-          {/* Fleet Management View */}
-          {view === 'fleet' ? (
-             <FleetManagement user={user} />
-          ) : (
-            <>
-              {/* Key Metrics */}
+            <SubscriptionGuard
+              user={user}
+              redirectToPricing={true}
+              onNavigateToPricing={() => handleViewChange('pricing')}
+            >
+              {view === 'marketing' ? (
+                <div className="max-w-7xl mx-auto px-6 py-8">
+                  <Marketing user={user} />
+                </div>
+              ) : view === 'reports' ? (
+                <div className="mx-auto px-4 py-8">
+                  <Reports user={user} companyId={currentCompanyId || company?.id} />
+                </div>
+              ) : view === 'expenses' ? (
+                company ? (
+                  <div className="mx-auto px-4 py-8">
+                    <Expenses user={user} companyId={company.id} />
+                  </div>
+                ) : (
+                  <div className="mx-auto px-4 py-8">
+                    <div className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 p-12 text-center">
+                      <p className="text-slate-500 dark:text-slate-400">Please set up your company first in Company Settings.</p>
+                    </div>
+                  </div>
+                )
+              ) : view === 'company' ? (
+                <CompanySettings 
+                  user={user} 
+                  onCompanyCreated={async () => {
+                    // Refresh user data to get updated companyId
+                    const updatedUser = await getCurrentUser();
+                    if (updatedUser) {
+                      setUser(updatedUser);
+                    }
+                    // Refresh company data
+                    const companyData = await getCompany();
+                    if (companyData) {
+                      setCompanyName(companyData.name);
+                      setCompany({ id: companyData.id, name: companyData.name });
+                    }
+                  }}
+                />
+              ) : view === 'admin' ? (
+                <AdminDashboard />
+              ) : view === 'route-analysis' ? (
+                company ? (
+                  <div className="mx-auto px-4 py-8">
+                    <RouteAnalysisComponent user={user} companyId={currentCompanyId || company.id} />
+                  </div>
+                ) : (
+                  <div className="mx-auto px-4 py-8">
+                    <div className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 p-12 text-center">
+                      <p className="text-slate-500 dark:text-slate-400">Please set up your company first in Company Settings.</p>
+                    </div>
+                  </div>
+                )
+              ) : (
+                <>
+                  {view === 'fleet' ? (
+                    <FleetManagement user={user} />
+                  ) : (
+                    <div className="mx-auto px-4 py-8 space-y-8">
+                      {/* Key Metrics */}
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                 <StatsCard 
                   title="Total Gross Revenue" 
@@ -2090,13 +2170,16 @@ function App() {
                   </div>
                 )}
               </div>
-            </>
-          )}
-          </div>
+                    </div>
+                  )}
+                </>
+              )}
+            </SubscriptionGuard>
           )}
         </div>
       </main>
 
+      {/* Modals */}
       {(isModalOpen || loadToEdit) && (
         <LoadForm 
           onClose={handleCloseModal} 
