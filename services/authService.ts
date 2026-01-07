@@ -1,6 +1,7 @@
 import { supabase, isSupabaseConfigured } from './supabaseClient';
 import { UserProfile, UserRole, UserStatus, Company } from '../types';
 import { createCompany, getCompany } from './companyService';
+import { findReferrerByCode, createReferral } from './affiliateService';
 
 // Mock users for Demo Mode
 const MOCK_USERS: UserProfile[] = [
@@ -73,7 +74,7 @@ export const signIn = async (email: string, password: string): Promise<{ user: U
   return { user: null, error: 'Unknown error' };
 };
 
-export const signUp = async (email: string, password: string, name: string, role: UserRole): Promise<{ user: UserProfile | null, error: string | null }> => {
+export const signUp = async (email: string, password: string, name: string, role: UserRole, referralCode?: string): Promise<{ user: UserProfile | null, error: string | null }> => {
   if (!isSupabaseConfigured || !supabase) {
     await new Promise(resolve => setTimeout(resolve, 800));
     const newUser = { id: Math.random().toString(), email, name, role };
@@ -220,12 +221,96 @@ export const signUp = async (email: string, password: string, name: string, role
       }
     }
 
-    // Fetch profile again to get company_id
-    const { data: profile } = await supabase
+    // Handle referral if referral code was provided
+    if (referralCode && referralCode.trim()) {
+      console.log('Processing referral code:', referralCode.trim());
+      try {
+        const referrer = await findReferrerByCode(referralCode.trim());
+        console.log('Referrer found:', referrer);
+        
+        if (referrer) {
+          console.log('Updating profile with referred_by:', referrer.id);
+          // Update new user's profile to set referred_by
+          const { error: updateError } = await supabase
+            .from('profiles')
+            .update({ referred_by: referrer.id })
+            .eq('id', data.user.id);
+          
+          if (updateError) {
+            console.error('Error updating referred_by:', updateError);
+            // Check if column doesn't exist (migration not run)
+            if (updateError.code === '42703' || updateError.message?.includes('column') || updateError.message?.includes('does not exist')) {
+              console.warn('referred_by column not found. Please run migration 062_add_affiliate_program.sql');
+            }
+            // Continue - column might not exist if migration hasn't been run
+          } else {
+            console.log('Successfully updated referred_by');
+          }
+          
+          // Create referral record
+          console.log('Creating referral record...');
+          const { referral, error: referralError } = await createReferral(referrer.id, data.user.id, referralCode.trim());
+          
+          if (referralError) {
+            console.error('Error creating referral record:', referralError);
+            // Check if table doesn't exist (migration not run)
+            if (referralError.includes('not found') || referralError.includes('does not exist')) {
+              console.warn('Referrals table not found. Please run migration 062_add_affiliate_program.sql');
+            }
+            // Continue - table might not exist if migration hasn't been run
+          } else if (referral) {
+            console.log('Successfully created referral record:', referral.id);
+          }
+        } else {
+          console.warn('Referrer not found for code:', referralCode.trim());
+        }
+      } catch (referralError: any) {
+        console.error('Error processing referral:', referralError);
+        // Don't fail signup if referral processing fails - migration might not be run yet
+      }
+    } else {
+      console.log('No referral code provided');
+    }
+
+    // Fetch profile again to get company_id and referral_code
+    // Try to select all columns first, then fallback to basic columns if affiliate columns don't exist
+    let profile: any = null;
+    let profileFetchError: any = null;
+    
+    // First try with affiliate columns
+    const { data: profileWithAffiliate, error: affiliateError } = await supabase
       .from('profiles')
-      .select('company_id')
+      .select('company_id, referral_code, referred_by')
       .eq('id', data.user.id)
       .single();
+    
+    if (affiliateError) {
+      // If columns don't exist (migration not run), try without them
+      if (affiliateError.code === '42703' || affiliateError.message?.includes('column') || affiliateError.message?.includes('does not exist')) {
+        console.warn('Affiliate columns not found. Please run migration 062_add_affiliate_program.sql');
+        // Fallback: select without affiliate columns
+        const { data: profileBasic, error: basicError } = await supabase
+          .from('profiles')
+          .select('company_id')
+          .eq('id', data.user.id)
+          .single();
+        
+        if (basicError) {
+          profileFetchError = basicError;
+        } else {
+          profile = profileBasic;
+        }
+      } else {
+        profileFetchError = affiliateError;
+      }
+    } else {
+      profile = profileWithAffiliate;
+    }
+    
+    if (profileFetchError && profileFetchError.code !== 'PGRST116') {
+      console.error('Error fetching profile after signup:', profileFetchError);
+      // Continue anyway - profile should exist
+    }
 
     return {
       user: {
@@ -233,7 +318,9 @@ export const signUp = async (email: string, password: string, name: string, role
         email: data.user.email!,
         name,
         role,
-        companyId: profile?.company_id
+        companyId: profile?.company_id,
+        referralCode: profile?.referral_code || undefined,
+        referredBy: profile?.referred_by || undefined
       },
       error: null
     };
@@ -275,7 +362,7 @@ export const getCurrentUser = async (): Promise<UserProfile | null> => {
   // Fetch profile
   const { data: profile, error: profileError } = await supabase
     .from('profiles')
-    .select('*')
+    .select('*, referral_code, referred_by')
     .eq('id', session.user.id)
     .single();
 
@@ -302,6 +389,8 @@ export const getCurrentUser = async (): Promise<UserProfile | null> => {
     status: (profile?.status as UserStatus) || 'active',
     feePercentage: profile?.fee_percentage || session.user.user_metadata.feePercentage,
     companyId: profile?.company_id,
+    referralCode: profile?.referral_code,
+    referredBy: profile?.referred_by,
   };
 };
 

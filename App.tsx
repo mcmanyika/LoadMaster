@@ -31,7 +31,8 @@ import {
   Trash,
   Shield,
   Route,
-  Menu
+  Menu,
+  Gift
 } from 'lucide-react';
 import { Load, DispatcherName, CalculatedLoad, UserProfile, Driver } from './types';
 import { StatsCard } from './components/StatsCard';
@@ -50,6 +51,7 @@ import { AdminDashboard } from './components/AdminDashboard';
 import { Reports } from './components/reports/Reports';
 import { Expenses } from './components/Expenses';
 import { RouteAnalysisComponent } from './components/RouteAnalysis';
+import { AffiliateDashboard } from './components/AffiliateDashboard';
 import { ErrorModal } from './components/ErrorModal';
 import { ConfirmModal } from './components/ConfirmModal';
 import { DispatcherCompaniesList } from './components/DispatcherCompaniesList';
@@ -206,7 +208,7 @@ function App() {
   const userMenuRef = useRef<HTMLDivElement>(null);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const mobileMenuRef = useRef<HTMLDivElement>(null);
-  const [view, setView] = useState<'dashboard' | 'loads' | 'fleet' | 'pricing' | 'subscriptions' | 'marketing' | 'company' | 'reports' | 'expenses' | 'admin' | 'route-analysis'>('dashboard');
+  const [view, setView] = useState<'dashboard' | 'loads' | 'fleet' | 'pricing' | 'subscriptions' | 'marketing' | 'company' | 'reports' | 'expenses' | 'admin' | 'route-analysis' | 'affiliates'>('dashboard');
   const [paymentStatus, setPaymentStatus] = useState<'success' | 'cancel' | null>(null);
   const [paymentPlan, setPaymentPlan] = useState<string | null>(null);
   const [paymentSessionId, setPaymentSessionId] = useState<string | null>(null);
@@ -1274,6 +1276,14 @@ function App() {
               <Route size={20} className="flex-shrink-0" />
               <span>Route Analysis</span>
             </button>
+            {/* Affiliates - visible to all roles */}
+            <button
+              onClick={() => handleViewChange('affiliates')}
+              className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${view === 'affiliates' ? 'bg-blue-600/10 text-blue-400 font-medium' : 'text-slate-300 dark:text-slate-300 hover:bg-slate-800'}`}
+            >
+              <Gift size={20} className="flex-shrink-0" />
+              <span>Affiliates</span>
+            </button>
             {user.role === 'owner' && (
               <button
                 onClick={() => handleViewChange('expenses')}
@@ -1470,7 +1480,7 @@ function App() {
               </button>
               <div>
                 <h1 className="text-xl md:text-2xl font-bold text-slate-800 dark:text-slate-100">
-                  {view === 'dashboard' ? 'Fleet Overview' : view === 'fleet' ? 'Fleet Management' : view === 'pricing' ? 'Pricing Plans' : view === 'subscriptions' ? 'My Subscriptions' : view === 'marketing' ? 'Marketing Management' : view === 'reports' ? 'Reports' : view === 'expenses' ? 'Expenses' : view === 'company' ? 'Company Settings' : view === 'admin' ? 'Admin Dashboard' : view === 'route-analysis' ? 'Route Analysis' : 'Load Management'}
+                  {view === 'dashboard' ? 'Fleet Overview' : view === 'fleet' ? 'Fleet Management' : view === 'pricing' ? 'Pricing Plans' : view === 'subscriptions' ? 'My Subscriptions' : view === 'marketing' ? 'Marketing Management' : view === 'reports' ? 'Reports' : view === 'expenses' ? 'Expenses' : view === 'company' ? 'Company Settings' : view === 'admin' ? 'Admin Dashboard' : view === 'route-analysis' ? 'Route Analysis' : view === 'affiliates' ? 'Affiliates' : 'Load Management'}
                 </h1>
                 {companyName && user.role === 'dispatcher' && (
                   <p className="text-xs md:text-sm text-slate-500 mt-1">{companyName}</p>
@@ -1522,6 +1532,16 @@ function App() {
                       >
                         <DollarSign size={16} />
                         Pricing
+                      </button>
+                      <button
+                        onClick={() => {
+                          setView('affiliates');
+                          setShowUserMenu(false);
+                        }}
+                        className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
+                      >
+                        <Gift size={16} />
+                        Affiliates
                       </button>
                       <div className="border-t border-slate-200 dark:border-slate-700 my-1"></div>
                       <button
@@ -1623,6 +1643,10 @@ function App() {
                 </div>
               </div>
             )
+          ) : view === 'affiliates' ? (
+            <div className="mx-auto px-4 py-8">
+              <AffiliateDashboard user={user} />
+            </div>
           ) : (
         <div className="mx-auto px-4 py-8 space-y-8">
           

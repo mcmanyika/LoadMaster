@@ -100,7 +100,7 @@ serve(async (req) => {
             // For annual subscriptions, Stripe charges the full year amount upfront
             // But we want to store the monthly equivalent in our database
             // For monthly subscriptions, we store the actual monthly price
-            
+
             if (interval === 'year') {
                 // For annual: always use the monthly equivalent from database
                 try {
@@ -110,7 +110,7 @@ serve(async (req) => {
                         .eq('plan_id', planId)
                         .eq('is_active', true)
                         .single();
-                    
+
                     if (!planError && plan) {
                         amount = parseFloat(plan.annual_price); // Monthly equivalent for annual billing
                     } else {
@@ -148,7 +148,7 @@ serve(async (req) => {
                             .eq('plan_id', planId)
                             .eq('is_active', true)
                             .single();
-                        
+
                         if (!planError && plan) {
                             amount = parseFloat(plan.monthly_price);
                         } else {
@@ -173,7 +173,7 @@ serve(async (req) => {
                     }
                 }
             }
-            
+
             // No fallback prices - must get from database
             // If database fetch fails, log error and use 0 (will be caught by validation below)
 
@@ -212,6 +212,18 @@ serve(async (req) => {
                         );
                     }
 
+                    // Mark referral as completed if user was referred
+                    if (amount && userId) {
+                        try {
+                            // Dynamic import to avoid circular dependencies
+                            const { markReferralCompleted } = await import('../../services/affiliateService');
+                            await markReferralCompleted(userId, amount);
+                        } catch (referralError) {
+                            console.error('Error processing referral completion in webhook:', referralError);
+                            // Don't fail subscription save if referral processing fails
+                        }
+                    }
+
                     const { data: subscription, error: insertError } = await supabase
                         .from('subscriptions')
                         .insert([
@@ -241,7 +253,7 @@ serve(async (req) => {
                                 .select('id')
                                 .eq('stripe_session_id', session.id)
                                 .single();
-                            
+
                             if (existingSub) {
                                 return new Response(
                                     JSON.stringify({
@@ -253,7 +265,7 @@ serve(async (req) => {
                                 );
                             }
                         }
-                        
+
                         console.error('Error saving subscription:', insertError);
                         return new Response(
                             JSON.stringify({
@@ -274,6 +286,44 @@ serve(async (req) => {
                             stripe_subscription_id: session.subscription as string || null,
                         })
                         .eq('id', userId);
+
+                    // Mark referral as completed if user was referred
+                    if (amount && userId) {
+                        try {
+                            // Find pending referral for this user
+                            const { data: referral } = await supabase
+                                .from('referrals')
+                                .select('*')
+                                .eq('referred_user_id', userId)
+                                .eq('status', 'pending')
+                                .maybeSingle();
+
+                            if (referral) {
+                                // Calculate commission (30% of first payment)
+                                const commissionRate = 0.30;
+                                const rewardAmount = amount * commissionRate;
+
+                                // Update referral status
+                                await supabase
+                                    .from('referrals')
+                                    .update({
+                                        status: 'completed',
+                                        reward_amount: rewardAmount,
+                                        completed_at: new Date().toISOString()
+                                    })
+                                    .eq('id', referral.id);
+
+                                console.log('✅ Referral marked as completed:', {
+                                    referralId: referral.id,
+                                    referrerId: referral.referrer_id,
+                                    rewardAmount
+                                });
+                            }
+                        } catch (referralError) {
+                            console.error('Error processing referral completion in webhook:', referralError);
+                            // Don't fail subscription save if referral processing fails
+                        }
+                    }
 
                     console.log('✅ Subscription saved successfully via webhook:', {
                         subscriptionId: subscription.id,

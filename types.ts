@@ -148,6 +148,32 @@ export interface UserProfile {
   stripeCustomerId?: string;
   companyId?: string; // Reference to the company this user belongs to
   associations?: DriverCompanyAssociation[]; // Multi-company associations for drivers
+  referralCode?: string; // Unique referral code for this user
+  referredBy?: string; // ID of the user who referred this user
+}
+
+export interface Referral {
+  id: string;
+  referrerId: string;
+  referredUserId: string;
+  referralCode: string;
+  status: 'pending' | 'completed' | 'rewarded';
+  rewardAmount: number;
+  rewardType: 'credit' | 'commission' | 'discount';
+  createdAt: string;
+  completedAt?: string;
+  rewardedAt?: string;
+  referrerName?: string;
+  referredUserName?: string;
+}
+
+export interface AffiliateStats {
+  totalReferrals: number;
+  completedReferrals: number;
+  pendingReferrals: number;
+  totalRewards: number;
+  referralCode: string;
+  referralLink: string;
 }
 
 export interface MarketingAd {

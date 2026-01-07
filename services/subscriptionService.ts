@@ -231,6 +231,17 @@ export const saveSubscription = async (
       updatedAt: data.updated_at,
     };
 
+    // Mark referral as completed if user was referred (after subscription is saved)
+    if (subscription && subscription.amount) {
+      try {
+        const { markReferralCompleted } = await import('./affiliateService');
+        await markReferralCompleted(userId, subscription.amount);
+      } catch (referralError) {
+        console.error('Error processing referral completion:', referralError);
+        // Don't fail subscription save if referral processing fails
+      }
+    }
+
     return { subscription, error: null };
   } catch (error: any) {
     console.error('Error saving subscription:', error);

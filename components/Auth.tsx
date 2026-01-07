@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Truck, Lock, Mail, User, AlertCircle } from 'lucide-react';
 import { signIn, signUp } from '../services/authService';
 import { UserRole, UserProfile } from '../types';
@@ -21,6 +21,18 @@ export const Auth: React.FC<AuthProps> = ({ onLogin, initialMode = 'login', onBa
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
   const [role, setRole] = useState<UserRole>('owner');
+  const [referralCode, setReferralCode] = useState<string>('');
+
+  // Extract referral code from URL on mount
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const ref = urlParams.get('ref');
+    if (ref) {
+      // Normalize to uppercase to match database format
+      setReferralCode(ref.toUpperCase().trim());
+      console.log('Referral code extracted from URL:', ref.toUpperCase().trim());
+    }
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -39,7 +51,7 @@ export const Auth: React.FC<AuthProps> = ({ onLogin, initialMode = 'login', onBa
         if (error) throw new Error(error);
         if (user) onLogin(user);
       } else {
-        const { user, error } = await signUp(email, password, name, role);
+        const { user, error } = await signUp(email, password, name, role, referralCode || undefined);
         if (error) throw new Error(error);
         if (user) {
           // Show success page instead of immediately logging in
@@ -157,6 +169,14 @@ export const Auth: React.FC<AuthProps> = ({ onLogin, initialMode = 'login', onBa
                    <p className="text-xs text-slate-500 mt-1">Demo password: <span className="font-mono bg-slate-100 px-1 rounded text-slate-700">password</span></p>
                 )}
               </div>
+
+              {!isLogin && referralCode && (
+                <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                  <p className="text-sm text-blue-700">
+                    You were referred by someone! Referral code: <strong>{referralCode}</strong>
+                  </p>
+                </div>
+              )}
 
               {!isLogin && (
                 <div>
