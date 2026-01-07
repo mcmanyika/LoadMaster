@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from "react";
-import { UserProfile, CalculatedLoad, Driver, Dispatcher } from "../types";
+import { UserProfile, CalculatedLoad, Load, Driver, Dispatcher } from "../types";
 import { getLoads, getDispatchers, getDrivers } from "../services/loadService";
 import {
   analyzeRoutes,
@@ -18,6 +18,8 @@ import {
   MapPin,
   Calendar,
   Maximize2,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
 import {
   ScatterChart,
@@ -87,6 +89,8 @@ export const RouteAnalysisComponent: React.FC<RouteAnalysisProps> = ({
   const [sortBy, setSortBy] = useState<"loads" | "gross" | "rate" | "profit">(
     "loads"
   );
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
 
   // Fetch loads and calculate - analyze ALL data regardless of company/dispatcher
   useEffect(() => {
@@ -98,7 +102,47 @@ export const RouteAnalysisComponent: React.FC<RouteAnalysisProps> = ({
     setError(null);
     try {
       // Fetch ALL loads without any company or dispatcher filters
-      const loadsData = await getLoads();
+      // Use direct Supabase query to bypass service-level filtering
+      let loadsData: Load[] = [];
+      
+      if (supabase) {
+        const { data: loadsRaw, error: loadsError } = await supabase
+          .from("loads")
+          .select(`
+            *,
+            transporters ( name ),
+            drivers ( name )
+          `)
+          .order('drop_date', { ascending: false });
+        
+        if (loadsError) {
+          console.error("Error fetching all loads:", loadsError);
+          throw loadsError;
+        }
+        
+        // Transform to Load format
+        loadsData = (loadsRaw || []).map((item: any) => ({
+          id: item.id,
+          company: item.company,
+          gross: item.gross,
+          miles: item.miles,
+          gasAmount: item.gas_amount,
+          gasNotes: item.gas_notes,
+          dropDate: item.drop_date,
+          dispatcher: item.dispatcher,
+          transporterId: item.transporter_id,
+          driverId: item.driver_id,
+          origin: item.origin,
+          destination: item.destination,
+          status: item.status,
+          rateConfirmationPdfUrl: item.rate_confirmation_pdf_url || undefined,
+          driverPayoutStatus: item.driver_payout_status || 'pending',
+          companyId: item.company_id
+        }));
+      } else {
+        // Fallback to getLoads if supabase is not available
+        loadsData = await getLoads();
+      }
 
       // Extract unique company IDs from loads to fetch dispatchers and drivers
       const uniqueCompanyIds = [
@@ -177,9 +221,70 @@ export const RouteAnalysisComponent: React.FC<RouteAnalysisProps> = ({
         }
       });
 
-      setLoads(loadsData);
-      setDrivers(Array.from(driversMap.values()));
-      setDispatchers(Array.from(dispatchersMap.values()));
+      const finalDispatchers = Array.from(dispatchersMap.values());
+      const finalDrivers = Array.from(driversMap.values());
+
+      // Create dispatcher fee percentage mapping
+      const dispatcherFeeMap = new Map<string, number>();
+      finalDispatchers.forEach(dispatcher => {
+        dispatcherFeeMap.set(dispatcher.name, dispatcher.feePercentage || 12);
+      });
+
+      // Create driver pay configuration mapping
+      const driverPayConfigMap = new Map<string, { payType: string, payPercentage: number }>();
+      finalDrivers.forEach(driver => {
+        driverPayConfigMap.set(driver.id, {
+          payType: driver.payType || 'percentage_of_net',
+          payPercentage: driver.payPercentage || 50
+        });
+      });
+
+      // Convert Load[] to CalculatedLoad[] with dispatch fees, driver pay, and net profit
+      const calculatedLoads: CalculatedLoad[] = loadsData.map(load => {
+        const feePercentage = dispatcherFeeMap.get(load.dispatcher) || 12;
+        const dispatchFee = load.gross * (feePercentage / 100);
+        
+        // Get driver pay configuration
+        const driverConfig = load.driverId ? driverPayConfigMap.get(load.driverId) : null;
+        const payType = driverConfig?.payType || 'percentage_of_net';
+        const payPercentage = driverConfig?.payPercentage || 50;
+        
+        // Gas expense allocation depends on pay type
+        let driverGasShare: number;
+        let companyGasShare: number;
+        let driverPay: number;
+        
+        if (payType === 'percentage_of_gross') {
+          // Percentage of gross: Owner covers all expenses
+          driverGasShare = 0;
+          companyGasShare = load.gasAmount || 0;
+          driverPay = load.gross * (payPercentage / 100);
+        } else {
+          // Percentage of net: Shared expenses (50-50)
+          driverGasShare = (load.gasAmount || 0) * 0.5;
+          companyGasShare = (load.gasAmount || 0) * 0.5;
+          driverPay = (load.gross - dispatchFee) * (payPercentage / 100) - driverGasShare;
+        }
+        
+        // Net profit calculation
+        const netProfit = load.gross - dispatchFee - driverPay - companyGasShare;
+        
+        const driverName = load.driverId ? finalDrivers.find(d => d.id === load.driverId)?.name : undefined;
+        const transporterName = load.transporterId ? undefined : undefined; // Could be enhanced if needed
+
+        return {
+          ...load,
+          dispatchFee,
+          driverPay,
+          netProfit,
+          driverName,
+          transporterName
+        };
+      });
+
+      setLoads(calculatedLoads);
+      setDrivers(finalDrivers);
+      setDispatchers(finalDispatchers);
     } catch (err: any) {
       console.error("Error fetching data:", err);
       setError(err.message || "Failed to load data");
@@ -285,6 +390,19 @@ export const RouteAnalysisComponent: React.FC<RouteAnalysisProps> = ({
 
     analyze();
   }, [processedLoads, filters, sortBy]);
+
+  // Reset to page 1 when filters or sortBy change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [filters.pickup, filters.destination, sortBy]);
+
+  // Calculate paginated routes
+  const totalPages = Math.ceil(routes.length / itemsPerPage);
+  const paginatedRoutes = useMemo(() => {
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    const endIndex = startIndex + itemsPerPage;
+    return routes.slice(startIndex, endIndex);
+  }, [routes, currentPage, itemsPerPage]);
 
   // Toggle category visibility
   const toggleCategory = (category: string) => {
@@ -392,7 +510,7 @@ export const RouteAnalysisComponent: React.FC<RouteAnalysisProps> = ({
         };
       })
       .filter((point) => activeCategories.has(point.category))
-      .sort((a, b) => b.averageGross - a.averageGross); // Sort by average gross descending
+      .sort((a, b) => a.state.localeCompare(b.state)); // Sort by state name alphabetically
 
     // Calculate size based on actual data range for better proportionality
     if (points.length > 0) {
@@ -561,8 +679,9 @@ export const RouteAnalysisComponent: React.FC<RouteAnalysisProps> = ({
                 <p>No routes found matching your filters</p>
               </div>
             ) : (
-              <div className="space-y-3 max-h-[600px] overflow-y-auto">
-                {routes.map((route) => {
+              <>
+                <div className="space-y-3">
+                  {paginatedRoutes.map((route) => {
                   const color = getRouteColor(route);
                   return (
                     <div
@@ -613,12 +732,74 @@ export const RouteAnalysisComponent: React.FC<RouteAnalysisProps> = ({
                     </div>
                   );
                 })}
-              </div>
+                </div>
+                
+                {/* Pagination Controls */}
+                {totalPages > 1 && (
+                  <div className="mt-6 flex flex-col sm:flex-row items-center justify-between gap-4 pt-4 border-t border-slate-200 dark:border-slate-700">
+                    <div className="text-sm text-slate-600 dark:text-slate-400">
+                      Showing <span className="font-medium">{(currentPage - 1) * itemsPerPage + 1}</span> to{' '}
+                      <span className="font-medium">
+                        {Math.min(currentPage * itemsPerPage, routes.length)}
+                      </span>{' '}
+                      of <span className="font-medium">{routes.length}</span> routes
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                        disabled={currentPage === 1}
+                        className="p-2 border border-slate-200 dark:border-slate-600 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                        title="Previous page"
+                      >
+                        <ChevronLeft size={16} className="text-slate-600 dark:text-slate-400" />
+                      </button>
+                      
+                      <div className="flex items-center gap-1">
+                        {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                          let pageNum: number;
+                          if (totalPages <= 5) {
+                            pageNum = i + 1;
+                          } else if (currentPage <= 3) {
+                            pageNum = i + 1;
+                          } else if (currentPage >= totalPages - 2) {
+                            pageNum = totalPages - 4 + i;
+                          } else {
+                            pageNum = currentPage - 2 + i;
+                          }
+                          
+                          return (
+                            <button
+                              key={pageNum}
+                              onClick={() => setCurrentPage(pageNum)}
+                              className={`px-3 py-1.5 text-sm rounded-lg transition-colors ${
+                                currentPage === pageNum
+                                  ? 'bg-blue-600 text-white'
+                                  : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700'
+                              }`}
+                            >
+                              {pageNum}
+                            </button>
+                          );
+                        })}
+                      </div>
+                      
+                      <button
+                        onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                        disabled={currentPage === totalPages}
+                        className="p-2 border border-slate-200 dark:border-slate-600 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                        title="Next page"
+                      >
+                        <ChevronRight size={16} className="text-slate-600 dark:text-slate-400" />
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </>
             )}
           </div>
 
           {/* Right: Scatter Chart Visualization */}
-          <div className="lg:col-span-2">
+          <div className="hidden lg:block lg:col-span-2">
             <div className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 overflow-hidden p-6">
               {loading ? (
                 <div className="flex items-center justify-center h-[600px]">

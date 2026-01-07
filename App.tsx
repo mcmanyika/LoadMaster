@@ -30,7 +30,8 @@ import {
   TrendingUp,
   Trash,
   Shield,
-  Route
+  Route,
+  Menu
 } from 'lucide-react';
 import { Load, DispatcherName, CalculatedLoad, UserProfile, Driver } from './types';
 import { StatsCard } from './components/StatsCard';
@@ -203,6 +204,8 @@ function App() {
   const [showAIModal, setShowAIModal] = useState(false);
   const [showUserMenu, setShowUserMenu] = useState(false);
   const userMenuRef = useRef<HTMLDivElement>(null);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const mobileMenuRef = useRef<HTMLDivElement>(null);
   const [view, setView] = useState<'dashboard' | 'loads' | 'fleet' | 'pricing' | 'subscriptions' | 'marketing' | 'company' | 'reports' | 'expenses' | 'admin' | 'route-analysis'>('dashboard');
   const [paymentStatus, setPaymentStatus] = useState<'success' | 'cancel' | null>(null);
   const [paymentPlan, setPaymentPlan] = useState<string | null>(null);
@@ -756,11 +759,40 @@ function App() {
     };
   }, [showUserMenu]);
 
+  // Close mobile menu when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (mobileMenuRef.current && !mobileMenuRef.current.contains(event.target as Node)) {
+        setIsMobileMenuOpen(false);
+      }
+    };
+
+    if (isMobileMenuOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+      // Prevent body scroll when menu is open
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.body.style.overflow = '';
+    };
+  }, [isMobileMenuOpen]);
+
+  // Helper function to handle view change and close mobile menu
+  const handleViewChange = (newView: typeof view) => {
+    setView(newView);
+    setIsMobileMenuOpen(false);
+  };
+
   const handleSignOut = async () => {
     await signOut();
     setUser(null);
     setLoads([]);
     setShowUserMenu(false);
+    setIsMobileMenuOpen(false);
     setShowAuth(false);
     setPendingPlan(null);
     // Force a page reload to ensure clean state
@@ -1173,7 +1205,135 @@ function App() {
     <ThemeProvider>
     <div className="h-screen bg-slate-50 dark:bg-slate-900 flex font-sans overflow-hidden">
       
-      {/* Sidebar Navigation */}
+      {/* Mobile Menu Overlay */}
+      {isMobileMenuOpen && (
+        <div 
+          className="fixed inset-0 bg-black/50 z-40 md:hidden"
+          onClick={() => setIsMobileMenuOpen(false)}
+        />
+      )}
+
+      {/* Mobile Sidebar Navigation */}
+      <aside 
+        ref={mobileMenuRef}
+        className={`fixed top-0 left-0 h-full w-64 bg-slate-900 dark:bg-slate-900 text-slate-300 dark:text-slate-300 flex-shrink-0 md:hidden flex flex-col z-50 transform transition-transform duration-300 ease-in-out ${
+          isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'
+        }`}
+      >
+        <div className="p-6">
+          <div className="flex items-center justify-between mb-8">
+            <div className="flex items-center gap-3 text-white">
+              <div className="bg-blue-600 p-2 rounded-lg flex-shrink-0">
+                <Truck size={24} />
+              </div>
+              <span className="text-xl font-bold tracking-tight">LoadMaster</span>
+            </div>
+            <button
+              onClick={() => setIsMobileMenuOpen(false)}
+              className="text-slate-300 hover:text-white transition-colors"
+            >
+              <X size={24} />
+            </button>
+          </div>
+          
+          <nav className="space-y-2">
+            <button
+              onClick={() => handleViewChange('dashboard')}
+              className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${view === 'dashboard' ? 'bg-blue-600/10 text-blue-400 font-medium' : 'text-slate-300 dark:text-slate-300 hover:bg-slate-800'}`}
+            >
+              <LayoutDashboard size={20} className="flex-shrink-0" />
+              <span>Dashboard</span>
+            </button>
+            <button
+              onClick={() => handleViewChange('loads')}
+              className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${view === 'loads' ? 'bg-blue-600/10 text-blue-400 font-medium' : 'text-slate-300 dark:text-slate-300 hover:bg-slate-800'}`}
+            >
+              <FileText size={20} className="flex-shrink-0" />
+              <span>All Loads</span>
+            </button>
+            <button
+              onClick={() => handleViewChange('fleet')}
+              className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${view === 'fleet' ? 'bg-blue-600/10 text-blue-400 font-medium' : 'text-slate-300 dark:text-slate-300 hover:bg-slate-800'}`}
+            >
+              <Users size={20} className="flex-shrink-0" />
+              <span>Fleet & Drivers</span>
+            </button>
+            {(user.role === 'owner' || user.role === 'dispatcher' || user.role === 'dispatch_company') && (
+              <button
+                onClick={() => handleViewChange('reports')}
+                className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${view === 'reports' ? 'bg-blue-600/10 text-blue-400 font-medium' : 'text-slate-300 dark:text-slate-300 hover:bg-slate-800'}`}
+              >
+                <FileBarChart size={20} className="flex-shrink-0" />
+                <span>Reports</span>
+              </button>
+            )}
+            <button
+              onClick={() => handleViewChange('route-analysis')}
+              className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${view === 'route-analysis' ? 'bg-blue-600/10 text-blue-400 font-medium' : 'text-slate-300 dark:text-slate-300 hover:bg-slate-800'}`}
+            >
+              <Route size={20} className="flex-shrink-0" />
+              <span>Route Analysis</span>
+            </button>
+            {user.role === 'owner' && (
+              <button
+                onClick={() => handleViewChange('expenses')}
+                className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${view === 'expenses' ? 'bg-blue-600/10 text-blue-400 font-medium' : 'text-slate-300 dark:text-slate-300 hover:bg-slate-800'}`}
+              >
+                <Receipt size={20} className="flex-shrink-0" />
+                <span>Expenses</span>
+              </button>
+            )}
+            {user.email === 'partsonmanyika@gmail.com' && (
+              <>
+                <button
+                  onClick={() => handleViewChange('admin')}
+                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${view === 'admin' ? 'bg-blue-600/10 text-blue-400 font-medium' : 'text-slate-300 dark:text-slate-300 hover:bg-slate-800'}`}
+                >
+                  <Shield size={20} className="flex-shrink-0" />
+                  <span>Admin</span>
+                </button>
+                <button
+                  onClick={() => handleViewChange('marketing')}
+                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${view === 'marketing' ? 'bg-blue-600/10 text-blue-400 font-medium' : 'text-slate-300 dark:text-slate-300 hover:bg-slate-800'}`}
+                >
+                  <Megaphone size={20} className="flex-shrink-0" />
+                  <span>Marketing</span>
+                </button>
+              </>
+            )}
+            {(user.role === 'owner' || user.role === 'dispatch_company') && (
+              <button
+                onClick={() => handleViewChange('company')}
+                className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${view === 'company' ? 'bg-blue-600/10 text-blue-400 font-medium' : 'text-slate-300 dark:text-slate-300 hover:bg-slate-800'}`}
+              >
+                <Building2 size={20} className="flex-shrink-0" />
+                <span>Settings</span>
+              </button>
+            )}
+          </nav>
+        </div>
+        
+        <div className="mt-auto p-6 border-t border-slate-700 dark:border-slate-800">
+          <div className="flex items-center gap-3 mb-6">
+            <div className="w-8 h-8 rounded-full bg-blue-500 flex items-center justify-center text-white font-bold text-xs">
+              {user.name.charAt(0)}
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-medium text-white truncate">{user.name}</p>
+              <p className="text-xs text-slate-500 capitalize">{user.role}</p>
+            </div>
+            <button 
+              onClick={handleSignOut} 
+              className="text-slate-500 hover:text-white transition-colors" 
+              title="Sign Out"
+            >
+              <LogOut size={16} />
+            </button>
+          </div>
+        </div>
+      </aside>
+
+      {/* Desktop Sidebar Navigation */}
       <aside className="group w-20 hover:w-64 bg-slate-900 dark:bg-slate-900 text-slate-300 dark:text-slate-300 flex-shrink-0 hidden md:flex flex-col h-full overflow-y-auto transition-all duration-300 ease-in-out">
         <div className="p-4 group-hover:p-6 transition-all duration-300">
           <div className="flex items-center gap-3 text-white mb-8 justify-center group-hover:justify-start">
@@ -1300,27 +1460,35 @@ function App() {
         <header className="bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 flex-shrink-0 z-30">
           <div className="mx-auto px-4 py-4 flex items-center justify-between">
             <div className="flex items-center gap-4">
+              {/* Mobile Menu Button */}
+              <button
+                onClick={() => setIsMobileMenuOpen(true)}
+                className="md:hidden p-2 rounded-lg text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
+                aria-label="Open menu"
+              >
+                <Menu size={24} />
+              </button>
               <div>
-                <h1 className="text-2xl font-bold text-slate-800 dark:text-slate-100">
+                <h1 className="text-xl md:text-2xl font-bold text-slate-800 dark:text-slate-100">
                   {view === 'dashboard' ? 'Fleet Overview' : view === 'fleet' ? 'Fleet Management' : view === 'pricing' ? 'Pricing Plans' : view === 'subscriptions' ? 'My Subscriptions' : view === 'marketing' ? 'Marketing Management' : view === 'reports' ? 'Reports' : view === 'expenses' ? 'Expenses' : view === 'company' ? 'Company Settings' : view === 'admin' ? 'Admin Dashboard' : view === 'route-analysis' ? 'Route Analysis' : 'Load Management'}
                 </h1>
                 {companyName && user.role === 'dispatcher' && (
-                  <p className="text-sm text-slate-500 mt-1">{companyName}</p>
+                  <p className="text-xs md:text-sm text-slate-500 mt-1">{companyName}</p>
                 )}
               </div>
             </div>
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2 md:gap-4">
               {user && (
                 <div className="relative" ref={userMenuRef}>
                   <button
                     onClick={() => setShowUserMenu(!showUserMenu)}
-                    className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 transition-colors cursor-pointer"
+                    className="flex items-center gap-1 md:gap-2 px-2 md:px-3 py-1.5 rounded-lg bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 transition-colors cursor-pointer"
                   >
                     <div className="w-7 h-7 rounded-full bg-blue-500 flex items-center justify-center text-white font-semibold text-xs">
                       {user.name.charAt(0).toUpperCase()}
                     </div>
-                    <span className="text-sm font-medium text-slate-700 dark:text-slate-200">{user.name}</span>
-                    <ChevronDown size={16} className={`text-slate-500 dark:text-slate-400 transition-transform ${showUserMenu ? 'rotate-180' : ''}`} />
+                    <span className="hidden sm:inline text-sm font-medium text-slate-700 dark:text-slate-200">{user.name}</span>
+                    <ChevronDown size={16} className={`hidden sm:block text-slate-500 dark:text-slate-400 transition-transform ${showUserMenu ? 'rotate-180' : ''}`} />
                   </button>
                   
                   {showUserMenu && (
@@ -1372,26 +1540,26 @@ function App() {
               )}
               <button
                 onClick={() => setShowAIModal(true)}
-                className="flex items-center gap-2 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 px-4 py-2.5 rounded-lg text-sm font-medium transition-all"
+                className="flex items-center gap-1 md:gap-2 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 px-2 md:px-4 py-2.5 rounded-lg text-sm font-medium transition-all"
               >
                 <BrainCircuit size={18} />
-                AI Analyst
+                <span className="hidden sm:inline">AI Analyst</span>
               </button>
               <ThemeToggle />
-              {dataLoading && <span className="text-sm text-slate-400 dark:text-slate-500 animate-pulse">Syncing...</span>}
+              {dataLoading && <span className="hidden md:inline text-sm text-slate-400 dark:text-slate-500 animate-pulse">Syncing...</span>}
                {view !== 'fleet' && view !== 'pricing' && view !== 'subscriptions' && view !== 'marketing' && view !== 'company' && view !== 'expenses' && view !== 'admin' && (
                  <div className="flex items-center gap-2">
                   {ownerCompanyName && user.role === 'dispatcher' && (
-                    <span className="text-sm text-slate-500 dark:text-slate-400">
+                    <span className="hidden md:inline text-sm text-slate-500 dark:text-slate-400">
                       {ownerCompanyName}
                     </span>
                   )}
                  <button 
                   onClick={() => setIsModalOpen(true)}
-                  className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2.5 rounded-lg text-sm font-medium shadow-sm transition-all hover:shadow-md"
+                  className="flex items-center gap-1 md:gap-2 bg-blue-600 hover:bg-blue-700 text-white px-2 md:px-4 py-2.5 rounded-lg text-sm font-medium shadow-sm transition-all hover:shadow-md"
                 >
                   <Plus size={18} />
-                  Add Load
+                  <span className="hidden sm:inline">Add Load</span>
                 </button>
                 </div>
                )}
