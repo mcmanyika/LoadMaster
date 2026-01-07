@@ -22,8 +22,8 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         return 'dark';
       }
     }
-    // Default to dark mode for dashboard
-    return 'dark';
+    // Default to light mode
+    return 'light';
   });
 
   useEffect(() => {
