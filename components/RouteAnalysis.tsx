@@ -579,24 +579,11 @@ export const RouteAnalysisComponent: React.FC<RouteAnalysisProps> = ({
         <div className="mb-6">
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-3xl font-bold text-slate-900 dark:text-slate-100 mb-2">
-                Route Analysis
-              </h1>
-              <p className="text-slate-600 dark:text-slate-400">
-                Analyze route profitability and visualize your most common
-                routes on the map
-              </p>
             </div>
             {!loading && routes.length > 0 && (
               <div className="text-right">
                 <p className="text-sm text-slate-500 dark:text-slate-400">
-                  Showing
-                </p>
-                <p className="text-2xl font-bold text-blue-600 dark:text-blue-400">
-                  {routes.length}
-                </p>
-                <p className="text-sm text-slate-500 dark:text-slate-400">
-                  {routes.length === 1 ? "route" : "routes"}
+                  Showing <span className="text-2xl font-bold text-blue-600 dark:text-blue-400">{routes.length}</span> {routes.length === 1 ? "route" : "routes"}
                 </p>
               </div>
             )}
