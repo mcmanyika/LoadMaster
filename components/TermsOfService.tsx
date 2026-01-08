@@ -92,7 +92,7 @@ export const TermsOfService: React.FC<TermsOfServiceProps> = ({ onBack }) => {
               4.2 Free Trial
             </h3>
             <p className="text-slate-700 dark:text-slate-300 leading-relaxed mb-4">
-              We offer a 14-day free trial period. You may cancel your subscription at any time during the trial period without being charged.
+              We offer a 30-day free trial period. You may cancel your subscription at any time during the trial period without being charged.
             </p>
 
             <h3 className="text-xl font-semibold text-slate-800 dark:text-slate-200 mb-3 mt-6">

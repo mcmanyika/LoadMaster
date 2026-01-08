@@ -230,7 +230,7 @@ export const Pricing: React.FC<PricingProps> = ({ onClose }) => {
             Simple, Transparent Pricing
           </h1>
           <p className="text-xl text-slate-600 dark:text-slate-400 max-w-2xl mx-auto mb-8">
-            Choose the plan that fits your fleet. All plans include a 14-day free trial. No credit card required.
+            Choose the plan that fits your fleet. All plans include a 30-day free trial. No credit card required.
           </p>
           
           {/* Active Subscription Notice */}

@@ -395,7 +395,7 @@ export const LandingPage2: React.FC<LandingPage2Props> = ({
               <div className="text-slate-600">Setup Fee</div>
             </div>
             <div className="text-center">
-              <div className="text-4xl md:text-5xl font-bold text-blue-600 mb-2">14 Days</div>
+              <div className="text-4xl md:text-5xl font-bold text-blue-600 mb-2">30 Days</div>
               <div className="text-slate-600">Free Trial</div>
             </div>
             <div className="text-center">
