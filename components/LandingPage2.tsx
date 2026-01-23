@@ -15,7 +15,6 @@ import {
   Rocket,
   Award,
   MessageSquare,
-  Star,
   Clock,
   Calculator,
   Receipt,
@@ -199,7 +198,7 @@ export const LandingPage2: React.FC<LandingPage2Props> = ({
             {/* Desktop Menu */}
             <div className="hidden md:flex items-center gap-8">
               <a href="#home" onClick={(e) => handleNavClick(e, 'home')} className="text-slate-700 hover:text-blue-600 transition-colors">Home</a>
-              <a href="#services" onClick={(e) => handleNavClick(e, 'services')} className="text-slate-700 hover:text-blue-600 transition-colors">Services</a>
+              <a href="#services" onClick={(e) => handleNavClick(e, 'services')} className="text-slate-700 hover:text-blue-600 transition-colors">Features</a>
               <a href="#pricing" onClick={(e) => handleNavClick(e, 'pricing')} className="text-slate-700 hover:text-blue-600 transition-colors">Pricing</a>
               <a href="#contact" onClick={(e) => handleNavClick(e, 'contact')} className="text-slate-700 hover:text-blue-600 transition-colors">Contact</a>
               <button
@@ -229,7 +228,7 @@ export const LandingPage2: React.FC<LandingPage2Props> = ({
           {mobileMenuOpen && (
             <div className="md:hidden pb-4 space-y-2">
               <a href="#home" onClick={(e) => handleNavClick(e, 'home')} className="block py-2 text-slate-700">Home</a>
-              <a href="#services" onClick={(e) => handleNavClick(e, 'services')} className="block py-2 text-slate-700">Services</a>
+              <a href="#services" onClick={(e) => handleNavClick(e, 'services')} className="block py-2 text-slate-700">Features</a>
               <a href="#pricing" onClick={(e) => handleNavClick(e, 'pricing')} className="block py-2 text-slate-700">Pricing</a>
               <a href="#contact" onClick={(e) => handleNavClick(e, 'contact')} className="block py-2 text-slate-700">Contact</a>
               <button onClick={onSignIn} className="block w-full text-left py-2 text-slate-700">
@@ -496,70 +495,6 @@ export const LandingPage2: React.FC<LandingPage2Props> = ({
                 Automatically calculate miles between origin and destination using Google Maps integration. Accurate distance tracking for every load.
               </p>
             </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Testimonials Section */}
-      <section className="py-20 bg-slate-50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-16">
-            <h2 className="text-4xl md:text-5xl font-bold text-slate-900 mb-4">
-              What our customers say
-            </h2>
-            <p className="text-lg text-slate-600 max-w-2xl mx-auto">
-              Don't just take our word for it. See what trucking companies are saying about LoadMaster.
-            </p>
-          </div>
-          <div className="grid md:grid-cols-3 gap-8">
-            {[
-              {
-                name: 'Michael Rodriguez',
-                company: 'Rodriguez Transport',
-                role: 'Fleet Manager',
-                rating: 5,
-                feedback: 'LoadMaster has completely transformed how we manage our fleet. The real-time tracking and dispatcher coordination features have saved us countless hours. Our efficiency has increased by 40% since switching to LoadMaster.',
-              },
-              {
-                name: 'Sarah Chen',
-                company: 'Chen Logistics',
-                role: 'Operations Director',
-                rating: 5,
-                feedback: 'The analytics and reporting tools are incredible. We can now make data-driven decisions that have directly improved our bottom line. The 24/7 support team is also fantastic - they\'re always there when we need help.',
-              },
-              {
-                name: 'James Thompson',
-                company: 'Thompson Freight',
-                role: 'Owner',
-                rating: 5,
-                feedback: 'As a small fleet owner, I was worried about the complexity, but LoadMaster is so intuitive. We were up and running in days, not weeks. The cost savings from better route optimization alone paid for the subscription in the first month.',
-              },
-            ].map((testimonial, index) => (
-              <div
-                key={index}
-                className="bg-white p-8 rounded-xl shadow-sm hover:shadow-lg transition-shadow"
-                style={{
-                  animation: `fadeInUp 0.8s ease-out ${0.2 + index * 0.1}s both`,
-                }}
-              >
-                <div className="flex items-center gap-1 mb-4">
-                  {[...Array(testimonial.rating)].map((_, i) => (
-                    <Star
-                      key={i}
-                      className="h-5 w-5 text-yellow-400 fill-yellow-400"
-                    />
-                  ))}
-                </div>
-                <p className="text-slate-700 mb-6 italic">
-                  "{testimonial.feedback}"
-                </p>
-                <div className="border-t border-slate-200 pt-4">
-                  <p className="font-semibold text-slate-900">{testimonial.name}</p>
-                  <p className="text-sm text-slate-600">{testimonial.role}</p>
-                  <p className="text-sm text-blue-600 font-medium">{testimonial.company}</p>
-                </div>
-              </div>
-            ))}
           </div>
         </div>
       </section>
