@@ -8,8 +8,6 @@ import {
   Zap,
   Check,
   Mail,
-  Phone,
-  MapPin,
   Menu,
   X,
   FileText,
@@ -791,30 +789,7 @@ export const LandingPage2: React.FC<LandingPage2Props> = ({
       {/* Footer */}
       <footer className="bg-slate-900 text-white py-16">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid md:grid-cols-3 gap-8 mb-12">
-            <div>
-              <div className="flex items-center gap-2 mb-4">
-                <div className="p-2 bg-blue-600 rounded-lg">
-                  <Truck className="h-6 w-6 text-white" />
-                </div>
-                <span className="text-2xl font-bold">LoadMaster</span>
-              </div>
-              <p className="text-slate-400 mb-4">
-                Helping you <strong>maximize</strong> operations management with digitization
-              </p>
-            </div>
-            <div>
-              <h4 className="font-bold mb-4">Office</h4>
-              <p className="text-slate-400">8542 Spring Valley, Dallas, TX</p>
-            </div>
-            <div>
-              <h4 className="font-bold mb-4">Contacts</h4>
-              <p className="text-slate-400 flex items-center gap-2">
-                <Phone size={16} /> +1 469 473 8724
-              </p>
-            </div>
-          </div>
-          <div className="border-t border-slate-800 pt-8 flex flex-col md:flex-row justify-between items-center">
+          <div className="flex flex-col md:flex-row justify-between items-center">
             <p className="text-slate-400 text-sm">
               © 2024. All rights reserved.
             </p>
