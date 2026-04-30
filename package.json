@@ -19,6 +19,7 @@
     "@stripe/stripe-js": "^8.5.3",
     "@supabase/supabase-js": "^2.48.1",
     "lucide-react": "^0.555.0",
+    "pdfjs-dist": "^4.10.38",
     "react": "^19.2.1",
     "react-dom": "^19.2.1",
     "recharts": "^3.5.1"

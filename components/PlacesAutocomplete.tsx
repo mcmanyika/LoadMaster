@@ -28,9 +28,16 @@ export const PlacesAutocomplete: React.FC<PlacesAutocompleteProps> = ({
 }) => {
   const inputRef = useRef<HTMLInputElement>(null);
   const autocompleteRef = useRef<google.maps.places.Autocomplete | null>(null);
+  const onChangeRef = useRef(onChange);
+  const onPlaceSelectRef = useRef(onPlaceSelect);
+  const valueRef = useRef(value);
   const [isLoaded, setIsLoaded] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  onChangeRef.current = onChange;
+  onPlaceSelectRef.current = onPlaceSelect;
+  valueRef.current = value;
 
   // Load Google Maps API script
   useEffect(() => {
@@ -128,7 +135,7 @@ export const PlacesAutocomplete: React.FC<PlacesAutocompleteProps> = ({
 
       autocompleteRef.current = autocomplete;
 
-      // Listen for place selection
+      // Listen for place selection (use refs so this effect does not re-run every parent render)
       const listener = autocomplete.addListener('place_changed', () => {
         const place = autocomplete.getPlace();
         
@@ -173,12 +180,19 @@ export const PlacesAutocomplete: React.FC<PlacesAutocompleteProps> = ({
           }
           
           if (formattedValue) {
-            onChange(formattedValue);
+            onChangeRef.current(formattedValue);
             
-            if (onPlaceSelect) {
-              onPlaceSelect(place);
+            if (onPlaceSelectRef.current) {
+              onPlaceSelectRef.current(place);
             }
           }
+        }
+      });
+
+      // Programmatic values (e.g. PDF extract) must show after Autocomplete attaches — Google can leave the DOM stale vs React.
+      requestAnimationFrame(() => {
+        if (inputRef.current && valueRef.current) {
+          inputRef.current.value = valueRef.current;
         }
       });
 
@@ -186,13 +200,22 @@ export const PlacesAutocomplete: React.FC<PlacesAutocompleteProps> = ({
         if (autocompleteRef.current) {
           window.google.maps.event.removeListener(listener);
           window.google.maps.event.clearInstanceListeners(autocompleteRef.current);
+          autocompleteRef.current = null;
         }
       };
     } catch (error: any) {
       console.error('Error initializing Google Places Autocomplete:', error);
       setError(error?.message || 'Failed to initialize autocomplete');
     }
-  }, [isLoaded, onChange, onPlaceSelect]);
+  }, [isLoaded]);
+
+  // Keep PDF / parent-filled text visible when Google Autocomplete does not mirror React state
+  useEffect(() => {
+    if (!isLoaded || isLoading || error || !inputRef.current) return;
+    if (inputRef.current.value !== value) {
+      inputRef.current.value = value;
+    }
+  }, [value, isLoaded, isLoading, error]);
 
   // Handle manual input changes
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {

@@ -6,6 +6,10 @@ import { getCompanyDispatchers } from '../services/dispatcherAssociationService'
 import { getCompanyDrivers } from '../services/driverAssociationService';
 import { getDispatchers, getDrivers, getLoads } from '../services/loadService';
 import { uploadRateConfirmationPdf } from '../services/storageService';
+import {
+  extractLoadDataFromPdf,
+  sanitizePickupCompanyName
+} from '../services/pdfLoadExtractionService';
 import { PlacesAutocomplete } from './PlacesAutocomplete';
 import { calculateDistance } from '../services/distanceService';
 import { supabase } from '../services/supabaseClient';
@@ -28,6 +32,9 @@ export const LoadForm: React.FC<LoadFormProps> = ({ onClose, onSave, currentUser
   const [pdfFile, setPdfFile] = useState<File | null>(null);
   const [pdfPreview, setPdfPreview] = useState<string | null>(loadToEdit?.rateConfirmationPdfUrl || null);
   const [uploadingPdf, setUploadingPdf] = useState(false);
+  const [extractingPdf, setExtractingPdf] = useState(false);
+  const [extractionSummary, setExtractionSummary] = useState<string | null>(null);
+  const [highConfidenceOnly, setHighConfidenceOnly] = useState(false);
   const [errorModal, setErrorModal] = useState<{ isOpen: boolean; message: string }>({ isOpen: false, message: '' });
   const [originPlace, setOriginPlace] = useState<google.maps.places.PlaceResult | null>(null);
   const [destinationPlace, setDestinationPlace] = useState<google.maps.places.PlaceResult | null>(null);
@@ -710,11 +717,103 @@ export const LoadForm: React.FC<LoadFormProps> = ({ onClose, onSave, currentUser
 
   const handleRemovePdf = () => {
     setPdfFile(null);
+    setExtractionSummary(null);
     if (pdfPreview && pdfPreview.startsWith('blob:')) {
       URL.revokeObjectURL(pdfPreview);
     }
     setPdfPreview(loadToEdit?.rateConfirmationPdfUrl || null);
   };
+
+  const handleExtractFromPdf = async () => {
+    if (!pdfFile) {
+      setErrorModal({ isOpen: true, message: 'Please select a PDF before extracting data.' });
+      return;
+    }
+
+    setExtractingPdf(true);
+    setExtractionSummary(null);
+
+    try {
+      const extracted = await extractLoadDataFromPdf(pdfFile);
+
+      const nextValues: Partial<typeof formData> = {};
+      const lowConfidenceFields: string[] = [];
+      const acceptedFields: string[] = [];
+
+      const applyTextField = (key: keyof typeof formData, fieldName: string, rawValue: unknown, confidence: number) => {
+        if (highConfidenceOnly && confidence < 0.65) {
+          lowConfidenceFields.push(fieldName);
+          return;
+        }
+        if (typeof rawValue === 'string' && rawValue.trim()) {
+          nextValues[key] = rawValue.trim();
+          acceptedFields.push(fieldName);
+          if (confidence < 0.65) lowConfidenceFields.push(fieldName);
+        }
+      };
+
+      const applyNumericField = (key: keyof typeof formData, fieldName: string, rawValue: unknown, confidence: number) => {
+        if (highConfidenceOnly && confidence < 0.65) {
+          lowConfidenceFields.push(fieldName);
+          return;
+        }
+        const numericValue = typeof rawValue === 'number' ? rawValue : Number(rawValue);
+        if (Number.isFinite(numericValue) && numericValue >= 0) {
+          nextValues[key] = numericValue.toString();
+          acceptedFields.push(fieldName);
+          if (confidence < 0.65) lowConfidenceFields.push(fieldName);
+        }
+      };
+
+      const pickupCompany =
+        typeof extracted.company.value === 'string'
+          ? sanitizePickupCompanyName(extracted.company.value)
+          : null;
+      if (pickupCompany) {
+        applyTextField('company', 'Company name', pickupCompany, extracted.company.confidence);
+      }
+      applyNumericField('gross', 'Gross', extracted.gross.value, extracted.gross.confidence);
+      applyNumericField('miles', 'Miles', extracted.miles.value, extracted.miles.confidence);
+      applyTextField('dropDate', 'Pickup Date', extracted.dropDate.value, extracted.dropDate.confidence);
+      applyTextField('origin', 'Origin', extracted.origin.value, extracted.origin.confidence);
+      applyTextField('destination', 'Destination', extracted.destination.value, extracted.destination.confidence);
+
+      if (Object.keys(nextValues).length === 0) {
+        setErrorModal({
+          isOpen: true,
+          message: highConfidenceOnly
+            ? 'No high-confidence fields were found. Turn off "High confidence only" or fill manually.'
+            : 'No form fields could be extracted from this PDF. Please fill the form manually.'
+        });
+        return;
+      }
+
+      setFormData(prev => ({ ...prev, ...nextValues }));
+      setOriginPlace(null);
+      setDestinationPlace(null);
+
+      const lowConfidenceMessage = lowConfidenceFields.length
+        ? ` Please verify: ${lowConfidenceFields.join(', ')}.`
+        : '';
+      const modeMessage = highConfidenceOnly ? ' (high-confidence only mode)' : '';
+      setExtractionSummary(`Auto-filled ${acceptedFields.length} fields from PDF${modeMessage}.${lowConfidenceMessage}`);
+    } catch (error: any) {
+      setErrorModal({
+        isOpen: true,
+        message: error?.message || 'Failed to extract load data from PDF.'
+      });
+    } finally {
+      setExtractingPdf(false);
+    }
+  };
+
+  useEffect(() => {
+    if (pdfFile) {
+      handleExtractFromPdf();
+    }
+    // Intentionally trigger only when file changes.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pdfFile]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -802,7 +901,7 @@ export const LoadForm: React.FC<LoadFormProps> = ({ onClose, onSave, currentUser
               <h3 className="text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider">Load Details</h3>
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Broker / Customer</label>
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Company name (pickup)</label>
                   <input
                     required
                     name="company"
@@ -810,7 +909,7 @@ export const LoadForm: React.FC<LoadFormProps> = ({ onClose, onSave, currentUser
                     value={formData.company}
                     onChange={handleChange}
                     className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
-                    placeholder="e.g. Broker Inc"
+                    placeholder="e.g. GAVCO PLASTICS"
                   />
                 </div>
                 <div>
@@ -996,6 +1095,38 @@ export const LoadForm: React.FC<LoadFormProps> = ({ onClose, onSave, currentUser
               )}
               {uploadingPdf && (
                 <p className="text-xs text-blue-600 dark:text-blue-400 animate-pulse">Uploading PDF...</p>
+              )}
+              {pdfFile && (
+                <div className="flex items-center gap-2 pt-1">
+                  <button
+                    type="button"
+                    onClick={handleExtractFromPdf}
+                    disabled={extractingPdf}
+                    className="px-3 py-1.5 text-xs font-medium text-white bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-400 rounded-md transition-colors"
+                  >
+                    {extractingPdf ? 'Extracting...' : 'Extract from PDF'}
+                  </button>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">
+                    Use AI to prefill Company name, Amount, Miles, Date, Origin, Destination.
+                  </p>
+                </div>
+              )}
+              {pdfFile && (
+                <label className="flex items-center gap-2 text-xs text-slate-600 dark:text-slate-400 pt-1">
+                  <input
+                    type="checkbox"
+                    checked={highConfidenceOnly}
+                    onChange={(e) => setHighConfidenceOnly(e.target.checked)}
+                    className="rounded border-slate-300 dark:border-slate-600"
+                  />
+                  Apply only high-confidence fields (&gt;= 65%)
+                </label>
+              )}
+              {extractingPdf && (
+                <p className="text-xs text-indigo-600 dark:text-indigo-400 animate-pulse">Extracting load data from PDF...</p>
+              )}
+              {extractionSummary && (
+                <p className="text-xs text-emerald-600 dark:text-emerald-400">{extractionSummary}</p>
               )}
             </div>
 

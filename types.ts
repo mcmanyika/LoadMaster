@@ -93,7 +93,7 @@ export interface CompanyInvitation {
 
 export interface Load {
   id: string;
-  company: string; // The Broker (e.g. Example Broker)
+  company: string; // Pickup shipper / facility name only (legacy column name "company")
   gross: number;
   miles: number;
   gasAmount: number;
