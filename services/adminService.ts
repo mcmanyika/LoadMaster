@@ -1,5 +1,5 @@
 import { supabase, isSupabaseConfigured } from './supabaseClient';
-import { UserProfile } from '../types';
+import { UserStatus } from '../types';
 
 export interface AdminFilters {
   companyId?: string;
@@ -31,6 +31,71 @@ export interface UserStatistics {
     none: number;
   };
 }
+
+export interface AdminUserRow {
+  id: string;
+  email: string;
+  name: string;
+  role: string;
+  status: UserStatus;
+  companyId?: string;
+  companyName?: string;
+  createdAt: string;
+}
+
+type ProfileRow = {
+  id: string;
+  email: string | null;
+  name: string | null;
+  role: string | null;
+  status: string | null;
+  subscription_plan?: string | null;
+  company_id: string | null;
+  created_at: string;
+};
+
+const filterProfilesByCompany = async (
+  users: ProfileRow[],
+  companyId: string
+): Promise<ProfileRow[]> => {
+  if (!supabase) return users;
+
+  const associatedUserIds = new Set<string>();
+
+  users.filter(u => u.company_id === companyId).forEach(u => associatedUserIds.add(u.id));
+
+  const { data: company } = await supabase
+    .from('companies')
+    .select('owner_id')
+    .eq('id', companyId)
+    .single();
+
+  if (company?.owner_id) {
+    associatedUserIds.add(company.owner_id);
+  }
+
+  const { data: dispatcherAssociations } = await supabase
+    .from('dispatcher_company_associations')
+    .select('dispatcher_id')
+    .eq('company_id', companyId)
+    .eq('status', 'active');
+
+  dispatcherAssociations?.forEach(a => {
+    if (a.dispatcher_id) associatedUserIds.add(a.dispatcher_id);
+  });
+
+  const { data: driverAssociations } = await supabase
+    .from('driver_company_associations')
+    .select('driver_id')
+    .eq('company_id', companyId)
+    .eq('status', 'active');
+
+  driverAssociations?.forEach(a => {
+    if (a.driver_id) associatedUserIds.add(a.driver_id);
+  });
+
+  return users.filter(u => associatedUserIds.has(u.id));
+};
 
 export interface CompanyStatistics {
   totalCompanies: number;
@@ -167,76 +232,10 @@ export const getUserStatistics = async (filters?: AdminFilters): Promise<UserSta
 
     if (error) throw error;
 
-    let users = profiles || [];
-    
-    // Apply company filter if provided
+    let users: ProfileRow[] = profiles || [];
+
     if (filters?.companyId) {
-      // Get all user IDs associated with this company through various means:
-      // 1. Direct company_id in profiles
-      // 2. Dispatcher associations
-      // 3. Driver associations
-      // 4. Company owner
-      
-      const associatedUserIds = new Set<string>();
-      
-      // 1. Users with direct company_id
-      const directUsers = users.filter(u => u.company_id === filters.companyId);
-      directUsers.forEach(u => associatedUserIds.add(u.id));
-      
-      // 2. Get company owner
-      const { data: company } = await supabase
-        .from('companies')
-        .select('owner_id')
-        .eq('id', filters.companyId)
-        .single();
-      
-      if (company?.owner_id) {
-        associatedUserIds.add(company.owner_id);
-      }
-      
-      // 3. Get dispatchers associated with this company
-      const { data: dispatcherAssociations, error: dispatcherError } = await supabase
-        .from('dispatcher_company_associations')
-        .select('dispatcher_id')
-        .eq('company_id', filters.companyId)
-        .eq('status', 'active');
-      
-      if (dispatcherError) {
-        console.error('[getUserStatistics] Error fetching dispatcher associations:', dispatcherError);
-      } else if (dispatcherAssociations) {
-        dispatcherAssociations.forEach(a => {
-          if (a.dispatcher_id) associatedUserIds.add(a.dispatcher_id);
-        });
-      }
-      
-      // 4. Get drivers associated with this company
-      const { data: driverAssociations, error: driverError } = await supabase
-        .from('driver_company_associations')
-        .select('driver_id')
-        .eq('company_id', filters.companyId)
-        .eq('status', 'active');
-      
-      if (driverError) {
-        console.error('[getUserStatistics] Error fetching driver associations:', driverError);
-      } else if (driverAssociations) {
-        driverAssociations.forEach(a => {
-          if (a.driver_id) associatedUserIds.add(a.driver_id);
-        });
-      }
-      
-      // Filter users to only those associated with the company
-      users = users.filter(u => associatedUserIds.has(u.id));
-      
-      // Debug logging
-      console.log('[getUserStatistics] Company filter applied:', {
-        companyId: filters.companyId,
-        associatedUserIds: Array.from(associatedUserIds),
-        filteredUsersCount: users.length,
-        directUsersCount: directUsers.length,
-        dispatcherAssociationsCount: dispatcherAssociations?.length || 0,
-        driverAssociationsCount: driverAssociations?.length || 0,
-        ownerId: company?.owner_id,
-      });
+      users = await filterProfilesByCompany(users, filters.companyId);
     }
     
     const thirtyDaysAgo = new Date();
@@ -667,6 +666,113 @@ export const getSystemHealth = async (): Promise<SystemHealth> => {
 /**
  * Get all admin statistics
  */
+/**
+ * List all users for superuser account management
+ */
+export const getAllUsersForAdmin = async (filters?: AdminFilters): Promise<AdminUserRow[]> => {
+  if (!isSupabaseConfigured || !supabase) {
+    return [];
+  }
+
+  try {
+    const { data: profiles, error } = await supabase
+      .from('profiles')
+      .select('id, email, name, role, status, company_id, created_at')
+      .order('created_at', { ascending: false });
+
+    if (error) throw error;
+
+    let users: ProfileRow[] = profiles || [];
+
+    if (filters?.companyId) {
+      users = await filterProfilesByCompany(users, filters.companyId);
+    }
+
+    const companyIds = [...new Set(users.map(u => u.company_id).filter(Boolean))] as string[];
+    const companyNameById = new Map<string, string>();
+
+    if (companyIds.length > 0) {
+      const { data: companyRows } = await supabase
+        .from('companies')
+        .select('id, name')
+        .in('id', companyIds);
+
+      companyRows?.forEach(c => companyNameById.set(c.id, c.name));
+    }
+
+    return users.map(u => ({
+      id: u.id,
+      email: u.email || '',
+      name: u.name || 'Unknown',
+      role: u.role || 'unknown',
+      status: (u.status === 'inactive' ? 'inactive' : 'active') as UserStatus,
+      companyId: u.company_id || undefined,
+      companyName: u.company_id ? companyNameById.get(u.company_id) : undefined,
+      createdAt: u.created_at,
+    }));
+  } catch (error) {
+    console.error('Error fetching users for admin:', error);
+    throw error;
+  }
+};
+
+/**
+ * Activate or deactivate a user account (superuser only)
+ */
+export const setUserAccountStatus = async (
+  userId: string,
+  status: UserStatus,
+  currentUserId: string
+): Promise<{ success: boolean; error?: string }> => {
+  if (!isSupabaseConfigured || !supabase) {
+    return { success: false, error: 'Supabase not configured' };
+  }
+
+  if (userId === currentUserId) {
+    return { success: false, error: 'You cannot change your own account status' };
+  }
+
+  try {
+    const { data: currentProfile, error: currentError } = await supabase
+      .from('profiles')
+      .select('role')
+      .eq('id', currentUserId)
+      .single();
+
+    if (currentError || currentProfile?.role !== 'superuser') {
+      return { success: false, error: 'Unauthorized' };
+    }
+
+    const { data: targetProfile, error: targetError } = await supabase
+      .from('profiles')
+      .select('role')
+      .eq('id', userId)
+      .single();
+
+    if (targetError || !targetProfile) {
+      return { success: false, error: 'User not found' };
+    }
+
+    if (targetProfile.role === 'superuser' && status === 'inactive') {
+      return { success: false, error: 'Cannot deactivate another superuser account' };
+    }
+
+    const { error: updateError } = await supabase
+      .from('profiles')
+      .update({ status })
+      .eq('id', userId);
+
+    if (updateError) {
+      return { success: false, error: updateError.message };
+    }
+
+    return { success: true };
+  } catch (error: any) {
+    console.error('Error updating user account status:', error);
+    return { success: false, error: error.message || 'Failed to update account status' };
+  }
+};
+
 export const getAllAdminStatistics = async (filters?: AdminFilters) => {
   try {
     const [

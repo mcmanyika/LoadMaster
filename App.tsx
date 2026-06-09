@@ -235,7 +235,7 @@ function App() {
   const [hasSubscriptionAccess, setHasSubscriptionAccess] = useState<boolean | null>(null);
   const [checkingAccess, setCheckingAccess] = useState(false);
   const [isInTrial, setIsInTrial] = useState<boolean>(false);
-  const [trialDaysRemaining, setTrialDaysRemaining] = useState<number | null>(null);
+  const [trialRemainingLabel, setTrialRemainingLabel] = useState<string | null>(null);
 
   // Check URL parameters for payment status on mount and auto-save subscription
   useEffect(() => {
@@ -592,12 +592,11 @@ function App() {
       const inTrial = await isInTrialPeriod(user.id);
       setIsInTrial(inTrial);
       
-      // Get detailed access info including trial days remaining
       if (inTrial) {
         const accessInfo = await checkSubscriptionAccess(user);
-        setTrialDaysRemaining(accessInfo.trialDaysRemaining || null);
+        setTrialRemainingLabel(accessInfo.trialRemainingLabel || null);
       } else {
-        setTrialDaysRemaining(null);
+        setTrialRemainingLabel(null);
       }
       
       setCheckingAccess(false);
@@ -1628,15 +1627,15 @@ function App() {
                 </div>
               )}
               {/* Trial Badge */}
-              {areSubscriptionsEnforced() && isInTrial && trialDaysRemaining !== null && (
+              {areSubscriptionsEnforced() && isInTrial && trialRemainingLabel !== null && (
                 <button
                   onClick={() => handleViewChange('pricing')}
                   className="flex items-center gap-1 md:gap-2 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-700 hover:bg-blue-100 dark:hover:bg-blue-900/30 text-blue-600 dark:text-blue-400 px-2 md:px-3 py-2 rounded-lg text-xs md:text-sm font-medium transition-all"
-                  title={`Trial: ${trialDaysRemaining} ${trialDaysRemaining === 1 ? 'day' : 'days'} remaining`}
+                  title={`Trial: ${trialRemainingLabel} remaining`}
                 >
                   <Clock size={16} />
                   <span className="hidden sm:inline">Trial</span>
-                  <span className="hidden md:inline">({trialDaysRemaining}d)</span>
+                  <span className="hidden md:inline">({trialRemainingLabel})</span>
                 </button>
               )}
               <button
@@ -1721,7 +1720,7 @@ function App() {
                   }}
                 />
               ) : view === 'admin' ? (
-                <AdminDashboard />
+                <AdminDashboard currentUserId={user.id} />
               ) : view === 'route-analysis' ? (
                 company ? (
                   <div className="mx-auto px-4 py-8">

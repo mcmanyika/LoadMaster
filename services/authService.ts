@@ -68,6 +68,11 @@ export const signIn = async (email: string, password: string): Promise<{ user: U
       companyId: profile?.company_id,
     };
 
+    if (userProfile.status === 'inactive') {
+      await supabase.auth.signOut();
+      return { user: null, error: 'Your account has been deactivated. Contact support.' };
+    }
+
     return { user: userProfile, error: null };
   }
 
@@ -379,6 +384,11 @@ export const getCurrentUser = async (): Promise<UserProfile | null> => {
       companyId: undefined,
       _profileMissing: true, // Special flag to indicate profile needs to be created
     } as UserProfile & { _profileMissing?: boolean };
+  }
+
+  if (profile?.status === 'inactive') {
+    await supabase.auth.signOut();
+    return null;
   }
 
   return {

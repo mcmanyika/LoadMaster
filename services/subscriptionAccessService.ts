@@ -2,7 +2,21 @@ import { UserProfile } from '../types';
 import { getActiveSubscription } from './subscriptionService';
 import { supabase, isSupabaseConfigured } from './supabaseClient';
 
-const TRIAL_PERIOD_DAYS = 30;
+export const TRIAL_PERIOD_MONTHS = 40;
+
+const getTrialEndDate = (signupDate: Date): Date => {
+  const trialEndDate = new Date(signupDate);
+  trialEndDate.setMonth(trialEndDate.getMonth() + TRIAL_PERIOD_MONTHS);
+  return trialEndDate;
+};
+
+export const formatTrialRemaining = (daysRemaining: number): string => {
+  if (daysRemaining >= 60) {
+    const months = Math.round(daysRemaining / 30);
+    return `${months} ${months === 1 ? 'month' : 'months'}`;
+  }
+  return `${daysRemaining} ${daysRemaining === 1 ? 'day' : 'days'}`;
+};
 
 /** When false, all authenticated users get full access (billing enforcement paused). */
 export const areSubscriptionsEnforced = (): boolean =>
@@ -26,7 +40,7 @@ export const hasActiveSubscription = async (userId: string): Promise<boolean> =>
 };
 
 /**
- * Check if a user is within their 14-day trial period
+ * Check if a user is within their trial period
  */
 export const isInTrialPeriod = async (userId: string): Promise<boolean> => {
   if (!isSupabaseConfigured || !supabase) {
@@ -46,10 +60,8 @@ export const isInTrialPeriod = async (userId: string): Promise<boolean> => {
       return false;
     }
 
-    // Calculate trial end date (14 days from signup)
     const signupDate = new Date(profile.created_at);
-    const trialEndDate = new Date(signupDate);
-    trialEndDate.setDate(trialEndDate.getDate() + TRIAL_PERIOD_DAYS);
+    const trialEndDate = getTrialEndDate(signupDate);
 
     // Check if current date is before trial end date
     const now = new Date();
@@ -72,7 +84,7 @@ export const isSuperuser = (user: UserProfile | null): boolean => {
  * 
  * Access priority:
  * 1. Superusers - always have access (bypass all checks)
- * 2. Users in 14-day trial period - have full access
+ * 2. Users in trial period - have full access
  * 3. Users with active subscription - have access
  * 4. All others - no access
  */
@@ -94,7 +106,7 @@ export const canAccessFeature = async (
     return true;
   }
 
-  // Check if user is within 14-day trial period
+  // Check if user is within trial period
   const inTrial = await isInTrialPeriod(user.id);
   if (inTrial) {
     return true;
@@ -110,7 +122,7 @@ export const canAccessFeature = async (
  */
 export const checkSubscriptionAccess = async (
   user: UserProfile | null
-): Promise<{ hasAccess: boolean; reason?: string; trialDaysRemaining?: number }> => {
+): Promise<{ hasAccess: boolean; reason?: string; trialDaysRemaining?: number; trialRemainingLabel?: string }> => {
   if (!user) {
     return { hasAccess: false, reason: 'User not authenticated' };
   }
@@ -137,14 +149,15 @@ export const checkSubscriptionAccess = async (
 
       if (profile?.created_at) {
         const signupDate = new Date(profile.created_at);
-        const trialEndDate = new Date(signupDate);
-        trialEndDate.setDate(trialEndDate.getDate() + TRIAL_PERIOD_DAYS);
+        const trialEndDate = getTrialEndDate(signupDate);
         const now = new Date();
         const daysRemaining = Math.ceil((trialEndDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+        const trialRemainingLabel = formatTrialRemaining(daysRemaining);
         return { 
           hasAccess: true, 
-          reason: `Trial period - ${daysRemaining} days remaining`,
-          trialDaysRemaining: daysRemaining
+          reason: `Trial period - ${trialRemainingLabel} remaining`,
+          trialDaysRemaining: daysRemaining,
+          trialRemainingLabel,
         };
       }
     } catch (error) {
