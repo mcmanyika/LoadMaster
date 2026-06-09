@@ -8,20 +8,23 @@ import {
   getInviteCodeDetails
 } from '../services/dispatcherAssociationService';
 import { formatInviteCode, normalizeInviteCode, validateInviteCodeFormat } from '../services/inviteCodeService';
+import { createClientCompanyForDispatch } from '../services/companyService';
 import { ErrorModal } from './ErrorModal';
 import { ConfirmModal } from './ConfirmModal';
-import { Key, Copy, Clock, X, Building2, Check, AlertCircle } from 'lucide-react';
+import { Key, Copy, Clock, X, Building2, Check, AlertCircle, Plus } from 'lucide-react';
 
 interface DispatchCompanyInvitationManagementProps {
   user: UserProfile;
   companyId?: string;
   onUpdate?: () => void;
+  onClientCompanyCreated?: (companyId: string) => void;
 }
 
 export const DispatchCompanyInvitationManagement: React.FC<DispatchCompanyInvitationManagementProps> = ({
   user,
   companyId,
-  onUpdate
+  onUpdate,
+  onClientCompanyCreated,
 }) => {
   const isOwner = user.role === 'owner';
   const isDispatchCompany = user.role === 'dispatch_company';
@@ -37,6 +40,14 @@ export const DispatchCompanyInvitationManagement: React.FC<DispatchCompanyInvita
   const [codeInput, setCodeInput] = useState('');
   const [codePreview, setCodePreview] = useState<{ company?: Company; feePercentage?: number; expiresAt?: string } | null>(null);
   const [previewLoading, setPreviewLoading] = useState(false);
+  const [showCreateForm, setShowCreateForm] = useState(false);
+  const [createForm, setCreateForm] = useState({
+    name: '',
+    contactPerson: '',
+    phone: '',
+    email: '',
+  });
+  const [createSuccess, setCreateSuccess] = useState<string | null>(null);
 
   useEffect(() => {
     if (isOwner && companyId) {
@@ -146,6 +157,43 @@ export const DispatchCompanyInvitationManagement: React.FC<DispatchCompanyInvita
       } finally {
         setPreviewLoading(false);
       }
+    }
+  };
+
+  const handleCreateClientCompany = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!createForm.name.trim()) return;
+
+    setLoading(true);
+    setCreateSuccess(null);
+    try {
+      const result = await createClientCompanyForDispatch(
+        createForm.name,
+        user.id,
+        {
+          contactPerson: createForm.contactPerson.trim() || undefined,
+          phone: createForm.phone.trim() || undefined,
+          email: createForm.email.trim() || undefined,
+        }
+      );
+
+      if (result.error || !result.company) {
+        setErrorModal({ isOpen: true, message: result.error || 'Failed to create company' });
+        return;
+      }
+
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('currentCompanyId', result.company.id);
+      }
+      onClientCompanyCreated?.(result.company.id);
+      setCreateSuccess(`Created ${result.company.name}. Switched to this company — manage loads and drivers from the dashboard.`);
+      setCreateForm({ name: '', contactPerson: '', phone: '', email: '' });
+      setShowCreateForm(false);
+      onUpdate?.();
+    } catch (error: any) {
+      setErrorModal({ isOpen: true, message: error.message || 'Failed to create company' });
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -331,7 +379,109 @@ export const DispatchCompanyInvitationManagement: React.FC<DispatchCompanyInvita
           )}
         </>
       ) : (
-        /* Dispatch Company View - Enter Invite Code */
+        <>
+        {/* Create client company */}
+        <div className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 p-6">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-lg font-semibold text-slate-800 dark:text-slate-100 flex items-center gap-2">
+              <Building2 size={20} className="text-green-500" />
+              Create Company to Dispatch For
+            </h3>
+            {!showCreateForm && (
+              <button
+                onClick={() => setShowCreateForm(true)}
+                className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm font-medium flex items-center gap-2"
+              >
+                <Plus size={16} />
+                New Company
+              </button>
+            )}
+          </div>
+
+          <p className="text-sm text-slate-600 dark:text-slate-400 mb-4">
+            Add a carrier company you dispatch for. You can manage loads, drivers, and dispatchers for each company you create or join.
+          </p>
+
+          {createSuccess && (
+            <div className="mb-4 p-3 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800/30 rounded-lg text-sm text-green-800 dark:text-green-300">
+              {createSuccess}
+            </div>
+          )}
+
+          {showCreateForm && (
+            <form onSubmit={handleCreateClientCompany} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                  Company Name *
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={createForm.name}
+                  onChange={(e) => setCreateForm({ ...createForm, name: e.target.value })}
+                  placeholder="e.g. ABC Trucking LLC"
+                  className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-white focus:ring-2 focus:ring-green-500 outline-none"
+                />
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                    Contact Person
+                  </label>
+                  <input
+                    type="text"
+                    value={createForm.contactPerson}
+                    onChange={(e) => setCreateForm({ ...createForm, contactPerson: e.target.value })}
+                    className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-white focus:ring-2 focus:ring-green-500 outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                    Phone
+                  </label>
+                  <input
+                    type="tel"
+                    value={createForm.phone}
+                    onChange={(e) => setCreateForm({ ...createForm, phone: e.target.value })}
+                    className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-white focus:ring-2 focus:ring-green-500 outline-none"
+                  />
+                </div>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                  Email
+                </label>
+                <input
+                  type="email"
+                  value={createForm.email}
+                  onChange={(e) => setCreateForm({ ...createForm, email: e.target.value })}
+                  className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-white focus:ring-2 focus:ring-green-500 outline-none"
+                />
+              </div>
+              <div className="flex gap-2">
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm font-medium disabled:opacity-50"
+                >
+                  {loading ? 'Creating...' : 'Create Company'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowCreateForm(false);
+                    setCreateForm({ name: '', contactPerson: '', phone: '', email: '' });
+                  }}
+                  className="px-4 py-2 bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-lg hover:bg-slate-300 dark:hover:bg-slate-600 transition-colors text-sm font-medium"
+                >
+                  Cancel
+                </button>
+              </div>
+            </form>
+          )}
+        </div>
+
+        {/* Join owner company via invite */}
         <div className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 p-6">
           <h3 className="text-lg font-semibold text-slate-800 dark:text-slate-100 mb-4 flex items-center gap-2">
             <Key size={20} className="text-blue-500" />
@@ -410,6 +560,7 @@ export const DispatchCompanyInvitationManagement: React.FC<DispatchCompanyInvita
             </button>
           </div>
         </div>
+        </>
       )}
     </div>
   );

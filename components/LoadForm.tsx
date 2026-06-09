@@ -77,9 +77,8 @@ export const LoadForm: React.FC<LoadFormProps> = ({ onClose, onSave, currentUser
           if (currentUser?.role === 'dispatch_company') {
             const ownCompany = await getDispatchCompanyOwnCompany();
             dispatcherCompanyId = ownCompany?.id || companyData.id;
-            // For dispatch companies, drivers should always come from the owner company (companyData.id)
-            // companyData is the joined owner company for dispatch companies
-            driverCompanyId = companyData.id; // Always use owner company for drivers
+            // Drivers belong to the active client company (created or joined)
+            driverCompanyId = targetCompanyId || companyData.id;
           } else if (currentUser?.role === 'dispatcher') {
             // For dispatchers: find owner company from all their associations
             // Get all active associations for this dispatcher
@@ -383,72 +382,13 @@ export const LoadForm: React.FC<LoadFormProps> = ({ onClose, onSave, currentUser
               driversData = [];
             }
           } else if (currentUser?.role === 'dispatch_company') {
-            // For dispatch companies: fetch all drivers from owner company
-            // Use getCompanyDrivers to get invited drivers (with profile data)
-            const invitedDrivers = await getCompanyDrivers(driverCompanyId);
-            
-            // Enrich with pay config from drivers table
-            if (invitedDrivers.length > 0) {
-              const driverIds = invitedDrivers
-                .map(assoc => assoc.driverId)
-                .filter((id): id is string => !!id);
-              
-              if (driverIds.length > 0) {
-                // Fetch pay config from drivers table
-                const { data: driversWithPayConfig, error: driversError } = await supabase
-                  .from('drivers')
-                  .select('id, name, phone, email, transporter_id, company_id, pay_type, pay_percentage, profile_id')
-                  .eq('company_id', driverCompanyId)
-                  .in('profile_id', driverIds);
-                
-                if (!driversError && driversWithPayConfig && driversWithPayConfig.length > 0) {
-                  // Create a map of profile_id to driver record
-                  const driverMap = new Map(
-                    driversWithPayConfig.map(d => [d.profile_id, d])
-                  );
-                  
-                  // Convert associations to Driver format
-                  // Only include drivers that have a record in the drivers table
-                  const mappedDrivers = invitedDrivers
-                    .filter(assoc => {
-                      if (!assoc.driverId || !assoc.driver) return false;
-                      return driverMap.has(assoc.driverId);
-                    })
-                    .map(assoc => {
-                      const driverRecord = driverMap.get(assoc.driverId!);
-                      if (!driverRecord) {
-                        // Should not happen due to filter above
-                        return null as any;
-                      }
-                      
-                      return {
-                        id: driverRecord.id, // Always use drivers.id
-                        name: assoc.driver?.name || driverRecord.name || '',
-                        email: assoc.driver?.email || driverRecord.email || '',
-                        phone: assoc.driver?.phone || driverRecord.phone || '',
-                        transporterId: driverRecord.transporter_id || '',
-                        companyId: assoc.companyId,
-                        payType: (driverRecord.pay_type || 'percentage_of_net') as 'percentage_of_gross' | 'percentage_of_net',
-                        payPercentage: driverRecord.pay_percentage || 50
-                      };
-                    })
-                    .filter(Boolean);
-                  
-                  // Deduplicate by id to ensure each driver appears only once
-                  const dispatchCompanyDriversMap = new Map<string, typeof mappedDrivers[0]>();
-                  for (const driver of mappedDrivers) {
-                    if (driver && !dispatchCompanyDriversMap.has(driver.id)) {
-                      dispatchCompanyDriversMap.set(driver.id, driver);
-                    }
-                  }
-                  driversData = Array.from(dispatchCompanyDriversMap.values());
-                  console.log('[LoadForm] Dispatch Company: After deduplication, have', driversData.length, 'unique drivers');
-                } else {
-                  // No matching driver records in drivers table; leave drivers list empty
-                  console.warn('[LoadForm] No matching driver records in drivers table for dispatch company; driver dropdown will be empty.');
-                  driversData = [];
-                }
-              }
+            driverCompanyId = targetCompanyId || companyData?.id || driverCompanyId;
+            if (driverCompanyId) {
+              driversData = await getDrivers(driverCompanyId);
+              console.log('[LoadForm] Dispatch Company: Loaded', driversData.length, 'drivers for', driverCompanyId);
+            } else {
+              console.warn('[LoadForm] Dispatch Company: No client company selected; driver dropdown empty.');
+              driversData = [];
             }
           } else if (currentUser?.role === 'dispatcher') {
             // For dispatchers: fetch ALL drivers from the drivers table for the owner company

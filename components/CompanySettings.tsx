@@ -107,7 +107,9 @@ export const CompanySettings: React.FC<CompanySettingsProps> = ({ user, onCompan
         if (!user.id) {
           throw new Error('User ID is missing');
         }
-        const newCompany = await createCompany(companyName.trim(), user.id, companyData);
+        const newCompany = await createCompany(companyName.trim(), user.id, companyData, {
+          isDispatchHq: isDispatchCompany,
+        });
         console.log('Created company:', newCompany);
         
         // Immediately set the company state to prevent showing "no company" message

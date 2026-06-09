@@ -29,7 +29,10 @@ export const DispatcherCompaniesList: React.FC<DispatcherCompaniesListProps> = (
     setLoading(true);
     try {
       const data = await getDispatcherAssociationsWithCompanies(user.id);
-      setAssociations(data);
+      const filtered = user.role === 'dispatch_company'
+        ? data.filter(a => !a.company?.isDispatchHq)
+        : data;
+      setAssociations(filtered);
     } catch (error: any) {
       setErrorModal({ isOpen: true, message: error.message || 'Failed to load companies' });
     } finally {
@@ -52,18 +55,18 @@ export const DispatcherCompaniesList: React.FC<DispatcherCompaniesListProps> = (
       <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm p-6">
         <h3 className="text-lg font-bold text-slate-800 dark:text-slate-100 mb-4 flex items-center gap-2">
           <Building2 size={20} className="text-slate-600 dark:text-slate-400" />
-          {user.role === 'dispatch_company' ? 'Joined Owner Companies' : 'My Companies'}
+          {user.role === 'dispatch_company' ? 'Companies You Dispatch For' : 'My Companies'}
         </h3>
         <div className="text-center py-8">
           <AlertCircle size={48} className="mx-auto text-slate-300 dark:text-slate-600 mb-4" />
           <p className="text-slate-500 dark:text-slate-400 mb-2">
             {user.role === 'dispatch_company' 
-              ? "You haven't joined any owner companies yet." 
+              ? "You haven't added any client companies yet." 
               : "You're not associated with any companies yet."}
           </p>
           <p className="text-sm text-slate-400 dark:text-slate-500">
             {user.role === 'dispatch_company' 
-              ? "Use an invite code from an owner to join their company." 
+              ? "Create a company in Fleet → Client Companies, or join an owner with an invite code." 
               : "Use an invite code to join a company."}
           </p>
         </div>
@@ -81,7 +84,7 @@ export const DispatcherCompaniesList: React.FC<DispatcherCompaniesListProps> = (
 
       <h3 className="text-lg font-bold text-slate-800 dark:text-slate-100 mb-4 flex items-center gap-2">
         <Building2 size={20} className="text-slate-600 dark:text-slate-400" />
-        {user.role === 'dispatch_company' ? `Joined Owner Companies (${associations.length})` : `My Companies (${associations.length})`}
+        {user.role === 'dispatch_company' ? `Companies You Dispatch For (${associations.length})` : `My Companies (${associations.length})`}
       </h3>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -109,6 +112,11 @@ export const DispatcherCompaniesList: React.FC<DispatcherCompaniesListProps> = (
                     }`}>
                       {association.company?.name || 'Unknown Company'}
                     </h4>
+                    {user.role === 'dispatch_company' && association.company && (
+                      <span className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 block">
+                        {association.company.ownerId === user.id ? 'Created by you' : 'Joined via invite'}
+                      </span>
+                    )}
                     {isCurrentCompany && (
                       <div className="flex items-center gap-1 mt-1">
                         <CheckCircle size={14} className="text-slate-600 dark:text-slate-400" />

@@ -152,7 +152,12 @@ export const signUp = async (email: string, password: string, name: string, role
     // If user is an owner or dispatch_company, create a company for them
     if (role === 'owner' || role === 'dispatch_company') {
       try {
-        const company = await createCompany(`${name}'s Company`, data.user.id);
+        const company = await createCompany(
+          `${name}'s Company`,
+          data.user.id,
+          undefined,
+          { isDispatchHq: role === 'dispatch_company' }
+        );
         // Profile company_id will be set by createCompany function
 
         // Create sample data for new owner accounts (not for dispatch companies)

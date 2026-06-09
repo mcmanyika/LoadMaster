@@ -1,6 +1,6 @@
 import { supabase, isSupabaseConfigured } from './supabaseClient';
 import { Load, DispatcherName, Transporter, Driver, UserProfile, Dispatcher } from '../types';
-import { getCompany, createCompany } from './companyService';
+import { getCompany, createCompany, getDispatchClientCompany } from './companyService';
 import { getCompanyDispatchers } from './dispatcherAssociationService';
 
 // Mock Data for Demo Mode
@@ -918,7 +918,10 @@ export const getDrivers = async (companyId?: string): Promise<Driver[]> => {
   }));
 };
 
-export const createDriver = async (d: Omit<Driver, 'id'>): Promise<Driver> => {
+export const createDriver = async (
+  d: Omit<Driver, 'id'>,
+  explicitCompanyId?: string
+): Promise<Driver> => {
   if (!isSupabaseConfigured || !supabase) {
     const newD = { ...d, id: Math.random().toString(36).substr(2, 9) };
     MOCK_DRIVERS.push(newD);
@@ -931,35 +934,42 @@ export const createDriver = async (d: Omit<Driver, 'id'>): Promise<Driver> => {
     throw new Error('User not authenticated');
   }
 
-  // Use getCompany() which has fallback logic to find company by owner_id
-  let company = await getCompany();
-  
-  // If no company found, check if user is an owner and create one
-  if (!company) {
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('role, name')
-      .eq('id', session.user.id)
-      .single();
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('role, name')
+    .eq('id', session.user.id)
+    .single();
 
-    if (profile?.role === 'owner') {
-      try {
-        company = await createCompany(
-          profile?.name ? `${profile.name}'s Company` : 'My Company',
-          session.user.id
+  let companyId = explicitCompanyId || d.companyId;
+
+  if (!companyId) {
+    if (profile?.role === 'dispatch_company') {
+      const clientCompany = await getDispatchClientCompany();
+      companyId = clientCompany?.id;
+      if (!companyId) {
+        throw new Error(
+          'Select or create a client company first (Fleet → Client Companies), then add drivers.'
         );
-      } catch (error) {
-        console.error('Error creating company for owner:', error);
-        throw new Error('Failed to create company. Please try again.');
       }
+    } else {
+      let company = await getCompany();
+      if (!company && profile?.role === 'owner') {
+        try {
+          company = await createCompany(
+            profile?.name ? `${profile.name}'s Company` : 'My Company',
+            session.user.id
+          );
+        } catch (error) {
+          console.error('Error creating company for owner:', error);
+          throw new Error('Failed to create company. Please try again.');
+        }
+      }
+      if (!company) {
+        throw new Error('User does not have a company assigned. Please create a company in Settings first.');
+      }
+      companyId = company.id;
     }
   }
-
-  if (!company) {
-    throw new Error('User does not have a company assigned. Please create a company in Settings first.');
-  }
-
-  const companyId = company.id;
 
   const { data, error } = await supabase
     .from('drivers')

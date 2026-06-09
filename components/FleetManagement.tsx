@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Transporter, Driver, UserProfile, Dispatcher } from '../types';
 import { getTransporters, getDrivers, createTransporter, updateTransporter, createDriver, updateDriver, getDispatchers, createDispatcher, updateDispatcher } from '../services/loadService';
-import { getCompany, getDispatchCompanyOwnCompany } from '../services/companyService';
+import { getCompany, getDispatchCompanyOwnCompany, getDispatchClientCompany } from '../services/companyService';
 import { Truck, User, Plus, Search, Building2, Phone, Mail, FileBadge, Users as UsersIcon, AlertCircle, DollarSign, Edit2, X, Check } from 'lucide-react';
 import { ErrorModal } from './ErrorModal';
 import { InvitationManagement } from './InvitationManagement';
@@ -10,9 +10,15 @@ import { DispatchCompanyInvitationManagement } from './DispatchCompanyInvitation
 
 interface FleetManagementProps {
   user: UserProfile;
+  activeClientCompanyId?: string | null;
+  onClientCompanyCreated?: (companyId: string) => void;
 }
 
-export const FleetManagement: React.FC<FleetManagementProps> = ({ user }) => {
+export const FleetManagement: React.FC<FleetManagementProps> = ({
+  user,
+  activeClientCompanyId,
+  onClientCompanyCreated,
+}) => {
   const isOwner = user.role === 'owner';
   const isDispatchCompany = user.role === 'dispatch_company';
   const canManageFleet = isOwner || isDispatchCompany;
@@ -22,7 +28,8 @@ export const FleetManagement: React.FC<FleetManagementProps> = ({ user }) => {
   const [dispatchers, setDispatchers] = useState<Dispatcher[]>([]);
   const [companyName, setCompanyName] = useState<string>('');
   const [companyId, setCompanyId] = useState<string | undefined>(undefined);
-  const [driverCompanyId, setDriverCompanyId] = useState<string | undefined>(undefined); // For driver invitations (owner company for dispatch companies)
+  const [driverCompanyId, setDriverCompanyId] = useState<string | undefined>(undefined);
+  const [driverCompanyName, setDriverCompanyName] = useState<string>('');
   const [loading, setLoading] = useState(false);
   const [showAddForm, setShowAddForm] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -53,7 +60,7 @@ export const FleetManagement: React.FC<FleetManagementProps> = ({ user }) => {
 
   useEffect(() => {
     fetchData();
-  }, []);
+  }, [activeClientCompanyId, user.id]);
 
   const fetchData = async () => {
     setLoading(true);
@@ -74,22 +81,21 @@ export const FleetManagement: React.FC<FleetManagementProps> = ({ user }) => {
       
       if (isDispatchCompany) {
         const ownCompany = await getDispatchCompanyOwnCompany();
+        const clientCompany = await getDispatchClientCompany(activeClientCompanyId);
+
         if (ownCompany) {
           dispatcherCompanyId = ownCompany.id;
-          // Use own company for dispatcher-related operations
-          // But use owner company (companyData) for driver invitations
-          driverInviteCompanyId = companyData?.id; // Owner company for driver invites
-          setCompanyId(ownCompany.id); // For dispatchers tab
+          setCompanyId(ownCompany.id);
           setCompanyName(ownCompany.name);
-          setDriverCompanyId(driverInviteCompanyId); // Store owner company ID for driver invites
         } else if (companyData) {
-          // Fallback to companyData if own company not found
           dispatcherCompanyId = companyData.id;
-          driverInviteCompanyId = companyData.id;
           setCompanyId(companyData.id);
-        setCompanyName(companyData.name);
-          setDriverCompanyId(driverInviteCompanyId);
+          setCompanyName(companyData.name);
         }
+
+        driverInviteCompanyId = clientCompany?.id;
+        setDriverCompanyId(clientCompany?.id);
+        setDriverCompanyName(clientCompany?.name || '');
       } else if (companyData) {
         dispatcherCompanyId = companyData.id;
         driverInviteCompanyId = companyData.id;
@@ -146,12 +152,22 @@ export const FleetManagement: React.FC<FleetManagementProps> = ({ user }) => {
       
       // companyId is handled automatically by createDriver service
       // transporterId is set to null for owners since they don't manage transporters
-      const newD = await createDriver({ 
-        ...dForm, 
+      const targetCompanyId = isDispatchCompany ? driverCompanyId : companyId;
+      if (!targetCompanyId) {
+        setErrorModal({
+          isOpen: true,
+          message: 'Select or create a client company first (Client Companies tab), then add drivers.',
+        });
+        return;
+      }
+
+      const newD = await createDriver({
+        ...dForm,
         transporterId: null as any,
         payType: dForm.payType,
-        payPercentage: payPercentage
-      } as any);
+        payPercentage: payPercentage,
+        companyId: targetCompanyId,
+      } as any, targetCompanyId);
       // Refresh the driver list to include the new driver
       await fetchData();
       setShowAddForm(false);
@@ -349,7 +365,7 @@ export const FleetManagement: React.FC<FleetManagementProps> = ({ user }) => {
             </p>
           </div>
           {/* Add button - show for owners/dispatch companies on their respective tabs */}
-          {((isOwner && activeTab !== 'dispatch_companies') || (isDispatchCompany && activeTab !== 'vehicles' && activeTab !== 'dispatch_companies')) && (
+          {((isOwner && activeTab !== 'dispatch_companies') || (isDispatchCompany && activeTab !== 'vehicles' && activeTab !== 'dispatch_companies' && activeTab !== 'join_owner' && (activeTab !== 'drivers' || !!driverCompanyId))) && (
             <button 
               onClick={() => setShowAddForm(true)}
               className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium shadow-sm transition-colors"
@@ -419,7 +435,7 @@ export const FleetManagement: React.FC<FleetManagementProps> = ({ user }) => {
                 activeTab === 'join_owner' ? 'text-blue-600 dark:text-blue-400' : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300'
               }`}
             >
-              Join Owner Company
+              Client Companies
               {activeTab === 'join_owner' && <div className="absolute bottom-0 left-0 w-full h-0.5 bg-blue-600 dark:bg-blue-400 rounded-t-full"></div>}
             </button>
           )}
@@ -635,11 +651,16 @@ export const FleetManagement: React.FC<FleetManagementProps> = ({ user }) => {
 
             {activeTab === 'drivers' && (
               <div className="space-y-6">
-                {/* Invitation Management Section - Show for both owners and drivers */}
+                {isDispatchCompany && driverCompanyName && (
+                  <p className="text-sm text-slate-600 dark:text-slate-400">
+                    Managing drivers for <span className="font-semibold text-slate-800 dark:text-slate-100">{driverCompanyName}</span>
+                  </p>
+                )}
                 <div className="border-b border-slate-200 dark:border-slate-700 pb-6">
                   <DriverInvitationManagement
                     user={user}
-                    companyId={isDispatchCompany ? (driverCompanyId || companyId) : companyId}
+                    companyId={isDispatchCompany ? driverCompanyId : companyId}
+                    companyName={isDispatchCompany ? driverCompanyName : undefined}
                     onUpdate={fetchData}
                   />
                 </div>
@@ -684,6 +705,7 @@ export const FleetManagement: React.FC<FleetManagementProps> = ({ user }) => {
                     user={user}
                     companyId={companyId}
                     onUpdate={fetchData}
+                    onClientCompanyCreated={onClientCompanyCreated}
                   />
                 </div>
               </div>

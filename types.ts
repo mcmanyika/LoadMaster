@@ -8,6 +8,7 @@ export interface Company {
   email?: string;
   contactPerson?: string;
   numberOfTrucks?: number;
+  isDispatchHq?: boolean;
   createdAt: string;
   updatedAt: string;
 }

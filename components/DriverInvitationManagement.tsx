@@ -21,12 +21,14 @@ import { Truck } from 'lucide-react';
 interface DriverInvitationManagementProps {
   user: UserProfile;
   companyId?: string;
+  companyName?: string;
   onUpdate?: () => void;
 }
 
 export const DriverInvitationManagement: React.FC<DriverInvitationManagementProps> = ({
   user,
   companyId,
+  companyName,
   onUpdate
 }) => {
   const isOwner = user.role === 'owner';
@@ -372,7 +374,11 @@ export const DriverInvitationManagement: React.FC<DriverInvitationManagementProp
   if (canManageDrivers && !companyId) {
     return (
       <div className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 p-6">
-        <p className="text-slate-500 dark:text-slate-400">Please set up your company first.</p>
+        <p className="text-slate-500 dark:text-slate-400">
+          {isDispatchCompany
+            ? 'Create or select a client company first (Client Companies tab), then add drivers here.'
+            : 'Please set up your company first.'}
+        </p>
       </div>
     );
   }

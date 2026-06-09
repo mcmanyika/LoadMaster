@@ -15,6 +15,21 @@ const MOCK_COMPANIES: Company[] = [
 
 // --- COMPANY OPERATIONS ---
 
+const mapCompanyRow = (company: Record<string, unknown>): Company => ({
+  id: company.id as string,
+  name: company.name as string,
+  ownerId: company.owner_id as string,
+  address: (company.address as string) || undefined,
+  website: (company.website as string) || undefined,
+  phone: (company.phone as string) || undefined,
+  email: (company.email as string) || undefined,
+  contactPerson: (company.contact_person as string) || undefined,
+  numberOfTrucks: (company.number_of_trucks as number) || undefined,
+  isDispatchHq: (company.is_dispatch_hq as boolean) || false,
+  createdAt: company.created_at as string,
+  updatedAt: company.updated_at as string,
+});
+
 export const getCompany = async (currentCompanyId?: string): Promise<Company | null> => {
   if (!isSupabaseConfigured || !supabase) {
     return MOCK_COMPANIES[0] || null;
@@ -62,17 +77,7 @@ export const getCompany = async (currentCompanyId?: string): Promise<Company | n
           .maybeSingle();
 
         if (!assocError && association) {
-          return {
-            id: company.id,
-            name: company.name,
-            ownerId: company.owner_id,
-            address: company.address || undefined,
-            website: company.website || undefined,
-            phone: company.phone || undefined,
-            numberOfTrucks: company.number_of_trucks || undefined,
-            createdAt: company.created_at,
-            updatedAt: company.updated_at
-          };
+          return mapCompanyRow(company);
         }
       }
     }
@@ -123,27 +128,25 @@ export const getCompany = async (currentCompanyId?: string): Promise<Company | n
       // For owners and dispatch companies: try to find company by owner_id as fallback
       if (profile?.role === 'owner' || profile?.role === 'dispatch_company') {
         console.log('[getCompany] Owner/Dispatch Company with no company_id, trying owner_id lookup');
-        const { data: companyByOwner, error: ownerError } = await supabase
+        let companyQuery = supabase
           .from('companies')
           .select('*')
-          .eq('owner_id', session.user.id)
-          .single();
+          .eq('owner_id', session.user.id);
+
+        if (profile?.role === 'dispatch_company') {
+          companyQuery = companyQuery.eq('is_dispatch_hq', true);
+        }
+
+        const { data: companyByOwner, error: ownerError } = await companyQuery.maybeSingle();
 
         if (!ownerError && companyByOwner) {
           console.log('[getCompany] Found company by owner_id, updating profile');
-          // Update profile with company_id
           await supabase
             .from('profiles')
             .update({ company_id: companyByOwner.id })
             .eq('id', session.user.id);
 
-          return {
-            id: companyByOwner.id,
-            name: companyByOwner.name,
-            ownerId: companyByOwner.owner_id,
-            createdAt: companyByOwner.created_at,
-            updatedAt: companyByOwner.updated_at
-          };
+          return mapCompanyRow(companyByOwner);
         }
       }
       
@@ -172,19 +175,7 @@ export const getCompany = async (currentCompanyId?: string): Promise<Company | n
 
     console.log('[getCompany] Found company:', company.id, company.name);
 
-    return {
-      id: company.id,
-      name: company.name,
-      ownerId: company.owner_id,
-      address: company.address || undefined,
-      website: company.website || undefined,
-      phone: company.phone || undefined,
-      email: company.email || undefined,
-      contactPerson: company.contact_person || undefined,
-      numberOfTrucks: company.number_of_trucks || undefined,
-      createdAt: company.created_at,
-      updatedAt: company.updated_at
-    };
+    return mapCompanyRow(company);
   } catch (error) {
     console.error('[getCompany] Unexpected error:', error);
     return null;
@@ -217,49 +208,30 @@ export const getDispatchCompanyOwnCompany = async (): Promise<Company | null> =>
       return null;
     }
 
-    // Try to get company from profile.company_id first
+    // HQ company: profile.company_id or is_dispatch_hq flag
     if (profile.company_id) {
       const { data: company } = await supabase
         .from('companies')
         .select('*')
         .eq('id', profile.company_id)
-        .eq('owner_id', session.user.id) // Ensure it's their own company
-        .single();
+        .eq('owner_id', session.user.id)
+        .eq('is_dispatch_hq', true)
+        .maybeSingle();
 
       if (company) {
-        return {
-          id: company.id,
-          name: company.name,
-          ownerId: company.owner_id,
-          address: company.address || undefined,
-          website: company.website || undefined,
-          phone: company.phone || undefined,
-          numberOfTrucks: company.number_of_trucks || undefined,
-          createdAt: company.created_at,
-          updatedAt: company.updated_at
-        };
+        return mapCompanyRow(company);
       }
     }
 
-    // Fallback: find company by owner_id
-    const { data: companyByOwner } = await supabase
+    const { data: hqCompany } = await supabase
       .from('companies')
       .select('*')
       .eq('owner_id', session.user.id)
-      .single();
+      .eq('is_dispatch_hq', true)
+      .maybeSingle();
 
-    if (companyByOwner) {
-      return {
-        id: companyByOwner.id,
-        name: companyByOwner.name,
-        ownerId: companyByOwner.owner_id,
-        address: companyByOwner.address || undefined,
-        website: companyByOwner.website || undefined,
-        phone: companyByOwner.phone || undefined,
-        numberOfTrucks: companyByOwner.number_of_trucks || undefined,
-        createdAt: companyByOwner.created_at,
-        updatedAt: companyByOwner.updated_at
-      };
+    if (hqCompany) {
+      return mapCompanyRow(hqCompany);
     }
 
     return null;
@@ -269,11 +241,21 @@ export const getDispatchCompanyOwnCompany = async (): Promise<Company | null> =>
   }
 };
 
+export interface CreateCompanyOptions {
+  /** Link the new company to the owner's profile.company_id (default true) */
+  linkProfile?: boolean;
+  /** Mark as dispatch company internal HQ (default false) */
+  isDispatchHq?: boolean;
+}
+
 export const createCompany = async (
   name: string, 
   ownerId: string,
-  companyData?: Partial<Omit<Company, 'id' | 'ownerId' | 'createdAt' | 'updatedAt'>>
+  companyData?: Partial<Omit<Company, 'id' | 'ownerId' | 'createdAt' | 'updatedAt' | 'isDispatchHq'>>,
+  options?: CreateCompanyOptions
 ): Promise<Company> => {
+  const linkProfile = options?.linkProfile !== false;
+  const isDispatchHq = options?.isDispatchHq === true;
   if (!isSupabaseConfigured || !supabase) {
     const newCompany: Company = {
       id: Math.random().toString(36).substr(2, 9),
@@ -297,6 +279,7 @@ export const createCompany = async (
     .insert([{
       name,
       owner_id: ownerId,
+      is_dispatch_hq: isDispatchHq,
       address: companyData?.address || null,
       website: companyData?.website || null,
       phone: companyData?.phone || null,
@@ -312,23 +295,71 @@ export const createCompany = async (
     throw error;
   }
 
-  // Update the owner's profile to link to the company
-  await supabase
-    .from('profiles')
-    .update({ company_id: data.id })
-    .eq('id', ownerId);
+  if (linkProfile) {
+    await supabase
+      .from('profiles')
+      .update({ company_id: data.id })
+      .eq('id', ownerId);
+  }
 
-  return {
-    id: data.id,
-    name: data.name,
-    ownerId: data.owner_id,
-    address: data.address || undefined,
-    website: data.website || undefined,
-    phone: data.phone || undefined,
-    numberOfTrucks: data.number_of_trucks || undefined,
-    createdAt: data.created_at,
-    updatedAt: data.updated_at
-  };
+  return mapCompanyRow(data);
+};
+
+/**
+ * Create a client carrier company that a dispatch company dispatches for.
+ * Does not change profile.company_id (HQ stays separate).
+ */
+export const createClientCompanyForDispatch = async (
+  name: string,
+  dispatchUserId: string,
+  companyData?: Partial<Omit<Company, 'id' | 'ownerId' | 'createdAt' | 'updatedAt' | 'isDispatchHq'>>
+): Promise<{ company: Company | null; error: string | null }> => {
+  if (!isSupabaseConfigured || !supabase) {
+    return { company: null, error: 'Supabase not configured' };
+  }
+
+  try {
+    const { data: profile, error: profileError } = await supabase
+      .from('profiles')
+      .select('role')
+      .eq('id', dispatchUserId)
+      .single();
+
+    if (profileError || profile?.role !== 'dispatch_company') {
+      return { company: null, error: 'Only dispatch companies can create client companies' };
+    }
+
+    const trimmedName = name.trim();
+    if (!trimmedName) {
+      return { company: null, error: 'Company name is required' };
+    }
+
+    const company = await createCompany(trimmedName, dispatchUserId, companyData, {
+      linkProfile: false,
+      isDispatchHq: false,
+    });
+
+    const { error: assocError } = await supabase
+      .from('dispatcher_company_associations')
+      .insert([{
+        dispatcher_id: dispatchUserId,
+        company_id: company.id,
+        fee_percentage: 0,
+        status: 'active',
+        invited_by: dispatchUserId,
+        joined_at: new Date().toISOString(),
+      }]);
+
+    if (assocError) {
+      console.error('Error creating association for client company:', assocError);
+      return { company: null, error: assocError.message };
+    }
+
+    return { company, error: null };
+  } catch (error: any) {
+    console.error('Error creating client company for dispatch:', error);
+    return { company: null, error: error.message || 'Failed to create company' };
+  }
 };
 
 export const updateCompany = async (
@@ -363,17 +394,7 @@ export const updateCompany = async (
     throw error;
   }
 
-  return {
-    id: data.id,
-    name: data.name,
-    ownerId: data.owner_id,
-    address: data.address || undefined,
-    website: data.website || undefined,
-    phone: data.phone || undefined,
-    numberOfTrucks: data.number_of_trucks || undefined,
-    createdAt: data.created_at,
-    updatedAt: data.updated_at
-  };
+  return mapCompanyRow(data);
 };
 
 // Get owner email from owner_id
@@ -399,6 +420,46 @@ export const getOwnerEmail = async (ownerId: string): Promise<string | null> => 
     console.error('Error in getOwnerEmail:', error);
     return null;
   }
+};
+
+/**
+ * Resolve the active client/carrier company for a dispatch company (not their internal HQ).
+ * Uses explicit id, then localStorage, then first non-HQ association.
+ */
+export const getDispatchClientCompany = async (
+  explicitCompanyId?: string | null
+): Promise<Company | null> => {
+  if (!isSupabaseConfigured || !supabase) {
+    return null;
+  }
+
+  const savedId =
+    explicitCompanyId ||
+    (typeof window !== 'undefined' ? localStorage.getItem('currentCompanyId') : null);
+
+  if (savedId) {
+    const company = await getCompany(savedId);
+    if (company && !company.isDispatchHq) {
+      return company;
+    }
+  }
+
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session?.user) return null;
+
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('role')
+    .eq('id', session.user.id)
+    .single();
+
+  if (profile?.role !== 'dispatch_company') {
+    return savedId ? await getCompany(savedId) : null;
+  }
+
+  const activeCompanies = await getActiveCompanies(session.user.id);
+  const clientCompany = activeCompanies.find(c => !c.isDispatchHq);
+  return clientCompany || null;
 };
 
 /**

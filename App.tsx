@@ -1736,7 +1736,11 @@ function App() {
               ) : (
                 <>
                   {view === 'fleet' ? (
-                    <FleetManagement user={user} />
+                    <FleetManagement
+                      user={user}
+                      activeClientCompanyId={currentCompanyId}
+                      onClientCompanyCreated={(companyId) => switchCompany(companyId)}
+                    />
                   ) : (
                     <div className="mx-auto px-4 py-8 space-y-8">
                       {/* Key Metrics */}

@@ -731,6 +731,7 @@ export const getActiveCompanies = async (
         email: company.email || undefined,
         contactPerson: company.contact_person || undefined,
         numberOfTrucks: company.number_of_trucks || undefined,
+        isDispatchHq: company.is_dispatch_hq || false,
         createdAt: company.created_at,
         updatedAt: company.updated_at
       }));
@@ -793,6 +794,7 @@ function mapAssociation(item: any): DispatcherCompanyAssociation {
       id: item.company.id,
       name: item.company.name,
       ownerId: item.company.owner_id,
+      isDispatchHq: item.company.is_dispatch_hq || false,
       createdAt: item.company.created_at,
       updatedAt: item.company.updated_at
     } : undefined,
