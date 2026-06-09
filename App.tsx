@@ -57,7 +57,12 @@ import { ErrorModal } from './components/ErrorModal';
 import { ConfirmModal } from './components/ConfirmModal';
 import { DispatcherCompaniesList } from './components/DispatcherCompaniesList';
 import { SubscriptionGuard } from './components/SubscriptionGuard';
-import { canAccessFeature, isInTrialPeriod, checkSubscriptionAccess } from './services/subscriptionAccessService';
+import {
+  areSubscriptionsEnforced,
+  canAccessFeature,
+  isInTrialPeriod,
+  checkSubscriptionAccess
+} from './services/subscriptionAccessService';
 import { LandingPage2 } from './components/LandingPage2';
 import { PrivacyPolicy } from './components/PrivacyPolicy';
 import { TermsOfService } from './components/TermsOfService';
@@ -1623,7 +1628,7 @@ function App() {
                 </div>
               )}
               {/* Trial Badge */}
-              {isInTrial && trialDaysRemaining !== null && (
+              {areSubscriptionsEnforced() && isInTrial && trialDaysRemaining !== null && (
                 <button
                   onClick={() => handleViewChange('pricing')}
                   className="flex items-center gap-1 md:gap-2 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-700 hover:bg-blue-100 dark:hover:bg-blue-900/30 text-blue-600 dark:text-blue-400 px-2 md:px-3 py-2 rounded-lg text-xs md:text-sm font-medium transition-all"

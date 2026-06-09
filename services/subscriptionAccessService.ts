@@ -4,6 +4,10 @@ import { supabase, isSupabaseConfigured } from './supabaseClient';
 
 const TRIAL_PERIOD_DAYS = 30;
 
+/** When false, all authenticated users get full access (billing enforcement paused). */
+export const areSubscriptionsEnforced = (): boolean =>
+  import.meta.env.VITE_SUBSCRIPTIONS_ENFORCED !== 'false';
+
 /**
  * Check if a user has an active subscription
  */
@@ -81,6 +85,10 @@ export const canAccessFeature = async (
     return false;
   }
 
+  if (!areSubscriptionsEnforced()) {
+    return true;
+  }
+
   // ONLY superusers bypass all subscription checks
   if (isSuperuser(user)) {
     return true;
@@ -105,6 +113,10 @@ export const checkSubscriptionAccess = async (
 ): Promise<{ hasAccess: boolean; reason?: string; trialDaysRemaining?: number }> => {
   if (!user) {
     return { hasAccess: false, reason: 'User not authenticated' };
+  }
+
+  if (!areSubscriptionsEnforced()) {
+    return { hasAccess: true, reason: 'Subscriptions paused — full access enabled' };
   }
 
   // Superusers always have access
